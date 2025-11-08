@@ -20,6 +20,11 @@ semantics.
 - Reader for s-expressions (numbers, strings with escapes, quoting, quasiquote, comments)
 - Command-line interface offering a REPL and script execution (with shebang support)
 
+## Documentation
+
+- [Runtime primitives](docs/Primitives.md)
+- [S-expression grammar](docs/S-Expressions.md)
+
 Garbage collection relies entirely on the Go runtime—no additional memory management is required.
 
 ## Getting Started
@@ -111,4 +116,3 @@ This runs unit tests for the interpreter core and confirms the example scripts e
 ## License
 
 Distributed under the MIT License. See [`LICENSE`](LICENSE) for details.
-
