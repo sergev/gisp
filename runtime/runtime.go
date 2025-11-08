@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
-	"github.com/sergev/gisp/internal/lang"
-	"github.com/sergev/gisp/internal/reader"
+	"github.com/sergev/gisp/lang"
+	gispparser "github.com/sergev/gisp/parser"
+	"github.com/sergev/gisp/reader"
 )
 
 // NewEvaluator constructs an evaluator with the standard runtime installed.
@@ -70,11 +72,34 @@ func EvaluateReader(ev *lang.Evaluator, r io.Reader) (lang.Value, error) {
 	return ev.EvalAll(forms, nil)
 }
 
+// EvaluateGispReader parses and evaluates Gisp source from the reader.
+func EvaluateGispReader(ev *lang.Evaluator, r io.Reader) (lang.Value, error) {
+	forms, err := gispparser.ParseReader(r)
+	if err != nil {
+		return lang.Value{}, err
+	}
+	return ev.EvalAll(forms, nil)
+}
+
+// EvaluateGispString parses and evaluates Gisp source from a string.
+func EvaluateGispString(ev *lang.Evaluator, src string) (lang.Value, error) {
+	forms, err := gispparser.ParseString(src)
+	if err != nil {
+		return lang.Value{}, err
+	}
+	return ev.EvalAll(forms, nil)
+}
+
 // EvaluateFile loads and executes a Scheme file, allowing #! shebang.
 func EvaluateFile(ev *lang.Evaluator, path string) (lang.Value, error) {
 	data, err := readFileSkippingShebang(path)
 	if err != nil {
 		return lang.Value{}, err
 	}
-	return EvaluateReader(ev, bytes.NewReader(data))
+	switch filepath.Ext(path) {
+	case ".gisp":
+		return EvaluateGispReader(ev, bytes.NewReader(data))
+	default:
+		return EvaluateReader(ev, bytes.NewReader(data))
+	}
 }

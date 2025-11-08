@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/sergev/gisp/internal/lang"
+	"github.com/sergev/gisp/lang"
 )
 
 func installPrimitives(ev *lang.Evaluator) {

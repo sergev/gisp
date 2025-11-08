@@ -1,6 +1,6 @@
 # Gisp S-Expression Grammar
 
-This document describes the concrete syntax accepted by the reader implementation in `internal/reader/reader.go`. The language is an S-expression dialect inspired by Scheme.
+This document describes the concrete syntax accepted by the reader implementation in `reader/reader.go`. The language is an S-expression dialect inspired by Scheme.
 
 ## Lexical Structure
 

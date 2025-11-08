@@ -1,6 +1,6 @@
 # Gisp Runtime Primitives
 
-This document summarizes the built-in primitives that are installed into the global environment. The semantics below reflect the current implementation in `internal/runtime/primitives.go`.
+This document summarizes the built-in primitives that are installed into the global environment. The semantics below reflect the current implementation in `runtime/primitives.go`.
 
 ## Arithmetic
 

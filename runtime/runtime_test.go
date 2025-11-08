@@ -1,4 +1,4 @@
-package main
+package runtime
 
 import (
 	"bytes"
@@ -7,9 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/sergev/gisp/internal/lang"
-	"github.com/sergev/gisp/internal/reader"
-	"github.com/sergev/gisp/internal/runtime"
+	"github.com/sergev/gisp/lang"
+	"github.com/sergev/gisp/reader"
 )
 
 func evalString(t *testing.T, ev *lang.Evaluator, src string) lang.Value {
@@ -26,7 +25,7 @@ func evalString(t *testing.T, ev *lang.Evaluator, src string) lang.Value {
 }
 
 func TestArithmetic(t *testing.T) {
-	ev := runtime.NewEvaluator()
+	ev := NewEvaluator()
 	val := evalString(t, ev, "(+ 1 2 3 4)")
 	if val.Type != lang.TypeInt || val.Int != 10 {
 		t.Fatalf("expected 10, got %s", val.String())
@@ -38,7 +37,7 @@ func TestArithmetic(t *testing.T) {
 }
 
 func TestMacroExpansion(t *testing.T) {
-	ev := runtime.NewEvaluator()
+	ev := NewEvaluator()
 	evalString(t, ev, `
 (define-macro (when condition . body)
   (list 'if condition
@@ -57,7 +56,7 @@ func TestMacroExpansion(t *testing.T) {
 }
 
 func TestContinuation(t *testing.T) {
-	ev := runtime.NewEvaluator()
+	ev := NewEvaluator()
 	val := evalString(t, ev, `
 (begin
   (define saved #f)
@@ -75,7 +74,7 @@ func TestContinuation(t *testing.T) {
 }
 
 func TestTailRecursion(t *testing.T) {
-	ev := runtime.NewEvaluator()
+	ev := NewEvaluator()
 	val := evalString(t, ev, `
 (begin
   (define (sum n acc)
@@ -90,6 +89,7 @@ func TestTailRecursion(t *testing.T) {
 }
 
 func TestExamples(t *testing.T) {
+	baseExamples := filepath.Join("..", "examples")
 	examples := []struct {
 		name     string
 		path     string
@@ -97,7 +97,7 @@ func TestExamples(t *testing.T) {
 	}{
 		{
 			name: "hello",
-			path: filepath.Join("examples", "hello.gs"),
+			path: filepath.Join(baseExamples, "hello.gs"),
 			validate: func(t *testing.T, v lang.Value) {
 				t.Helper()
 				if v.Type != lang.TypeEmpty {
@@ -107,7 +107,7 @@ func TestExamples(t *testing.T) {
 		},
 		{
 			name: "continuation",
-			path: filepath.Join("examples", "continuation.gs"),
+			path: filepath.Join(baseExamples, "continuation.gs"),
 			validate: func(t *testing.T, v lang.Value) {
 				t.Helper()
 				if v.Type != lang.TypeInt || v.Int != 42 {
@@ -120,13 +120,13 @@ func TestExamples(t *testing.T) {
 	for _, ex := range examples {
 		ex := ex
 		t.Run(ex.name, func(t *testing.T) {
-			ev := runtime.NewEvaluator()
-			runtime.SetArgv(ev.Global, []string{})
+			ev := NewEvaluator()
+			SetArgv(ev.Global, []string{})
 			var val lang.Value
 			var err error
 
 			_ = captureOutput(func() {
-				val, err = runtime.EvaluateFile(ev, ex.path)
+				val, err = EvaluateFile(ev, ex.path)
 			})
 
 			if err != nil {

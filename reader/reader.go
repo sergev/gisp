@@ -9,7 +9,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/sergev/gisp/internal/lang"
+	"github.com/sergev/gisp/lang"
 )
 
 // ReadString parses all expressions from a string.

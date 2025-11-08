@@ -8,9 +8,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/sergev/gisp/internal/lang"
-	"github.com/sergev/gisp/internal/reader"
-	"github.com/sergev/gisp/internal/runtime"
+	"github.com/sergev/gisp/lang"
+	"github.com/sergev/gisp/reader"
+	"github.com/sergev/gisp/runtime"
 )
 
 func main() {
