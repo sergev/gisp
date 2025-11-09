@@ -155,3 +155,11 @@ func TestTutorial17Classify(t *testing.T) {
 func TestTutorial18AccumulateUntil(t *testing.T) {
 	runTutorialExample(t, "tutorial_18_accumulate_until.gisp", "2")
 }
+
+func TestContinuationExample(t *testing.T) {
+	runTutorialExample(
+		t,
+		"continuation.gisp",
+		"Demonstrating call/cc\nFirst result: initial return\nInvoking continuation with 42\nFirst result: 42\nContinuation produced: 42",
+	)
+}

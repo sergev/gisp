@@ -170,3 +170,8 @@ containing function, matching the behaviour of Scheme's `call/cc`. `while` is
 compiled into a recursive loop that preserves tail recursion, so `continue` and
 `break` are not required; use conditionals and function exits as needed.
 
+For direct access to continuations from the Go-style surface syntax, the runtime
+exposes a `callcc` primitive, equivalent to ``(lambda (f) (call/cc f))``.
+This lets you invoke `callcc(func(k) { ... })` without dropping into inline
+s-expressions.
+

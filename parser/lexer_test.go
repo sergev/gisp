@@ -406,6 +406,68 @@ func TestLexerSemicolonBeforeClosingBrace(t *testing.T) {
 	}
 }
 
+func TestLexerAutomaticSemicolonInsideCallArgBlock(t *testing.T) {
+	src := `
+func demo() {
+	var saved = callcc(func(k) {
+		return "initial return"
+	})
+}
+`
+	tokens := lexAllTokens(t, src)
+
+	var types []TokenType
+	for _, tok := range tokens {
+		types = append(types, tok.Type)
+	}
+
+	// Ensure the return inside the nested function literal is terminated automatically.
+	found := false
+	for i := 0; i < len(types)-2; i++ {
+		if types[i] == tokenReturn && types[i+1] == tokenString && types[i+2] == tokenSemicolon {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected automatic semicolon after return string, got sequence %v", types)
+	}
+
+	// Ensure the variable declaration statement also ends with an automatic semicolon.
+	varDeclSeq := []TokenType{
+		tokenVar, tokenIdentifier, tokenAssign, tokenIdentifier, tokenLParen,
+	}
+	start := indexOfSubslice(types, varDeclSeq)
+	if start == -1 {
+		t.Fatalf("expected to find var declaration tokens in %v", types)
+	}
+	if idx := indexOfToken(types[start+len(varDeclSeq):], tokenSemicolon); idx == -1 {
+		t.Fatalf("expected automatic semicolon after call expression, got sequence %v", types)
+	}
+}
+
+func indexOfSubslice(haystack, needle []TokenType) int {
+outer:
+	for i := 0; i <= len(haystack)-len(needle); i++ {
+		for j := range needle {
+			if haystack[i+j] != needle[j] {
+				continue outer
+			}
+		}
+		return i
+	}
+	return -1
+}
+
+func indexOfToken(types []TokenType, target TokenType) int {
+	for i, typ := range types {
+		if typ == target {
+			return i
+		}
+	}
+	return -1
+}
+
 func TestLexerUnexpectedCharacter(t *testing.T) {
 	lx := newLexer("@")
 	tok, err := lx.nextToken()

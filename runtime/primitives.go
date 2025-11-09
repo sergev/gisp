@@ -69,6 +69,18 @@ func installPrimitives(ev *lang.Evaluator) {
 	define("stringToSymbol", primStringToSymbol)
 	define("numberToString", primNumberToString)
 	define("stringToNumber", primStringToNumber)
+
+	env.Define("callcc", lang.ClosureValue(
+		[]string{"f"},
+		"",
+		[]lang.Value{
+			lang.List(
+				lang.SymbolValue("call/cc"),
+				lang.SymbolValue("f"),
+			),
+		},
+		env,
+	))
 }
 
 func primAdd(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {

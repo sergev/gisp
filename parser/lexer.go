@@ -22,6 +22,7 @@ type lexer struct {
 	lastPos      Position
 	bufferedTok  *Token
 	parenDepth   int
+	braceDepth   int
 }
 
 func newLexer(src string) *lexer {
@@ -181,7 +182,7 @@ func (lx *lexer) nextToken() (Token, error) {
 	if err != nil {
 		return Token{}, err
 	}
-	if sawNewline && lx.shouldInsertSemicolon() && lx.parenDepth == 0 {
+	if sawNewline && lx.shouldInsertSemicolon() && lx.canInsertSemicolon() {
 		return lx.emit(Token{
 			Type: tokenSemicolon,
 			Pos:  lx.lastPos,
@@ -189,7 +190,7 @@ func (lx *lexer) nextToken() (Token, error) {
 	}
 
 	if lx.pos >= len(lx.src) {
-		if lx.shouldInsertSemicolon() && lx.parenDepth == 0 {
+		if lx.shouldInsertSemicolon() && lx.canInsertSemicolon() {
 			return lx.emit(Token{
 				Type: tokenSemicolon,
 				Pos:  lx.lastPos,
@@ -208,7 +209,7 @@ func (lx *lexer) nextToken() (Token, error) {
 	start := lx.mark()
 	r, _, _, err := lx.readRune()
 	if err == io.EOF {
-		if lx.shouldInsertSemicolon() && lx.parenDepth == 0 {
+		if lx.shouldInsertSemicolon() && lx.canInsertSemicolon() {
 			return lx.emit(Token{
 				Type: tokenSemicolon,
 				Pos:  lx.lastPos,
@@ -382,6 +383,12 @@ func (lx *lexer) adjustParenDepth(tt TokenType) {
 		if lx.parenDepth > 0 {
 			lx.parenDepth--
 		}
+	case tokenLBrace:
+		lx.braceDepth++
+	case tokenRBrace:
+		if lx.braceDepth > 0 {
+			lx.braceDepth--
+		}
 	}
 }
 
@@ -403,6 +410,34 @@ func (lx *lexer) shouldInsertSemicolon() bool {
 		return true
 	}
 	return false
+}
+
+func (lx *lexer) canInsertSemicolon() bool {
+	if lx.parenDepth == 0 {
+		return true
+	}
+	if lx.braceDepth == 0 {
+		return false
+	}
+	r, err := lx.peekNextRune()
+	if err != nil {
+		return true
+	}
+	switch r {
+	case ')', ']':
+		return false
+	}
+	return true
+}
+
+func (lx *lexer) peekNextRune() (rune, error) {
+	state := lx.mark()
+	r, _, _, err := lx.readRune()
+	if err != nil {
+		return 0, err
+	}
+	lx.unread(state)
+	return r, nil
 }
 
 func (lx *lexer) match(expected rune) bool {

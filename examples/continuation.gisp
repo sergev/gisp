@@ -1,0 +1,29 @@
+#!/usr/bin/env gisp
+
+func demo() {
+    display("Demonstrating call/cc")
+    newline()
+
+    var saved = false
+    var result = callcc(func(k) {
+        saved = k
+        return "initial return"
+    })
+
+    display("First result: ")
+    display(result)
+    newline()
+
+    if stringp(result) {
+        display("Invoking continuation with 42")
+        newline()
+        saved(42)
+    }
+
+    display("Continuation produced: ")
+    display(result)
+    newline()
+    return result
+}
+
+demo()
