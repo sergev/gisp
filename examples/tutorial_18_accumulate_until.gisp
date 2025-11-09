@@ -13,4 +13,3 @@ func accumulateUntil(limit) {
 
 display(accumulateUntil(2.0));
 newline();
-

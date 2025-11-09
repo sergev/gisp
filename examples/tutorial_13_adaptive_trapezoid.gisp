@@ -34,4 +34,3 @@ func unitCircle(x) {
 
 display(integrate(unitCircle, 0.0, 1.0, 1e-6));
 newline();
-

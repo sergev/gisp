@@ -197,11 +197,11 @@ display(cdr(numbers)); // (2 3 4)
 newline();
 ```
 
-Predicates such as `null?` or `number?` include characters that are illegal in Gisp identifiers, so wrap them once and reuse the helper:
+Predicate names now follow the trailing `p` convention (`nullp`, `numberp`, etc.), so you can call them directly from Gisp:
 
 ```gisp
 func isEmpty(xs) {
-	return `(null? xs);
+	return nullp(xs);
 }
 
 func head(xs) {
@@ -396,27 +396,27 @@ The recursive subdivision mirrors the Scheme version, and the tolerance handling
 
 ### 7.3 Symbolic Differentiation (SICP Section 2.3)
 
-SICP's differentiator manipulates algebraic expressions represented as lists. The Gisp port stays close to the original, using small helpers to bridge the handful of Scheme predicates whose names are not Gisp identifiers.
+SICP's differentiator manipulates algebraic expressions represented as lists. The Gisp port stays close to the original, leaning on the new predicate names so we can stay in surface Gisp while still reaching into list structures.
 
 ```gisp
 func isNumberValue(expr) {
-	return `(number? expr);
+	return numberp(expr);
 }
 
 func isVariable(expr) {
-	return `(symbol? expr);
+	return symbolp(expr);
 }
 
 func sameVariable(v1, v2) {
-	return `(eq? v1 v2);
+	return eq(v1, v2);
 }
 
 func isPair(expr) {
-	return `(pair? expr);
+	return pairp(expr);
 }
 
 func isTagged(expr, tag) {
-	return isPair(expr) && `(eq? (car expr) tag);
+	return isPair(expr) && eq(car(expr), tag);
 }
 
 func makeSum(a, b) {
@@ -529,7 +529,7 @@ func findFirst(pred, xs) {
 	return `(call/cc (lambda (exit)
 		(let loop ((items xs))
 			(cond
-				((null? items) '#f)
+				((nullp items) '#f)
 				((,pred (car items)) (exit (car items)))
 				(else (loop (cdr items)))))));
 }

@@ -8,4 +8,3 @@ var double = func(n) { return n * 2; };
 
 display(compose(increment, double)(10));
 newline();
-

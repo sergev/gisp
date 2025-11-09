@@ -12,4 +12,3 @@ var c = counter(10);
 display(c(1));
 display(c(5));
 newline();
-

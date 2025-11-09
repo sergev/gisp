@@ -40,7 +40,7 @@ func sqrtNewton(x) {
 }
 
 func isEmpty(xs) {
-	return `(null? xs);
+	return nullp(xs);
 }
 
 func head(xs) {
@@ -123,4 +123,3 @@ func alertOnOutlier(xs, threshold) {
 }
 
 alertOnOutlier([10.0, 10.5, 10.2, 11.0, 26.0, 10.1], 2.5);
-

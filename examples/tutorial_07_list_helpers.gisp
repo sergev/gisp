@@ -6,7 +6,7 @@ display(cdr(numbers));
 newline();
 
 func isEmpty(xs) {
-	return `(null? xs);
+	return nullp(xs);
 }
 
 func head(xs) {
@@ -39,4 +39,3 @@ func filter(pred, xs) {
 
 display(map(func(n) { return n * n; }, numbers));
 newline();
-

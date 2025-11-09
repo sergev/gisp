@@ -23,13 +23,20 @@ Go developers.
   `if`/`else`, `while`, and `return`. Every non-block statement must end with a
   semicolon.
 - **Expressions:** infix operators `+`, `-`, `*`, `/`, `==`, `!=`, `<`, `<=`,
-  `>`, `>=`, logical `&&`/`||`, unary `!` and unary negation.
+  `>`, `>=`, logical `&&`/`||`, unary `!` and unary negation. `==` compiles to
+  the runtime numeric primitive `=` (and `!=` expands to `(not (= ...))`), so it
+  expects numbers; use the `eq` and `equal` primitives via backticks when you
+  need identity or structural comparison of non-numeric values.
 - **Literals:** numbers, strings, booleans (`true`/`false`), and list literals
   using `[a, b, ...]`.
 - **Anonymous functions:** `func(params) { ... }` produces a closure with the
   same semantics as Scheme lambdas (including lexical scope and recursion).
 - **Inline Scheme:** `` var quoted = `(list 1 2 3); `` inserts the exact
   s-expression `(list 1 2 3)` into the compiled output.
+
+### Symbol Literals in Backticks
+
+Inline s-expression literals are handed to the Scheme-style reader in `sexpr`, so all of Scheme's prefix sugar is available. A bare token like `` `+ `` reads as the symbol `+`, and `` `'+ `` expands to `(quote +)`. Prefer those forms over spelling out `(quote ...)` manually—for example, `cons(`'+, args)` is identical to `cons(`(quote +), args)` but shorter. We intentionally do **not** rewrite string literals such as `"+"` into symbols: strings are plain data, and automatic coercion would make it impossible to represent an actual string containing a plus sign. If you do need to turn a string into a symbol at runtime, use the existing `stringToSymbol` primitive instead of overloading the reader.
 
 ## Formal Grammar
 

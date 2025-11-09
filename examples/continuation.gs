@@ -11,7 +11,7 @@
   (display "First result: ")
   (display result)
   (newline)
-  (if (string? result)
+  (if (stringp result)
       (begin
         (display "Invoking continuation with 42")
         (newline)

@@ -12,4 +12,3 @@ var ratio = 7 / 2;
 display("Ratio 7/2 = ");
 display(ratio);
 newline();
-

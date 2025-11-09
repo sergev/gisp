@@ -3,7 +3,7 @@
 var findFirst = `(lambda (pred xs)
 	(call/cc (lambda (exit)
 		(let loop ((items xs))
-			(if (null? items)
+			(if (nullp items)
 				'#f
 				(if (pred (car items))
 					(exit (car items))
@@ -16,4 +16,3 @@ func main() {
 }
 
 main();
-

@@ -639,6 +639,56 @@ func TestCompileExprBinary(t *testing.T) {
 	}
 }
 
+func TestCompileExprLogicalAndWithEquality(t *testing.T) {
+	b := &builder{}
+	expr := &BinaryExpr{
+		Op: tokenAndAnd,
+		Left: &CallExpr{
+			Callee: &IdentifierExpr{Name: "isNumberValue"},
+			Args:   []Expr{&IdentifierExpr{Name: "a"}},
+		},
+		Right: &BinaryExpr{
+			Op:    tokenEqualEqual,
+			Left:  &IdentifierExpr{Name: "a"},
+			Right: &NumberExpr{Value: "0"},
+		},
+	}
+	val, err := compileExpr(b, expr, compileContext{})
+	if err != nil {
+		t.Fatalf("compileExpr and with equality: %v", err)
+	}
+	andList := requireListHead(t, val, "and")
+	if len(andList) != 3 {
+		t.Fatalf("expected and form of length 3, got %d", len(andList))
+	}
+	callForm, ok := andList[1].([]interface{})
+	if !ok {
+		t.Fatalf("expected call list, got %#v", andList[1])
+	}
+	if head := callForm[0].(datumSymbol); string(head) != "isNumberValue" {
+		t.Fatalf("expected call head isNumberValue, got %q", head)
+	}
+	if len(callForm) != 2 || string(callForm[1].(datumSymbol)) != "a" {
+		t.Fatalf("unexpected call args %#v", callForm)
+	}
+	eqForm, ok := andList[2].([]interface{})
+	if !ok {
+		t.Fatalf("expected equality list, got %#v", andList[2])
+	}
+	if head := eqForm[0].(datumSymbol); string(head) != "=" {
+		t.Fatalf("expected equality head, got %q", head)
+	}
+	if len(eqForm) != 3 {
+		t.Fatalf("expected equality form of length 3, got %d", len(eqForm))
+	}
+	if sym := eqForm[1].(datumSymbol); string(sym) != "a" {
+		t.Fatalf("expected left operand a, got %q", sym)
+	}
+	if num := eqForm[2].(int64); num != 0 {
+		t.Fatalf("expected numeric literal 0, got %d", num)
+	}
+}
+
 func TestCompileExprBinaryNotEqual(t *testing.T) {
 	val, err := compileExpr(&builder{}, &BinaryExpr{
 		Op:    tokenBangEqual,

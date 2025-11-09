@@ -3,9 +3,9 @@ package runtime
 var preludeForms = []string{
 	`
 (define-macro (and . args)
-  (if (null? args)
+  (if (nullp args)
       #t
-      (if (null? (cdr args))
+      (if (nullp (cdr args))
           (car args)
           (list 'if (car args)
                 (cons 'and (cdr args))
@@ -13,10 +13,10 @@ var preludeForms = []string{
 `,
 	`
 (define-macro (or . args)
-  (if (null? args)
+  (if (nullp args)
       #f
       (let ((rest (cdr args)))
-        (if (null? rest)
+        (if (nullp rest)
             (car args)
             (let ((sym (gensym)))
               (list 'let (list (list sym (car args)))

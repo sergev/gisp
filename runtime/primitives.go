@@ -30,16 +30,16 @@ func installPrimitives(ev *lang.Evaluator) {
 
 	define("not", primNot)
 
-	define("number?", primIsNumber)
-	define("integer?", primIsInteger)
-	define("real?", primIsReal)
-	define("boolean?", primIsBoolean)
-	define("string?", primIsString)
-	define("symbol?", primIsSymbol)
-	define("pair?", primIsPair)
-	define("null?", primIsNull)
-	define("list?", primIsList)
-	define("procedure?", primIsProcedure)
+	define("numberp", primIsNumber)
+	define("integerp", primIsInteger)
+	define("realp", primIsReal)
+	define("booleanp", primIsBoolean)
+	define("stringp", primIsString)
+	define("symbolp", primIsSymbol)
+	define("pairp", primIsPair)
+	define("nullp", primIsNull)
+	define("listp", primIsList)
+	define("procedurep", primIsProcedure)
 
 	define("cons", primCons)
 	define("car", primCar)
@@ -48,8 +48,8 @@ func installPrimitives(ev *lang.Evaluator) {
 	define("append", primAppend)
 	define("length", primLength)
 
-	define("eq?", primEq)
-	define("equal?", primEqual)
+	define("eq", primEq)
+	define("equal", primEqual)
 
 	define("display", primDisplay)
 	define("newline", primNewline)
@@ -57,11 +57,11 @@ func installPrimitives(ev *lang.Evaluator) {
 
 	define("apply", primApply)
 	define("gensym", primGensym)
-	define("string-append", primStringAppend)
-	define("symbol->string", primSymbolToString)
-	define("string->symbol", primStringToSymbol)
-	define("number->string", primNumberToString)
-	define("string->number", primStringToNumber)
+	define("stringAppend", primStringAppend)
+	define("symbolToString", primSymbolToString)
+	define("stringToSymbol", primStringToSymbol)
+	define("numberToString", primNumberToString)
+	define("stringToNumber", primStringToNumber)
 }
 
 func primAdd(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
@@ -262,62 +262,62 @@ func primNot(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 }
 
 func primIsNumber(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
-	return unaryTypePredicate("number?", args, func(v lang.Value) bool {
+	return unaryTypePredicate("numberp", args, func(v lang.Value) bool {
 		return v.Type == lang.TypeInt || v.Type == lang.TypeReal
 	})
 }
 
 func primIsInteger(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
-	return unaryTypePredicate("integer?", args, func(v lang.Value) bool {
+	return unaryTypePredicate("integerp", args, func(v lang.Value) bool {
 		return v.Type == lang.TypeInt
 	})
 }
 
 func primIsReal(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
-	return unaryTypePredicate("real?", args, func(v lang.Value) bool {
+	return unaryTypePredicate("realp", args, func(v lang.Value) bool {
 		return v.Type == lang.TypeReal || v.Type == lang.TypeInt
 	})
 }
 
 func primIsBoolean(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
-	return unaryTypePredicate("boolean?", args, func(v lang.Value) bool {
+	return unaryTypePredicate("booleanp", args, func(v lang.Value) bool {
 		return v.Type == lang.TypeBool
 	})
 }
 
 func primIsString(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
-	return unaryTypePredicate("string?", args, func(v lang.Value) bool {
+	return unaryTypePredicate("stringp", args, func(v lang.Value) bool {
 		return v.Type == lang.TypeString
 	})
 }
 
 func primIsSymbol(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
-	return unaryTypePredicate("symbol?", args, func(v lang.Value) bool {
+	return unaryTypePredicate("symbolp", args, func(v lang.Value) bool {
 		return v.Type == lang.TypeSymbol
 	})
 }
 
 func primIsPair(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
-	return unaryTypePredicate("pair?", args, func(v lang.Value) bool {
+	return unaryTypePredicate("pairp", args, func(v lang.Value) bool {
 		return v.Type == lang.TypePair
 	})
 }
 
 func primIsNull(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
-	return unaryTypePredicate("null?", args, func(v lang.Value) bool {
+	return unaryTypePredicate("nullp", args, func(v lang.Value) bool {
 		return v.Type == lang.TypeEmpty
 	})
 }
 
 func primIsList(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
-	return unaryTypePredicate("list?", args, func(v lang.Value) bool {
+	return unaryTypePredicate("listp", args, func(v lang.Value) bool {
 		_, err := lang.ToSlice(v)
 		return err == nil
 	})
 }
 
 func primIsProcedure(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
-	return unaryTypePredicate("procedure?", args, func(v lang.Value) bool {
+	return unaryTypePredicate("procedurep", args, func(v lang.Value) bool {
 		return v.Type == lang.TypePrimitive || v.Type == lang.TypeClosure || v.Type == lang.TypeContinuation
 	})
 }
@@ -385,14 +385,14 @@ func primLength(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 
 func primEq(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 	if len(args) != 2 {
-		return lang.Value{}, fmt.Errorf("eq? expects 2 arguments, got %d", len(args))
+		return lang.Value{}, fmt.Errorf("eq expects 2 arguments, got %d", len(args))
 	}
 	return lang.BoolValue(eqValues(args[0], args[1])), nil
 }
 
 func primEqual(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 	if len(args) != 2 {
-		return lang.Value{}, fmt.Errorf("equal? expects 2 arguments, got %d", len(args))
+		return lang.Value{}, fmt.Errorf("equal expects 2 arguments, got %d", len(args))
 	}
 	return lang.BoolValue(equalValues(args[0], args[1])), nil
 }
@@ -475,7 +475,7 @@ func primStringAppend(ev *lang.Evaluator, args []lang.Value) (lang.Value, error)
 	var builder strings.Builder
 	for _, arg := range args {
 		if arg.Type != lang.TypeString {
-			return lang.Value{}, typeError("string-append", "string", arg)
+			return lang.Value{}, typeError("stringAppend", "string", arg)
 		}
 		builder.WriteString(arg.Str)
 	}
@@ -484,27 +484,27 @@ func primStringAppend(ev *lang.Evaluator, args []lang.Value) (lang.Value, error)
 
 func primSymbolToString(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 	if len(args) != 1 {
-		return lang.Value{}, fmt.Errorf("symbol->string expects 1 argument, got %d", len(args))
+		return lang.Value{}, fmt.Errorf("symbolToString expects 1 argument, got %d", len(args))
 	}
 	if args[0].Type != lang.TypeSymbol {
-		return lang.Value{}, typeError("symbol->string", "symbol", args[0])
+		return lang.Value{}, typeError("symbolToString", "symbol", args[0])
 	}
 	return lang.StringValue(args[0].Sym), nil
 }
 
 func primStringToSymbol(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 	if len(args) != 1 {
-		return lang.Value{}, fmt.Errorf("string->symbol expects 1 argument, got %d", len(args))
+		return lang.Value{}, fmt.Errorf("stringToSymbol expects 1 argument, got %d", len(args))
 	}
 	if args[0].Type != lang.TypeString {
-		return lang.Value{}, typeError("string->symbol", "string", args[0])
+		return lang.Value{}, typeError("stringToSymbol", "string", args[0])
 	}
 	return lang.SymbolValue(args[0].Str), nil
 }
 
 func primNumberToString(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 	if len(args) != 1 {
-		return lang.Value{}, fmt.Errorf("number->string expects 1 argument, got %d", len(args))
+		return lang.Value{}, fmt.Errorf("numberToString expects 1 argument, got %d", len(args))
 	}
 	switch args[0].Type {
 	case lang.TypeInt:
@@ -512,16 +512,16 @@ func primNumberToString(ev *lang.Evaluator, args []lang.Value) (lang.Value, erro
 	case lang.TypeReal:
 		return lang.StringValue(strconv.FormatFloat(args[0].Real, 'g', -1, 64)), nil
 	default:
-		return lang.Value{}, typeError("number->string", "number", args[0])
+		return lang.Value{}, typeError("numberToString", "number", args[0])
 	}
 }
 
 func primStringToNumber(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 	if len(args) != 1 {
-		return lang.Value{}, fmt.Errorf("string->number expects 1 argument, got %d", len(args))
+		return lang.Value{}, fmt.Errorf("stringToNumber expects 1 argument, got %d", len(args))
 	}
 	if args[0].Type != lang.TypeString {
-		return lang.Value{}, typeError("string->number", "string", args[0])
+		return lang.Value{}, typeError("stringToNumber", "string", args[0])
 	}
 	str := strings.TrimSpace(args[0].Str)
 	if str == "" {

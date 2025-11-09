@@ -11,7 +11,7 @@ This document summarizes the built-in primitives that are installed into the glo
 
 ## Numeric Comparisons
 
-- `=` — Numeric equality across integers and reals; accepts any number of arguments. Returns `#t` for zero or one argument.
+- `=` — Numeric equality across integers and reals; accepts any number of arguments. Returns `#t` for zero or one argument. The Gisp surface operator `==` compiles directly to this primitive (and `!=` expands to `(not (= ...))`), so it inherits the requirement that all arguments are numeric.
 - `<`, `<=`, `>`, `>=` — Chainable numeric comparisons. Non-numeric arguments raise a type error. Zero or one argument returns `#t`.
 
 ## Boolean Logic
@@ -20,18 +20,18 @@ This document summarizes the built-in primitives that are installed into the glo
 
 ## Type Predicates
 
-All of the following expect exactly one argument and return `#t` or `#f`.
+All of the following expect exactly one argument and return `#t` or `#f`. Predicate names now use the Common Lisp-style `p` suffix instead of Scheme punctuation (for example, `null?` became `nullp`).
 
-- `number?` — True for integers or reals.
-- `integer?` — True for integers.
-- `real?` — True for reals or integers.
-- `boolean?` — True for booleans.
-- `string?` — True for strings.
-- `symbol?` — True for symbols.
-- `pair?` — True for pairs (cons cells).
-- `null?` — True for the empty list.
-- `list?` — True if the argument can be viewed as a proper list (`lang.ToSlice` succeeds).
-- `procedure?` — True for primitives, closures, or continuations.
+- `numberp` — True for integers or reals.
+- `integerp` — True for integers.
+- `realp` — True for reals or integers.
+- `booleanp` — True for booleans.
+- `stringp` — True for strings.
+- `symbolp` — True for symbols.
+- `pairp` — True for pairs (cons cells).
+- `nullp` — True for the empty list.
+- `listp` — True if the argument can be viewed as a proper list (`lang.ToSlice` succeeds).
+- `procedurep` — True for primitives, closures, or continuations.
 
 ## List Construction and Access
 
@@ -44,8 +44,8 @@ All of the following expect exactly one argument and return `#t` or `#f`.
 
 ## Equality Predicates
 
-- `eq?` — Identity comparison. For primitives, compares the underlying function pointer; for pairs and other compound types, checks pointer equality.
-- `equal?` — Structural equality. Numbers of different exactness compare by value; pairs are traversed recursively.
+- `eq` — Identity comparison. For primitives, compares the underlying function pointer; for pairs and other compound types, checks pointer equality. Use this when you need reference equality from inline s-expressions.
+- `equal` — Structural equality. Numbers of different exactness compare by value; pairs are traversed recursively. Reachable from Gisp via backticks when deep comparison is required.
 
 ## I/O and Process Control
 
@@ -60,8 +60,8 @@ All of the following expect exactly one argument and return `#t` or `#f`.
 
 ## String and Symbol Operations
 
-- `string-append` — Concatenates string arguments. Non-string arguments raise a type error.
-- `symbol->string` — Converts a symbol to a string. Requires exactly one symbol argument.
-- `string->symbol` — Interns a string as a symbol. Requires exactly one string argument.
-- `number->string` — Converts an integer or real to its textual representation.
-- `string->number` — Parses a string into an integer or real. Returns `#f` if parsing fails or string is empty after trimming.
+- `stringAppend` — Concatenates string arguments. Non-string arguments raise a type error.
+- `symbolToString` — Converts a symbol to a string. Requires exactly one symbol argument.
+- `stringToSymbol` — Interns a string as a symbol. Requires exactly one string argument.
+- `numberToString` — Converts an integer or real to its textual representation.
+- `stringToNumber` — Parses a string into an integer or real. Returns `#f` if parsing fails or string is empty after trimming.

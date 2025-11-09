@@ -38,4 +38,3 @@ func sqrtNewton(x) {
 
 display(sqrtNewton(2));
 newline();
-

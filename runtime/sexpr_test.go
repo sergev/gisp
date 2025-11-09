@@ -64,7 +64,7 @@ func TestContinuation(t *testing.T) {
     (call/cc (lambda (k)
                (set! saved k)
                'initial)))
-  (if (eq? result 'initial)
+  (if (eq result 'initial)
       (saved 'second)
       result))
 `)
