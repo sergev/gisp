@@ -32,6 +32,26 @@ fact(5);
 	}
 }
 
+func TestEvaluateGispSwitch(t *testing.T) {
+	ev := NewEvaluator()
+	src := `
+var x = -3;
+var sign = switch {
+case x > 0: 1;
+case x < 0: -1;
+default: 0;
+};
+sign;
+`
+	val, err := EvaluateGispString(ev, src)
+	if err != nil {
+		t.Fatalf("EvaluateGispString switch returned error: %v", err)
+	}
+	if val.Type != lang.TypeInt || val.Int != -1 {
+		t.Fatalf("expected -1, got %v", val)
+	}
+}
+
 func runTutorialExample(t *testing.T, scriptName, expected string) {
 	t.Helper()
 

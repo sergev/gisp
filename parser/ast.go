@@ -102,6 +102,25 @@ type CallExpr struct {
 func (e *CallExpr) Pos() Position { return e.Posn }
 func (*CallExpr) exprNode()       {}
 
+// SwitchClause represents a single case within a switch expression.
+type SwitchClause struct {
+	Cond Expr
+	Body Expr
+	Posn Position
+}
+
+func (c *SwitchClause) Pos() Position { return c.Posn }
+
+// SwitchExpr selects the first matching case body based on truthy conditions.
+type SwitchExpr struct {
+	Clauses []*SwitchClause
+	Default Expr // may be nil
+	Posn    Position
+}
+
+func (e *SwitchExpr) Pos() Position { return e.Posn }
+func (*SwitchExpr) exprNode()       {}
+
 // UnaryExpr represents prefix operator application.
 type UnaryExpr struct {
 	Op   TokenType

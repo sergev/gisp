@@ -19,6 +19,9 @@ const (
 	tokenIf
 	tokenElse
 	tokenWhile
+	tokenSwitch
+	tokenCase
+	tokenDefault
 	tokenReturn
 	tokenTrue
 	tokenFalse
@@ -41,6 +44,7 @@ const (
 
 	tokenComma     // ,
 	tokenSemicolon // ;
+	tokenColon     // :
 	tokenLParen    // (
 	tokenRParen    // )
 	tokenLBrace    // {
@@ -75,6 +79,12 @@ func (tt TokenType) String() string {
 		return "else"
 	case tokenWhile:
 		return "while"
+	case tokenSwitch:
+		return "switch"
+	case tokenCase:
+		return "case"
+	case tokenDefault:
+		return "default"
 	case tokenReturn:
 		return "return"
 	case tokenTrue:
@@ -113,6 +123,8 @@ func (tt TokenType) String() string {
 		return ","
 	case tokenSemicolon:
 		return ";"
+	case tokenColon:
+		return ":"
 	case tokenLParen:
 		return "("
 	case tokenRParen:

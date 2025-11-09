@@ -611,6 +611,8 @@ func (p *parser) parsePrimary() (Expr, error) {
 			Value: val,
 			Posn:  posFromToken(tok),
 		}, nil
+	case tokenSwitch:
+		return p.parseSwitchExpr()
 	case tokenFunc:
 		return p.parseLambdaExpr()
 	case tokenLParen:
@@ -687,6 +689,95 @@ func (p *parser) parseListLiteral() (Expr, error) {
 	return &ListExpr{
 		Elements: elems,
 		Posn:     posFromToken(startTok),
+	}, nil
+}
+
+func (p *parser) parseSwitchExpr() (Expr, error) {
+	switchTok, err := p.expect(tokenSwitch)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokenLBrace); err != nil {
+		return nil, err
+	}
+
+	var clauses []*SwitchClause
+	var defaultExpr Expr
+	defaultEncountered := false
+
+	for p.curr.Type != tokenRBrace && p.curr.Type != tokenEOF {
+		switch p.curr.Type {
+		case tokenCase:
+			caseTok, err := p.expect(tokenCase)
+			if err != nil {
+				return nil, err
+			}
+			if defaultEncountered {
+				return nil, p.errorf(posFromToken(caseTok), "case clause cannot follow default in switch")
+			}
+			cond, err := p.parseExpression()
+			if err != nil {
+				return nil, err
+			}
+			if _, err := p.expect(tokenColon); err != nil {
+				return nil, err
+			}
+			body, err := p.parseExpression()
+			if err != nil {
+				return nil, err
+			}
+			if p.curr.Type == tokenSemicolon {
+				if _, err := p.expect(tokenSemicolon); err != nil {
+					return nil, err
+				}
+			}
+			clauses = append(clauses, &SwitchClause{
+				Cond: cond,
+				Body: body,
+				Posn: posFromToken(caseTok),
+			})
+		case tokenDefault:
+			defTok, err := p.expect(tokenDefault)
+			if err != nil {
+				return nil, err
+			}
+			if defaultExpr != nil {
+				return nil, p.errorf(posFromToken(defTok), "duplicate default clause in switch")
+			}
+			if _, err := p.expect(tokenColon); err != nil {
+				return nil, err
+			}
+			body, err := p.parseExpression()
+			if err != nil {
+				return nil, err
+			}
+			if p.curr.Type == tokenSemicolon {
+				if _, err := p.expect(tokenSemicolon); err != nil {
+					return nil, err
+				}
+			}
+			defaultExpr = body
+			defaultEncountered = true
+		default:
+			return nil, p.errorf(p.curr.Pos, "unexpected token %s in switch", p.curr.Type)
+		}
+	}
+
+	if p.curr.Type != tokenRBrace {
+		return nil, p.errorf(p.curr.Pos, "expected } to close switch")
+	}
+	if _, err := p.expect(tokenRBrace); err != nil {
+		return nil, err
+	}
+
+	if len(clauses) == 0 && defaultExpr == nil {
+		return nil, p.errorf(posFromToken(switchTok), "switch requires at least one case")
+	}
+
+	return &SwitchExpr{
+		Clauses: clauses,
+		Default: defaultExpr,
+		Posn:    posFromToken(switchTok),
 	}, nil
 }
 

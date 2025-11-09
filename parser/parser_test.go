@@ -596,6 +596,39 @@ var result = fn(1, 2);
 	}
 }
 
+func TestParseSwitchExpr(t *testing.T) {
+	src := `
+var sign = switch {
+case x > 0: 1;
+case x < 0: -1;
+default: 0;
+};
+`
+	prog := parseProgramFromSource(t, src)
+	if len(prog.Decls) != 1 {
+		t.Fatalf("expected single declaration, got %d", len(prog.Decls))
+	}
+	decl, ok := prog.Decls[0].(*VarDecl)
+	if !ok {
+		t.Fatalf("expected VarDecl, got %T", prog.Decls[0])
+	}
+	switchExpr, ok := decl.Init.(*SwitchExpr)
+	if !ok {
+		t.Fatalf("expected SwitchExpr initializer, got %#v", decl.Init)
+	}
+	if len(switchExpr.Clauses) != 2 {
+		t.Fatalf("expected 2 case clauses, got %d", len(switchExpr.Clauses))
+	}
+	for i, clause := range switchExpr.Clauses {
+		if clause.Cond == nil || clause.Body == nil {
+			t.Fatalf("clause %d missing cond/body: %#v", i, clause)
+		}
+	}
+	if switchExpr.Default == nil {
+		t.Fatalf("expected default clause")
+	}
+}
+
 func TestParseErrors(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -616,6 +649,24 @@ func TestParseErrors(t *testing.T) {
 			name:    "unexpected token",
 			src:     "var x = );",
 			wantErr: "unexpected token )",
+		},
+		{
+			name: "switch case after default",
+			src: `
+var value = switch {
+default: 0;
+case true: 1;
+};
+`,
+			wantErr: "case clause cannot follow default",
+		},
+		{
+			name: "switch missing case",
+			src: `
+var value = switch {
+};
+`,
+			wantErr: "switch requires at least one case",
 		},
 	}
 

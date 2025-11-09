@@ -764,6 +764,62 @@ func TestCompileExprListLiteralEmpty(t *testing.T) {
 	}
 }
 
+func TestCompileExprSwitch(t *testing.T) {
+	expr := &SwitchExpr{
+		Clauses: []*SwitchClause{
+			{
+				Cond: &IdentifierExpr{Name: "isPositive"},
+				Body: &NumberExpr{Value: "1"},
+			},
+			{
+				Cond: &IdentifierExpr{Name: "isNegative"},
+				Body: &UnaryExpr{
+					Op:   tokenMinus,
+					Expr: &NumberExpr{Value: "1"},
+				},
+			},
+		},
+		Default: &NumberExpr{Value: "0"},
+	}
+	val, err := compileExpr(&builder{}, expr, compileContext{})
+	if err != nil {
+		t.Fatalf("compileExpr switch: %v", err)
+	}
+	condList := requireListHead(t, val, "cond")
+	if len(condList) != 4 {
+		t.Fatalf("expected cond with three clauses, got %d elements", len(condList))
+	}
+	firstClause, ok := condList[1].([]interface{})
+	if !ok || len(firstClause) != 2 {
+		t.Fatalf("unexpected first clause %#v", condList[1])
+	}
+	if sym, ok := firstClause[0].(datumSymbol); !ok || string(sym) != "isPositive" {
+		t.Fatalf("expected predicate symbol isPositive, got %#v", firstClause[0])
+	}
+	if num, ok := firstClause[1].(int64); !ok || num != 1 {
+		t.Fatalf("expected body literal 1, got %#v", firstClause[1])
+	}
+	secondClause, ok := condList[2].([]interface{})
+	if !ok || len(secondClause) != 2 {
+		t.Fatalf("unexpected second clause %#v", condList[2])
+	}
+	if sym, ok := secondClause[0].(datumSymbol); !ok || string(sym) != "isNegative" {
+		t.Fatalf("expected predicate symbol isNegative, got %#v", secondClause[0])
+	}
+	if exprList, ok := secondClause[1].([]interface{}); !ok || len(exprList) != 2 {
+		t.Fatalf("expected unary expression list, got %#v", secondClause[1])
+	}
+	elseClause, ok := condList[3].([]interface{})
+	if !ok || len(elseClause) != 2 {
+		t.Fatalf("unexpected else clause %#v", condList[3])
+	}
+	if sym, ok := elseClause[0].(datumSymbol); !ok || string(sym) != "else" {
+		t.Fatalf("expected else symbol, got %#v", elseClause[0])
+	}
+	if num, ok := elseClause[1].(int64); !ok || num != 0 {
+		t.Fatalf("expected default literal 0, got %#v", elseClause[1])
+	}
+}
 func TestCompileExprUnsupported(t *testing.T) {
 	_, err := compileExpr(&builder{}, badExpr{}, compileContext{})
 	if err == nil || !strings.Contains(err.Error(), "unsupported expression") {

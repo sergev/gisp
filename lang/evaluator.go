@@ -144,6 +144,8 @@ func (ev *Evaluator) evaluatePair(state *evalState) error {
 			return ev.evalQuasiQuote(list.Pair.Cdr, state)
 		case "call/cc":
 			return ev.evalCallCC(list.Pair.Cdr, state)
+		case "cond":
+			return ev.evalCond(list.Pair.Cdr, state)
 		}
 	}
 
@@ -203,6 +205,73 @@ func (f *ifFrame) clone() frame {
 		alternate:  f.alternate,
 		env:        f.env,
 	}
+}
+
+func (ev *Evaluator) evalCond(args Value, state *evalState) error {
+	clauses, err := ToSlice(args)
+	if err != nil {
+		return fmt.Errorf("cond expects a list of clauses: %w", err)
+	}
+	return ev.runCondClauses(clauses, state.env, state)
+}
+
+type condFrame struct {
+	remaining []Value
+	body      Value
+	env       *Env
+}
+
+func (f *condFrame) apply(ev *Evaluator, val Value, state *evalState) error {
+	if IsTruthy(val) {
+		state.setExpr(f.body, f.env)
+		return nil
+	}
+	return ev.runCondClauses(f.remaining, f.env, state)
+}
+
+func (f *condFrame) clone() frame {
+	var remainingCopy []Value
+	if f.remaining != nil {
+		remainingCopy = append([]Value(nil), f.remaining...)
+	}
+	return &condFrame{
+		remaining: remainingCopy,
+		body:      f.body,
+		env:       f.env,
+	}
+}
+
+func (ev *Evaluator) runCondClauses(clauses []Value, env *Env, state *evalState) error {
+	if len(clauses) == 0 {
+		state.value = EmptyList
+		state.returning = true
+		return nil
+	}
+	clause := clauses[0]
+	items, err := ToSlice(clause)
+	if err != nil {
+		return fmt.Errorf("cond clause must be a list: %w", err)
+	}
+	if len(items) != 2 {
+		return fmt.Errorf("cond clause must have predicate and result expression")
+	}
+	predicate := items[0]
+	body := items[1]
+	if predicate.Type == TypeSymbol && predicate.Sym == "else" {
+		if len(clauses) != 1 {
+			return fmt.Errorf("cond else clause must be last")
+		}
+		state.setExpr(body, env)
+		return nil
+	}
+	frame := &condFrame{
+		remaining: clauses[1:],
+		body:      body,
+		env:       env,
+	}
+	state.push(frame)
+	state.setExpr(predicate, env)
+	return nil
 }
 
 func (ev *Evaluator) evalIf(args Value, state *evalState) error {

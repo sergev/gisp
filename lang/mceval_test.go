@@ -77,7 +77,8 @@ func runMetacircularAssertions(t *testing.T, ev *lang.Evaluator) {
 		if len(forms) != 1 {
 			t.Fatalf("expected single expression in %q", code)
 		}
-		result, err := ev.Apply(evalProc, []lang.Value{forms[0], envVal})
+		form := forms[0]
+		result, err := ev.Apply(evalProc, []lang.Value{form, envVal})
 		if err != nil {
 			t.Fatalf("evaluation failed for %q: %v", code, err)
 		}

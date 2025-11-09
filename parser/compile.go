@@ -268,6 +268,8 @@ func compileExpr(b *builder, expr Expr, ctx compileContext) (lang.Value, error) 
 		return lang.List(elems...), nil
 	case *LambdaExpr:
 		return compileLambdaExpr(b, e, ctx)
+	case *SwitchExpr:
+		return compileSwitchExpr(b, e, ctx)
 	case *CallExpr:
 		callee, err := compileExpr(b, e.Callee, ctx)
 		if err != nil {
@@ -318,6 +320,32 @@ func compileLambdaExpr(b *builder, expr *LambdaExpr, ctx compileContext) (lang.V
 		paramList,
 		callCC,
 	), nil
+}
+
+func compileSwitchExpr(b *builder, expr *SwitchExpr, ctx compileContext) (lang.Value, error) {
+	clauseVals := make([]lang.Value, 0, len(expr.Clauses)+1)
+	for _, clause := range expr.Clauses {
+		condVal, err := compileExpr(b, clause.Cond, ctx)
+		if err != nil {
+			return lang.Value{}, err
+		}
+		bodyVal, err := compileExpr(b, clause.Body, ctx)
+		if err != nil {
+			return lang.Value{}, err
+		}
+		clauseVals = append(clauseVals, lang.List(condVal, bodyVal))
+	}
+	if expr.Default != nil {
+		bodyVal, err := compileExpr(b, expr.Default, ctx)
+		if err != nil {
+			return lang.Value{}, err
+		}
+		clauseVals = append(clauseVals, lang.List(b.symbol("else"), bodyVal))
+	}
+	all := make([]lang.Value, 0, len(clauseVals)+1)
+	all = append(all, b.symbol("cond"))
+	all = append(all, clauseVals...)
+	return lang.List(all...), nil
 }
 
 func compileUnaryExpr(b *builder, expr *UnaryExpr, ctx compileContext) (lang.Value, error) {

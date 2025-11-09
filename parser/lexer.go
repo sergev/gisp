@@ -252,6 +252,8 @@ func (lx *lexer) nextToken() (Token, error) {
 		return simpleToken(tokenComma, start), nil
 	case ';':
 		return simpleToken(tokenSemicolon, start), nil
+	case ':':
+		return simpleToken(tokenColon, start), nil
 	case '=':
 		if lx.match('=') {
 			return simpleToken(tokenEqualEqual, start), nil
@@ -472,6 +474,12 @@ func keywordToken(lexeme string) (TokenType, bool) {
 		return tokenElse, true
 	case "while":
 		return tokenWhile, true
+	case "switch":
+		return tokenSwitch, true
+	case "case":
+		return tokenCase, true
+	case "default":
+		return tokenDefault, true
 	case "return":
 		return tokenReturn, true
 	case "true":

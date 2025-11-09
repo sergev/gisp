@@ -4,6 +4,7 @@ import (
 	"errors"
 	"math"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -219,6 +220,67 @@ func TestEvaluatorIf(t *testing.T) {
 	_, err := ev.Eval(List(SymbolValue("if"), BoolValue(true)), nil)
 	if err == nil {
 		t.Fatal("expected error for too few args to if")
+	}
+}
+
+func TestEvaluatorCondSelectsClause(t *testing.T) {
+	ev := newTestEvaluator()
+	ev.Global.Define("truthy", BoolValue(true))
+	expr := List(
+		SymbolValue("cond"),
+		List(BoolValue(false), IntValue(1)),
+		List(SymbolValue("truthy"), IntValue(2)),
+		List(SymbolValue("else"), IntValue(3)),
+	)
+	val := mustEval(t, ev, expr)
+	if val.Type != TypeInt || val.Int != 2 {
+		t.Fatalf("expected 2, got %v", val)
+	}
+}
+
+func TestEvaluatorCondElseFallback(t *testing.T) {
+	ev := newTestEvaluator()
+	expr := List(
+		SymbolValue("cond"),
+		List(BoolValue(false), IntValue(1)),
+		List(SymbolValue("else"), IntValue(5)),
+	)
+	val := mustEval(t, ev, expr)
+	if val.Type != TypeInt || val.Int != 5 {
+		t.Fatalf("expected 5, got %v", val)
+	}
+
+	noMatch := mustEval(t, ev, List(
+		SymbolValue("cond"),
+		List(BoolValue(false), IntValue(1)),
+	))
+	if noMatch.Type != TypeEmpty {
+		t.Fatalf("expected empty list result, got %v", noMatch)
+	}
+}
+
+func TestEvaluatorCondElseMustBeLast(t *testing.T) {
+	ev := newTestEvaluator()
+	_, err := ev.Eval(List(
+		SymbolValue("cond"),
+		List(SymbolValue("else"), IntValue(1)),
+		List(BoolValue(true), IntValue(2)),
+	), nil)
+	if err == nil || !strings.Contains(err.Error(), "else clause must be last") {
+		t.Fatalf("expected else clause error, got %v", err)
+	}
+}
+
+func TestEvaluatorCondClauseValidation(t *testing.T) {
+	ev := newTestEvaluator()
+	_, err := ev.Eval(List(SymbolValue("cond"), BoolValue(true)), nil)
+	if err == nil || !strings.Contains(err.Error(), "cond clause must be a list") {
+		t.Fatalf("expected clause list error, got %v", err)
+	}
+
+	_, err = ev.Eval(List(SymbolValue("cond"), List(BoolValue(true))), nil)
+	if err == nil || !strings.Contains(err.Error(), "predicate and result expression") {
+		t.Fatalf("expected clause arity error, got %v", err)
 	}
 }
 
