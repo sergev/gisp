@@ -96,6 +96,11 @@ func TestReadStringSuccessCases(t *testing.T) {
 				lang.BoolValue(true),
 			},
 		},
+		{
+			name:  "CommentWithoutNewlineAtEOF",
+			input: "; trailing comment without newline",
+			want:  []lang.Value{},
+		},
 	}
 
 	for _, tc := range cases {
@@ -235,6 +240,12 @@ func TestParseLiteralErrorCases(t *testing.T) {
 				t.Fatalf("error %q does not contain %q", err.Error(), tc.sub)
 			}
 		})
+	}
+}
+
+func TestParseLiteralCommentWithoutNewlineErrors(t *testing.T) {
+	if _, _, err := ParseLiteral("; comment without newline", 0); err == nil || !strings.Contains(err.Error(), "EOF") {
+		t.Fatalf("expected EOF error for comment without newline, got %v", err)
 	}
 }
 

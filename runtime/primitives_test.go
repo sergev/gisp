@@ -1,0 +1,217 @@
+package runtime
+
+import (
+	"strings"
+	"testing"
+
+	"github.com/sergev/gisp/lang"
+)
+
+func TestPrimSubAndDivEdgeCases(t *testing.T) {
+	ev := NewEvaluator()
+
+	t.Run("unary negation uses sign flip", func(t *testing.T) {
+		val, err := primSub(ev, []lang.Value{lang.IntValue(5)})
+		if err != nil {
+			t.Fatalf("primSub error: %v", err)
+		}
+		if val.Type != lang.TypeInt || val.Int() != -5 {
+			t.Fatalf("expected -5, got %v", val)
+		}
+	})
+
+	t.Run("float promotion and division by zero", func(t *testing.T) {
+		val, err := primSub(ev, []lang.Value{lang.RealValue(10), lang.IntValue(2)})
+		if err != nil {
+			t.Fatalf("primSub mixed types error: %v", err)
+		}
+		if val.Type != lang.TypeReal || val.Real() != 8 {
+			t.Fatalf("expected 8.0, got %v", val)
+		}
+
+		if _, err := primDiv(ev, []lang.Value{lang.IntValue(4)}); err != nil {
+			t.Fatalf("primDiv unary reciprocal error: %v", err)
+		}
+
+		if _, err := primDiv(ev, []lang.Value{lang.IntValue(4), lang.IntValue(0)}); err == nil || !strings.Contains(err.Error(), "division by zero") {
+			t.Fatalf("expected division by zero error, got %v", err)
+		}
+	})
+}
+
+func TestPrimComparisonAndNot(t *testing.T) {
+	ev := NewEvaluator()
+
+	val, err := primNot(ev, []lang.Value{lang.BoolValue(true)})
+	if err != nil {
+		t.Fatalf("primNot error: %v", err)
+	}
+	if val.Type != lang.TypeBool || val.Bool() {
+		t.Fatalf("expected #f, got %v", val)
+	}
+
+	if _, err := primLess(ev, []lang.Value{lang.IntValue(1), lang.StringValue("nope")}); err == nil || !strings.Contains(err.Error(), "number") {
+		t.Fatalf("expected type error from primLess, got %v", err)
+	}
+}
+
+func TestPrimListAndPairMutation(t *testing.T) {
+	ev := NewEvaluator()
+
+	t.Run("append requires lists", func(t *testing.T) {
+		if _, err := primAppend(ev, []lang.Value{lang.IntValue(1), lang.EmptyList}); err == nil || !strings.Contains(err.Error(), "append expects lists") {
+			t.Fatalf("expected append error, got %v", err)
+		}
+	})
+
+	t.Run("append concatenates lists", func(t *testing.T) {
+		val, err := primAppend(ev, []lang.Value{
+			lang.List(lang.IntValue(1)),
+			lang.List(lang.IntValue(2), lang.IntValue(3)),
+		})
+		if err != nil {
+			t.Fatalf("primAppend error: %v", err)
+		}
+		items, err := lang.ToSlice(val)
+		if err != nil {
+			t.Fatalf("ToSlice append result: %v", err)
+		}
+		if len(items) != 3 || items[0].Int() != 1 || items[1].Int() != 2 || items[2].Int() != 3 {
+			t.Fatalf("unexpected append result: %v", items)
+		}
+	})
+
+	t.Run("set-car!/set-cdr! mutate pair", func(t *testing.T) {
+		pair := lang.PairValue(lang.IntValue(1), lang.IntValue(2))
+		if _, err := primSetCar(ev, []lang.Value{pair, lang.IntValue(10)}); err != nil {
+			t.Fatalf("primSetCar error: %v", err)
+		}
+		if pair.Pair().Car.Int() != 10 {
+			t.Fatalf("expected updated car=10, got %v", pair.Pair().Car)
+		}
+		if _, err := primSetCdr(ev, []lang.Value{pair, lang.IntValue(99)}); err != nil {
+			t.Fatalf("primSetCdr error: %v", err)
+		}
+		if pair.Pair().Cdr.Int() != 99 {
+			t.Fatalf("expected updated cdr=99, got %v", pair.Pair().Cdr)
+		}
+	})
+
+	t.Run("length arity validation", func(t *testing.T) {
+		if _, err := primLength(ev, nil); err == nil || !strings.Contains(err.Error(), "length expects 1 argument") {
+			t.Fatalf("expected length arity error, got %v", err)
+		}
+	})
+}
+
+func TestPrimEqualityVariants(t *testing.T) {
+	ev := NewEvaluator()
+
+	pair := lang.PairValue(lang.IntValue(1), lang.IntValue(2))
+	pairCopy := lang.PairValue(lang.IntValue(1), lang.IntValue(2))
+
+	eqVal, err := primEq(ev, []lang.Value{pair, pair})
+	if err != nil {
+		t.Fatalf("primEq error: %v", err)
+	}
+	if !eqVal.Bool() {
+		t.Fatalf("expected eq? to be true for identical pair pointer")
+	}
+
+	eqVal, err = primEq(ev, []lang.Value{pair, pairCopy})
+	if err != nil {
+		t.Fatalf("primEq error: %v", err)
+	}
+	if eqVal.Bool() {
+		t.Fatalf("expected eq? to be false for structurally equal but distinct pairs")
+	}
+
+	equalVal, err := primEqual(ev, []lang.Value{lang.IntValue(3), lang.RealValue(3)})
+	if err != nil {
+		t.Fatalf("primEqual error: %v", err)
+	}
+	if !equalVal.Bool() {
+		t.Fatalf("expected equal? to treat int/real same when numerically equal")
+	}
+}
+
+func TestPrimStringAndNumberHelpers(t *testing.T) {
+	ev := NewEvaluator()
+
+	appendVal, err := primStringAppend(ev, []lang.Value{
+		lang.StringValue("foo"), lang.StringValue("bar"),
+	})
+	if err != nil {
+		t.Fatalf("primStringAppend error: %v", err)
+	}
+	if appendVal.Str() != "foobar" {
+		t.Fatalf("expected foobar, got %q", appendVal.Str())
+	}
+
+	if _, err := primStringAppend(ev, []lang.Value{lang.StringValue("ok"), lang.IntValue(1)}); err == nil || !strings.Contains(err.Error(), "stringAppend expects string") {
+		t.Fatalf("expected stringAppend type error, got %v", err)
+	}
+
+	numVal, err := primStringToNumber(ev, []lang.Value{lang.StringValue("   42 ")})
+	if err != nil {
+		t.Fatalf("primStringToNumber error: %v", err)
+	}
+	if numVal.Type != lang.TypeInt || numVal.Int() != 42 {
+		t.Fatalf("expected integer 42, got %v", numVal)
+	}
+
+	invalid, err := primStringToNumber(ev, []lang.Value{lang.StringValue("not-a-number")})
+	if err != nil {
+		t.Fatalf("primStringToNumber error on invalid input: %v", err)
+	}
+	if invalid.Type != lang.TypeBool || invalid.Bool() {
+		t.Fatalf("expected #f for invalid conversion, got %v", invalid)
+	}
+}
+
+func TestPrimApplyAndDisplay(t *testing.T) {
+	ev := NewEvaluator()
+	plus, err := ev.Global.Get("+")
+	if err != nil {
+		t.Fatalf("failed to get + primitive: %v", err)
+	}
+
+	result, err := primApply(ev, []lang.Value{
+		plus,
+		lang.IntValue(1),
+		lang.IntValue(2),
+		lang.List(lang.IntValue(3), lang.IntValue(4)),
+	})
+	if err != nil {
+		t.Fatalf("primApply error: %v", err)
+	}
+	if result.Type != lang.TypeInt || result.Int() != 10 {
+		t.Fatalf("expected 10 from primApply, got %v", result)
+	}
+
+	if _, err := primApply(ev, []lang.Value{plus, lang.IntValue(1), lang.IntValue(2), lang.IntValue(3)}); err == nil || !strings.Contains(err.Error(), "apply expects final argument to be a list") {
+		t.Fatalf("expected primApply final argument error, got %v", err)
+	}
+
+	output := captureOutput(func() {
+		val, err := primDisplay(ev, []lang.Value{lang.StringValue("hi")})
+		if err != nil {
+			t.Fatalf("primDisplay error: %v", err)
+		}
+		if val.Type != lang.TypeEmpty {
+			t.Fatalf("expected empty list from display, got %v", val)
+		}
+	})
+	if output != "hi" {
+		t.Fatalf("expected display to write hi, got %q", output)
+	}
+
+	output = captureOutput(func() {
+		if _, err := primNewline(ev, nil); err != nil {
+			t.Fatalf("primNewline error: %v", err)
+		}
+	})
+	if output != "\n" {
+		t.Fatalf("expected newline output, got %q", output)
+	}
+}
