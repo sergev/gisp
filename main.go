@@ -9,8 +9,8 @@ import (
 	"strings"
 
 	"github.com/sergev/gisp/lang"
-	"github.com/sergev/gisp/reader"
 	"github.com/sergev/gisp/runtime"
+	"github.com/sergev/gisp/sexpr"
 )
 
 func main() {
@@ -92,7 +92,7 @@ func runREPL(ev *lang.Evaluator) {
 }
 
 func readerPkgReadString(src string) ([]lang.Value, error) {
-	return reader.ReadString(src)
+	return sexpr.ReadString(src)
 }
 
 func isIncomplete(err error) bool {

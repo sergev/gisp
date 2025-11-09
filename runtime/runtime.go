@@ -9,7 +9,7 @@ import (
 
 	"github.com/sergev/gisp/lang"
 	gispparser "github.com/sergev/gisp/parser"
-	"github.com/sergev/gisp/reader"
+	"github.com/sergev/gisp/sexpr"
 )
 
 // NewEvaluator constructs an evaluator with the standard runtime installed.
@@ -36,7 +36,7 @@ func installLibrary(ev *lang.Evaluator) error {
 		return nil
 	}
 	for _, form := range preludeForms {
-		forms, err := reader.ReadString(form)
+		forms, err := sexpr.ReadString(form)
 		if err != nil {
 			return err
 		}
@@ -65,7 +65,7 @@ func readFileSkippingShebang(path string) ([]byte, error) {
 
 // EvaluateReader consumes all expressions from the reader and evaluates them.
 func EvaluateReader(ev *lang.Evaluator, r io.Reader) (lang.Value, error) {
-	forms, err := reader.ReadAll(r)
+	forms, err := sexpr.ParseAll(r)
 	if err != nil {
 		return lang.Value{}, err
 	}

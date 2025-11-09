@@ -107,7 +107,7 @@ This wraps `go test ./...`, running unit tests for the interpreter core, parser,
 ├── examples/            # Sample Scheme (.gs) and Gisp (.gisp) programs
 ├── lang/                # Runtime values, environments, evaluator
 ├── parser/              # Gisp lexer/parser and S-expression translator
-├── reader/              # Tokenizer + s-expression reader
+├── sexpr/               # Shared s-expression parsing utilities
 ├── runtime/             # Primitives, library bootstrap, helpers
 ├── main.go              # CLI entry point / REPL
 ├── runtime_test.go      # End-to-end evaluator and example tests

@@ -8,12 +8,12 @@ import (
 	"testing"
 
 	"github.com/sergev/gisp/lang"
-	"github.com/sergev/gisp/reader"
+	"github.com/sergev/gisp/sexpr"
 )
 
 func evalString(t *testing.T, ev *lang.Evaluator, src string) lang.Value {
 	t.Helper()
-	forms, err := reader.ReadString(src)
+	forms, err := sexpr.ReadString(src)
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}

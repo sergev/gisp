@@ -8,6 +8,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/sergev/gisp/lang"
+	"github.com/sergev/gisp/sexpr"
 )
 
 type lexer struct {
@@ -419,7 +420,7 @@ func (lx *lexer) scanString() (string, error) {
 }
 
 func (lx *lexer) scanSExpr(start runeState) (lang.Value, error) {
-	value, end, err := parseSExprLiteral(lx.src, lx.pos)
+	value, end, err := sexpr.ParseLiteral(lx.src, lx.pos)
 	if err != nil {
 		return lang.Value{}, fmt.Errorf("invalid s-expression literal at line %d column %d: %w", start.line, start.column, err)
 	}
