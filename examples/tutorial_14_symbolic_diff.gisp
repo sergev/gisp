@@ -48,27 +48,27 @@ func makeExponent(base, exponent) {
 }
 
 func sumAddend(expr) {
-	return `(cadr expr);
+	return `(car (cdr expr));
 }
 
 func sumAugend(expr) {
-	return `(caddr expr);
+	return `(car (cdr (cdr expr)));
 }
 
 func productMultiplier(expr) {
-	return `(cadr expr);
+	return `(car (cdr expr));
 }
 
 func productMultiplicand(expr) {
-	return `(caddr expr);
+	return `(car (cdr (cdr expr)));
 }
 
 func exponentBase(expr) {
-	return `(cadr expr);
+	return `(car (cdr expr));
 }
 
 func exponentPower(expr) {
-	return `(caddr expr);
+	return `(car (cdr (cdr expr)));
 }
 
 func deriv(expr, variable) {
@@ -84,19 +84,19 @@ func deriv(expr, variable) {
 	if isTagged(expr, `(quote +)) {
 		return makeSum(
 			deriv(sumAddend(expr), variable),
-			deriv(sumAugend(expr), variable),
+			deriv(sumAugend(expr), variable)
 		);
 	}
 	if isTagged(expr, `(quote *)) {
 		return makeSum(
 			makeProduct(
 				deriv(productMultiplier(expr), variable),
-				productMultiplicand(expr),
+				productMultiplicand(expr)
 			),
 			makeProduct(
 				productMultiplier(expr),
-				deriv(productMultiplicand(expr), variable),
-			),
+				deriv(productMultiplicand(expr), variable)
+			)
 		);
 	}
 	if isTagged(expr, `(quote pow)) {
@@ -104,7 +104,7 @@ func deriv(expr, variable) {
 		var power = exponentPower(expr)
 		return makeProduct(
 			makeProduct(power, deriv(base, variable)),
-			makeExponent(base, makeSum(power, -1)),
+			makeExponent(base, makeSum(power, -1))
 		);
 	}
 	return cons(`(quote unknown-derivative), [expr]);

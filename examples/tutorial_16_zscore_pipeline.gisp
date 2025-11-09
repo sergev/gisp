@@ -110,7 +110,7 @@ func alertOnOutlier(xs, threshold) {
 
 	while !isEmpty(cursor) {
 		var score = head(cursor)
-		when abs(score) > threshold {
+		if abs(score) > threshold {
 			display("Outlier at index ");
 			display(index);
 			display(": ");

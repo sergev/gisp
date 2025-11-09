@@ -419,7 +419,17 @@ func (ev *Evaluator) evalLet(args Value, state *evalState) error {
 		return fmt.Errorf("let expects bindings and body")
 	}
 	bindings := parts[0]
-	body := parts[1:]
+	bodyStart := 1
+	var letName string
+	if bindings.Type == TypeSymbol {
+		letName = bindings.Sym
+		if len(parts) < 3 {
+			return fmt.Errorf("named let expects bindings and body")
+		}
+		bindings = parts[1]
+		bodyStart = 2
+	}
+	body := parts[bodyStart:]
 	names := []Value{}
 	values := []Value{}
 
@@ -454,6 +464,16 @@ func (ev *Evaluator) evalLet(args Value, state *evalState) error {
 	}
 	lambdaList := append([]Value{SymbolValue("lambda"), lambdaParams}, body...)
 	lambdaExpr := List(lambdaList...)
+	if letName != "" {
+		binding := List(SymbolValue(letName), EmptyList)
+		bindingList := List(binding)
+		setExpr := List(SymbolValue("set!"), SymbolValue(letName), lambdaExpr)
+		callArgs := append([]Value{SymbolValue(letName)}, values...)
+		callExpr := List(callArgs...)
+		letParts := append([]Value{SymbolValue("let"), bindingList}, []Value{setExpr, callExpr}...)
+		state.setExpr(List(letParts...), state.env)
+		return nil
+	}
 	callList := []Value{lambdaExpr}
 	callList = append(callList, values...)
 	state.setExpr(List(callList...), state.env)

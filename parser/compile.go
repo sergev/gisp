@@ -256,7 +256,8 @@ func compileExpr(b *builder, expr Expr, ctx compileContext) (lang.Value, error) 
 	case *BoolExpr:
 		return lang.BoolValue(e.Value), nil
 	case *ListExpr:
-		var elems []lang.Value
+		elems := make([]lang.Value, 0, len(e.Elements)+1)
+		elems = append(elems, b.symbol("list"))
 		for _, el := range e.Elements {
 			val, err := compileExpr(b, el, ctx)
 			if err != nil {

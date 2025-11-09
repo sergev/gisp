@@ -517,9 +517,12 @@ func TestCompileExprStringBoolList(t *testing.T) {
 	if err != nil {
 		t.Fatalf("compileExpr list: %v", err)
 	}
-	list := valueToDatum(t, listVal).([]interface{})
-	if len(list) != 2 || list[0].(int64) != 1 || list[1].(int64) != 2 {
-		t.Fatalf("unexpected list %#v", list)
+	list := requireListHead(t, listVal, "list")
+	if len(list) != 3 {
+		t.Fatalf("expected list form of length 3, got %d", len(list))
+	}
+	if list[1].(int64) != 1 || list[2].(int64) != 2 {
+		t.Fatalf("unexpected list contents %#v", list[1:])
 	}
 }
 
@@ -671,6 +674,43 @@ func TestCompileExprSExprLiteral(t *testing.T) {
 	}
 	if val.String() != raw.String() {
 		t.Fatalf("expected literal to pass through, got %s", val.String())
+	}
+}
+
+func TestCompileExprListLiteral(t *testing.T) {
+	b := &builder{}
+	expr := &ListExpr{
+		Elements: []Expr{
+			&NumberExpr{Value: "1"},
+			&NumberExpr{Value: "2"},
+		},
+	}
+	val, err := compileExpr(b, expr, compileContext{})
+	if err != nil {
+		t.Fatalf("compileExpr list literal: %v", err)
+	}
+	list := requireListHead(t, val, "list")
+	if len(list) != 3 {
+		t.Fatalf("expected list form of length 3, got %d", len(list))
+	}
+	if _, ok := list[1].(int64); !ok {
+		t.Fatalf("expected first element to be int literal, got %#v", list[1])
+	}
+	if _, ok := list[2].(int64); !ok {
+		t.Fatalf("expected second element to be int literal, got %#v", list[2])
+	}
+}
+
+func TestCompileExprListLiteralEmpty(t *testing.T) {
+	b := &builder{}
+	expr := &ListExpr{}
+	val, err := compileExpr(b, expr, compileContext{})
+	if err != nil {
+		t.Fatalf("compileExpr empty list literal: %v", err)
+	}
+	list := requireListHead(t, val, "list")
+	if len(list) != 1 {
+		t.Fatalf("expected (list) with length 1, got %d elements", len(list))
 	}
 }
 
