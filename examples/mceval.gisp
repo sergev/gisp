@@ -365,8 +365,8 @@ func frameValues(frame) {
 }
 
 func addBindingToFrame(variable, value, frame) {
-	`(set-car! frame (cons variable (car frame)));
-	`(set-cdr! frame (cons value (cdr frame)));
+	setCar(frame, cons(variable, car(frame)));
+	setCdr(frame, cons(value, cdr(frame)));
 }
 
 func extendEnvironment(vars, vals, baseEnv) {
@@ -415,7 +415,7 @@ func setVariableValue(variable, value, env) {
 
 		while not(nullp(vars)) {
 			if eq(variable, car(vars)) {
-				`(set-car! vals value);
+				setCar(vals, value);
 				return;
 			}
 			vars = cdr(vars);
@@ -433,7 +433,7 @@ func defineVariable(variable, value, env) {
 
 	while not(nullp(vars)) {
 		if eq(variable, car(vars)) {
-			`(set-car! vals value);
+			setCar(vals, value);
 			return;
 		}
 		vars = cdr(vars);
