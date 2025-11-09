@@ -1,0 +1,186 @@
+#!/usr/bin/env gisp
+
+// GC stress benchmark for Gisp.
+// The script focuses on allocation-heavy patterns that exercise the collector:
+//   1) Short-lived list churn.
+//   2) Mixed lifetime pools with controlled survivor sets.
+//   3) Closure creation and retention.
+//   4) Symbol interning bursts.
+//
+// Run with: `gisp benchmarks/gc_stress.gisp`
+// Collect GC telemetry by wrapping the run with Go's gctrace support:
+//   `GOGC=off GODEBUG=gctrace=1 gisp benchmarks/gc_stress.gisp`
+// or vary GOGC / runtime parameters to compare behaviours.
+
+const shortLivedIterations = 20000;
+const shortLivedSize = 128;
+
+const mixedIterations = 6000;
+const mixedSize = 256;
+const mixedSurvivors = 512;
+const mixedRefreshInterval = 10;
+
+const closureIterations = 18000;
+const closureEnvSize = 32;
+const closureKeepInterval = 25;
+
+const symbolBurstCount = 15000;
+const symbolPrefix = "gc-stress-";
+
+func makeList(size) {
+	var head = [];
+	var i = 0;
+	while i < size {
+		head = cons(i, head);
+		i = i + 1;
+	}
+	return head;
+}
+
+func reverseList(lst) {
+	var acc = [];
+	var cursor = lst;
+	while !nullp(cursor) {
+		acc = cons(car(cursor), acc);
+		cursor = cdr(cursor);
+	}
+	return acc;
+}
+
+func trimList(lst, limit) {
+	if limit <= 0 {
+		return [];
+	}
+	var acc = [];
+	var count = 0;
+	var cursor = lst;
+	while count < limit && !nullp(cursor) {
+		acc = cons(car(cursor), acc);
+		cursor = cdr(cursor);
+		count = count + 1;
+	}
+	return reverseList(acc);
+}
+
+func churnShortLived(iterations, size) {
+	var checksum = 0;
+	var i = 0;
+	while i < iterations {
+		var temp = makeList(size);
+		checksum = checksum + length(temp);
+		i = i + 1;
+	}
+	return checksum;
+}
+
+func churnMixedLifetimes(iterations, size, survivorLimit, refreshInterval) {
+	var survivors = [];
+	var preload = 0;
+	while preload < survivorLimit {
+		survivors = cons(makeList(size), survivors);
+		preload = preload + 1;
+	}
+	var checksum = 0;
+	var step = 0;
+	var nextRefresh = 0;
+	while step < iterations {
+		var ephemeral = makeList(size);
+		checksum = checksum + length(ephemeral);
+		if refreshInterval > 0 {
+			if step == nextRefresh {
+				survivors = cons(ephemeral, survivors);
+				survivors = trimList(survivors, survivorLimit);
+				nextRefresh = nextRefresh + refreshInterval;
+			}
+		}
+		step = step + 1;
+	}
+	return checksum + length(survivors);
+}
+
+func churnClosures(iterations, envSize, keepInterval) {
+	var keepers = [];
+	var checksum = 0;
+	var i = 0;
+	var nextKeep = 0;
+	while i < iterations {
+		var payload = makeList(envSize);
+		var closure = func(x) {
+			var local = payload;
+			var total = 0;
+			while !nullp(local) {
+				total = total + car(local);
+				local = cdr(local);
+			}
+			return total + x;
+		};
+		if keepInterval > 0 {
+			if i == nextKeep {
+				keepers = cons(closure, keepers);
+				nextKeep = nextKeep + keepInterval;
+			} else {
+				checksum = checksum + closure(i);
+			}
+		} else {
+			checksum = checksum + closure(i);
+		}
+		i = i + 1;
+	}
+	return checksum + length(keepers);
+}
+
+func internSymbolBurst(count, prefix) {
+	var i = 0;
+	while i < count {
+		var label = stringAppend(prefix, numberToString(i));
+		stringToSymbol(label);
+		i = i + 1;
+	}
+	return count;
+}
+
+func runPhase(name, thunk) {
+	display(stringAppend("== ", name));
+	newline();
+	var result = thunk();
+	display("Result checksum: ");
+	display(result);
+	newline();
+	newline();
+}
+
+func main() {
+	display("Gisp GC stress benchmark starting.");
+	newline();
+	newline();
+
+	runPhase("Short-lived list churn", func() {
+		return churnShortLived(shortLivedIterations, shortLivedSize);
+	});
+
+	runPhase("Mixed lifetimes with survivor pool", func() {
+		return churnMixedLifetimes(
+			mixedIterations,
+			mixedSize,
+			mixedSurvivors,
+			mixedRefreshInterval
+		);
+	});
+
+	runPhase("Closure allocation and retention", func() {
+		return churnClosures(
+			closureIterations,
+			closureEnvSize,
+			closureKeepInterval
+		);
+	});
+
+	runPhase("Symbol interning burst", func() {
+		return internSymbolBurst(symbolBurstCount, symbolPrefix);
+	});
+
+	display("Benchmark run complete. Use external tooling for timing/GC stats.");
+	newline();
+}
+
+main();
