@@ -44,6 +44,10 @@ func installPrimitives(ev *lang.Evaluator) {
 	define("cons", primCons)
 	define("car", primCar)
 	define("cdr", primCdr)
+	define("set-car!", primSetCar)
+	define("set-cdr!", primSetCdr)
+	define("setCar", primSetCar)
+	define("setCdr", primSetCdr)
 	define("list", primList)
 	define("append", primAppend)
 	define("length", primLength)
@@ -54,6 +58,7 @@ func installPrimitives(ev *lang.Evaluator) {
 	define("display", primDisplay)
 	define("newline", primNewline)
 	define("exit", primExit)
+	define("error", primError)
 
 	define("apply", primApply)
 	define("gensym", primGensym)
@@ -351,6 +356,30 @@ func primCdr(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 	return v.Pair.Cdr, nil
 }
 
+func primSetCar(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	if len(args) != 2 {
+		return lang.Value{}, fmt.Errorf("set-car! expects 2 arguments, got %d", len(args))
+	}
+	pair := args[0]
+	if pair.Type != lang.TypePair || pair.Pair == nil {
+		return lang.Value{}, fmt.Errorf("set-car! expects a pair")
+	}
+	pair.Pair.Car = args[1]
+	return pair, nil
+}
+
+func primSetCdr(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	if len(args) != 2 {
+		return lang.Value{}, fmt.Errorf("set-cdr! expects 2 arguments, got %d", len(args))
+	}
+	pair := args[0]
+	if pair.Type != lang.TypePair || pair.Pair == nil {
+		return lang.Value{}, fmt.Errorf("set-cdr! expects a pair")
+	}
+	pair.Pair.Cdr = args[1]
+	return pair, nil
+}
+
 func primList(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 	return lang.List(args...), nil
 }
@@ -440,6 +469,21 @@ func primExit(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 	}
 	os.Exit(code)
 	return lang.EmptyList, nil
+}
+
+func primError(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	if len(args) == 0 {
+		return lang.Value{}, fmt.Errorf("error")
+	}
+	parts := make([]string, len(args))
+	for i, arg := range args {
+		if arg.Type == lang.TypeString {
+			parts[i] = arg.Str
+		} else {
+			parts[i] = arg.String()
+		}
+	}
+	return lang.Value{}, fmt.Errorf("%s", strings.Join(parts, " "))
 }
 
 func primApply(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
