@@ -1,39 +1,39 @@
 #!/usr/bin/env gisp
 
 func abs(x) {
-	if x < 0 {
-		return -x
-	}
-	return x
+    if x < 0 {
+        return -x
+    }
+    return x
 }
 
 func average(a, b) {
-	return (a + b) / 2.0
+    return (a + b) / 2.0
 }
 
 func improve(guess, x) {
-	return average(guess, x / guess)
+    return average(guess, x / guess)
 }
 
 func goodEnough(guess, x, tolerance) {
-	return abs(guess * guess - x) < tolerance
+    return abs(guess * guess - x) < tolerance
 }
 
 func sqrtNewton(x) {
-	if x == 0 {
-		return 0
-	}
+    if x == 0 {
+        return 0
+    }
 
-	var guess = x / 2.0
-	const tolerance = 1e-9
+    var guess = x / 2.0
+    const tolerance = 1e-9
 
-	while true {
-		var next = improve(guess, x)
-		if goodEnough(next, x, tolerance) {
-			return next
-		}
-		guess = next
-	}
+    while true {
+        var next = improve(guess, x)
+        if goodEnough(next, x, tolerance) {
+            return next
+        }
+        guess = next
+    }
 }
 
 display(sqrtNewton(2))

@@ -1,12 +1,12 @@
 #!/usr/bin/env gisp
 
 func main() {
-	var total = 0
-	while total < 5 {
-		total = total + 1
-	}
-	display(total)
-	newline()
+    var total = 0
+    while total < 5 {
+        total = total + 1
+    }
+    display(total)
+    newline()
 }
 
 main()

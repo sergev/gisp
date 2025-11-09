@@ -1,10 +1,10 @@
 #!/usr/bin/env gisp
 
 func abs(x) {
-	if x < 0 {
-		return -x
-	}
-	return x
+    if x < 0 {
+        return -x
+    }
+    return x
 }
 
 display(abs(-3.5))
