@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
+	"github.com/peterh/liner"
 	"github.com/sergev/gisp/lang"
 	"github.com/sergev/gisp/runtime"
 	"github.com/sergev/gisp/sexpr"
@@ -37,25 +39,30 @@ func main() {
 }
 
 func runREPL(ev *lang.Evaluator) {
-	reader := bufio.NewReader(os.Stdin)
+	if !isInteractive() {
+		runBufferedREPL(ev, bufio.NewReader(os.Stdin))
+		return
+	}
+	runInteractiveREPL(ev)
+}
+
+func readerPkgReadString(src string) ([]lang.Value, error) {
+	return sexpr.ReadString(src)
+}
+
+func isIncomplete(err error) bool {
+	msg := err.Error()
+	return strings.Contains(msg, "unterminated")
+}
+
+func runBufferedREPL(ev *lang.Evaluator, reader *bufio.Reader) {
 	var buffer strings.Builder
-	interactive := isInteractive()
 
 	for {
-		if interactive {
-			if buffer.Len() == 0 {
-				fmt.Print("gisp> ")
-			} else {
-				fmt.Print(".... ")
-			}
-		}
 		line, err := reader.ReadString('\n')
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				if buffer.Len() == 0 {
-					if interactive {
-						fmt.Println()
-					}
 					return
 				}
 			} else {
@@ -64,7 +71,8 @@ func runREPL(ev *lang.Evaluator) {
 			}
 		}
 		buffer.WriteString(line)
-		forms, parseErr := readerPkgReadString(buffer.String())
+		src := buffer.String()
+		forms, parseErr := readerPkgReadString(src)
 		if parseErr != nil {
 			if isIncomplete(parseErr) && !errors.Is(err, io.EOF) {
 				continue
@@ -91,13 +99,82 @@ func runREPL(ev *lang.Evaluator) {
 	}
 }
 
-func readerPkgReadString(src string) ([]lang.Value, error) {
-	return sexpr.ReadString(src)
+func runInteractiveREPL(ev *lang.Evaluator) {
+	state := liner.NewLiner()
+	defer state.Close()
+	state.SetCtrlCAborts(true)
+
+	historyPath := replHistoryPath()
+	if historyPath != "" {
+		if f, err := os.Open(historyPath); err == nil {
+			state.ReadHistory(f)
+			f.Close()
+		}
+		defer func() {
+			if f, err := os.Create(historyPath); err == nil {
+				state.WriteHistory(f)
+				f.Close()
+			}
+		}()
+	}
+
+	var buffer strings.Builder
+
+	for {
+		prompt := "gisp> "
+		if buffer.Len() > 0 {
+			prompt = ".... "
+		}
+		input, err := state.Prompt(prompt)
+		if err != nil {
+			switch {
+			case errors.Is(err, liner.ErrPromptAborted):
+				fmt.Println()
+				buffer.Reset()
+				continue
+			case errors.Is(err, io.EOF):
+				fmt.Println()
+				return
+			default:
+				fmt.Fprintf(os.Stderr, "read error: %v\n", err)
+				return
+			}
+		}
+		buffer.WriteString(input)
+		buffer.WriteString("\n")
+
+		src := buffer.String()
+		forms, parseErr := readerPkgReadString(src)
+		if parseErr != nil {
+			if isIncomplete(parseErr) {
+				continue
+			}
+			fmt.Fprintf(os.Stderr, "parse error: %v\n", parseErr)
+			buffer.Reset()
+			continue
+		}
+
+		buffer.Reset()
+		if trimmed := strings.TrimSpace(src); trimmed != "" {
+			state.AppendHistory(trimmed)
+		}
+		for _, expr := range forms {
+			val, evalErr := ev.Eval(expr, nil)
+			if evalErr != nil {
+				fmt.Fprintf(os.Stderr, "error: %v\n", evalErr)
+				break
+			}
+			fmt.Println(val.String())
+		}
+	}
 }
 
-func isIncomplete(err error) bool {
-	msg := err.Error()
-	return strings.Contains(msg, "unterminated")
+func replHistoryPath() string {
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return ""
+	}
+	return filepath.Join(home, ".gisp_history")
 }
 
 func isInteractive() bool {
