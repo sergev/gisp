@@ -431,6 +431,44 @@ func demo(a, b) {
 	}
 }
 
+func TestParseVarDeclWithOptionalSemicolon(t *testing.T) {
+	src := `
+func demo() {
+	var withSemi = 1;
+	var withoutSemi = 2
+}
+`
+	prog := parseProgramFromSource(t, src)
+	if len(prog.Decls) != 1 {
+		t.Fatalf("expected single declaration, got %d", len(prog.Decls))
+	}
+	fn, ok := prog.Decls[0].(*FuncDecl)
+	if !ok {
+		t.Fatalf("expected FuncDecl, got %T", prog.Decls[0])
+	}
+	if len(fn.Body.Stmts) != 2 {
+		t.Fatalf("expected 2 statements in body, got %d", len(fn.Body.Stmts))
+	}
+
+	withSemi, ok := fn.Body.Stmts[0].(*VarDecl)
+	if !ok || withSemi.Name != "withSemi" {
+		t.Fatalf("expected first stmt var withSemi, got %#v", fn.Body.Stmts[0])
+	}
+	numOne, ok := withSemi.Init.(*NumberExpr)
+	if !ok || numOne.Value != "1" {
+		t.Fatalf("expected numeric initializer 1, got %#v", withSemi.Init)
+	}
+
+	withoutSemi, ok := fn.Body.Stmts[1].(*VarDecl)
+	if !ok || withoutSemi.Name != "withoutSemi" {
+		t.Fatalf("expected second stmt var withoutSemi, got %#v", fn.Body.Stmts[1])
+	}
+	numTwo, ok := withoutSemi.Init.(*NumberExpr)
+	if !ok || numTwo.Value != "2" {
+		t.Fatalf("expected numeric initializer 2, got %#v", withoutSemi.Init)
+	}
+}
+
 func TestParseExpressionPrecedence(t *testing.T) {
 	prog := parseProgramFromSource(t, "var value = 1 + 2 * 3 == 7 && !false;\n")
 	if len(prog.Decls) != 1 {

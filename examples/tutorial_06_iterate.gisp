@@ -1,8 +1,8 @@
 #!/usr/bin/env gisp
 
 func iterate(fn, value, count) {
-	var result = value
-	var remaining = count
+	var result = value;
+	var remaining = count;
 
 	while remaining > 0 {
 		result = fn(result);

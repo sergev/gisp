@@ -1,7 +1,7 @@
 #!/usr/bin/env gisp
 
 func counter(start) {
-	var value = start
+	var value = start;
 	return func(step) {
 		value = value + step;
 		return value;

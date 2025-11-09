@@ -163,6 +163,10 @@ func (p *parser) finishBindingDecl(start Token, isConst bool, expectSemi bool) (
 		if _, err := p.expect(tokenSemicolon); err != nil {
 			return nil, err
 		}
+	} else if p.curr.Type == tokenSemicolon {
+		if _, err := p.expect(tokenSemicolon); err != nil {
+			return nil, err
+		}
 	}
 	return &VarDecl{
 		Name:  nameTok.Lexeme,

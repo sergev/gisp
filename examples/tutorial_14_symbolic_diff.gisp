@@ -100,8 +100,8 @@ func deriv(expr, variable) {
 		);
 	}
 	if isTagged(expr, `'pow ) {
-		var base = exponentBase(expr)
-		var power = exponentPower(expr)
+		var base = exponentBase(expr);
+		var power = exponentPower(expr);
 		return makeProduct(
 			makeProduct(power, deriv(base, variable)),
 			makeExponent(base, makeSum(power, -1))

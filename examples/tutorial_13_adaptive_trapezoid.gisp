@@ -12,10 +12,10 @@ func trapEstimate(f, a, b) {
 }
 
 func adaptiveTrap(f, a, b, tolerance) {
-	var mid = (a + b) / 2.0
-	var left = trapEstimate(f, a, mid)
-	var right = trapEstimate(f, mid, b)
-	var together = trapEstimate(f, a, b)
+	var mid = (a + b) / 2.0;
+	var left = trapEstimate(f, a, mid);
+	var right = trapEstimate(f, mid, b);
+	var together = trapEstimate(f, a, b);
 
 	if abs((left + right) - together) < 3 * tolerance {
 		return left + right;

@@ -27,11 +27,11 @@ func sqrtNewton(x) {
 		return 0;
 	}
 
-	var guess = x / 2.0
-	const tolerance = 1e-9
+	var guess = x / 2.0;
+	const tolerance = 1e-9;
 
 	while true {
-		var next = improve(guess, x)
+		var next = improve(guess, x);
 		if goodEnough(next, x, tolerance) {
 			return next;
 		}
@@ -59,8 +59,8 @@ func map(fn, xs) {
 }
 
 func length(xs) {
-	var count = 0
-	var cursor = xs
+	var count = 0;
+	var cursor = xs;
 
 	while !isEmpty(cursor) {
 		count = count + 1;
@@ -70,9 +70,9 @@ func length(xs) {
 }
 
 func mean(xs) {
-	var total = 0.0
-	var count = 0
-	var cursor = xs
+	var total = 0.0;
+	var count = 0;
+	var cursor = xs;
 
 	while !isEmpty(cursor) {
 		total = total + head(cursor);
@@ -83,11 +83,11 @@ func mean(xs) {
 }
 
 func variance(xs, avg) {
-	var total = 0.0
-	var cursor = xs
+	var total = 0.0;
+	var cursor = xs;
 
 	while !isEmpty(cursor) {
-		var diff = head(cursor) - avg
+		var diff = head(cursor) - avg;
 		total = total + diff * diff;
 		cursor = tail(cursor);
 	}
@@ -95,8 +95,8 @@ func variance(xs, avg) {
 }
 
 func zScores(xs) {
-	var avg = mean(xs)
-	var std = sqrtNewton(variance(xs, avg))
+	var avg = mean(xs);
+	var std = sqrtNewton(variance(xs, avg));
 
 	return map(func(x) {
 		return (x - avg) / std;
@@ -104,12 +104,12 @@ func zScores(xs) {
 }
 
 func alertOnOutlier(xs, threshold) {
-	var scores = zScores(xs)
-	var cursor = scores
-	var index = 0
+	var scores = zScores(xs);
+	var cursor = scores;
+	var index = 0;
 
 	while !isEmpty(cursor) {
-		var score = head(cursor)
+		var score = head(cursor);
 		if abs(score) > threshold {
 			display("Outlier at index ");
 			display(index);
