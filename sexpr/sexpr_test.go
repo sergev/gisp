@@ -136,7 +136,7 @@ func TestParseLiteralSuccessCases(t *testing.T) {
 			src:   "foo(bar)",
 			start: 0,
 			want:  lang.SymbolValue("foo"),
-			next:  4,
+			next:  3,
 		},
 		{
 			name:  "EmbeddedList",
@@ -158,6 +158,19 @@ func TestParseLiteralSuccessCases(t *testing.T) {
 			start: strings.Index(`prefix "hi"suffix`, `"`),
 			want:  lang.StringValue("hi"),
 			next:  strings.Index(`prefix "hi"suffix`, `"`) + len("\"hi\""),
+		},
+		{
+			name:  "StopsBeforeComma",
+			src:   "`'+, tail",
+			start: 0,
+			want: lang.List(
+				lang.SymbolValue("quasiquote"),
+				lang.List(
+					lang.SymbolValue("quote"),
+					lang.SymbolValue("+"),
+				),
+			),
+			next: len("`'+"),
 		},
 	}
 

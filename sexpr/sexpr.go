@@ -259,7 +259,8 @@ func readAtom(sc *scanner) (lang.Value, error) {
 			}
 			return lang.Value{}, err
 		}
-		if unicode.IsSpace(r) || r == '(' || r == ')' || r == '"' || r == ';' {
+		if unicode.IsSpace(r) || r == '(' || r == ')' || r == '"' || r == ';' ||
+			r == ',' || r == ']' || r == '}' {
 			sc.unread(r, w)
 			break
 		}
@@ -368,7 +369,11 @@ func ParseLiteral(src string, start int) (lang.Value, int, error) {
 	if err != nil {
 		return lang.Value{}, 0, err
 	}
-	return val, source.pos, nil
+	next := source.pos
+	for _, rw := range sc.undo {
+		next -= rw.w
+	}
+	return val, next, nil
 }
 
 type readerSource struct {

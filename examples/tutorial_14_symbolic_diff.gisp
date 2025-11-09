@@ -27,7 +27,7 @@ func makeSum(a, b) {
 	if isNumberValue(b) && b == 0 {
 		return a;
 	}
-	return cons(`'+ , [a, b]);
+	return cons(`'+, [a, b]);
 }
 
 func makeProduct(a, b) {
@@ -40,11 +40,11 @@ func makeProduct(a, b) {
 	if isNumberValue(b) && b == 1 {
 		return a;
 	}
-	return cons(`'* , [a, b]);
+	return cons(`'*, [a, b]);
 }
 
 func makeExponent(base, exponent) {
-	return cons(`'pow , [base, exponent]);
+	return cons(`'pow, [base, exponent]);
 }
 
 func sumAddend(expr) {
@@ -81,13 +81,13 @@ func deriv(expr, variable) {
 		}
 		return 0;
 	}
-	if isTagged(expr, `'+ ) {
+	if isTagged(expr, `'+) {
 		return makeSum(
 			deriv(sumAddend(expr), variable),
 			deriv(sumAugend(expr), variable)
 		);
 	}
-	if isTagged(expr, `'* ) {
+	if isTagged(expr, `'*) {
 		return makeSum(
 			makeProduct(
 				deriv(productMultiplier(expr), variable),
@@ -99,7 +99,7 @@ func deriv(expr, variable) {
 			)
 		);
 	}
-	if isTagged(expr, `'pow ) {
+	if isTagged(expr, `'pow) {
 		var base = exponentBase(expr);
 		var power = exponentPower(expr);
 		return makeProduct(
@@ -107,13 +107,13 @@ func deriv(expr, variable) {
 			makeExponent(base, makeSum(power, -1))
 		);
 	}
-	return cons(`'unknown-derivative , [expr]);
+	return cons(`'unknown-derivative, [expr]);
 }
 
-var expression = cons(`'* , [
-	makeSum(`'x , 1),
-	makeExponent(`'x , 3),
+var expression = cons(`'*, [
+	makeSum(`'x, 1),
+	makeExponent(`'x, 3),
 ]);
 
-display(deriv(expression, `'x ));
+display(deriv(expression, `'x));
 newline();

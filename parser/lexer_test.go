@@ -205,6 +205,35 @@ func TestLexerSExprLiteral(t *testing.T) {
 	}
 }
 
+func TestLexerSExprStopsBeforeComma(t *testing.T) {
+	lx := newLexer("`'+,")
+
+	tok := mustNextToken(t, lx)
+	if tok.Type != tokenSExpr {
+		t.Fatalf("expected tokenSExpr, got %v", tok.Type)
+	}
+	value, ok := tok.Value.(lang.Value)
+	if !ok {
+		t.Fatalf("expected lang.Value, got %T", tok.Value)
+	}
+	want := lang.List(
+		lang.SymbolValue("quote"),
+		lang.SymbolValue("+"),
+	)
+	if !reflect.DeepEqual(value, want) {
+		t.Fatalf("expected value %s, got %s", want.String(), value.String())
+	}
+
+	commaTok := mustNextToken(t, lx)
+	if commaTok.Type != tokenComma {
+		t.Fatalf("expected comma token after S-expr, got %v", commaTok.Type)
+	}
+
+	if tok, err := lx.nextToken(); err != nil || tok.Type != tokenEOF {
+		t.Fatalf("expected EOF after comma, got token %v err %v", tok, err)
+	}
+}
+
 func TestLexerSkipWhitespaceAndComments(t *testing.T) {
 	src := " \t\n// comment\n/* block\ncomment */\nfoo"
 	lx := newLexer(src)
