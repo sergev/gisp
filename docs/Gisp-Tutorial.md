@@ -66,12 +66,16 @@ main();
 Every non-block statement ends with a semicolon. Blocks use braces:
 
 ```gisp
-var total = 0;
-while total < 5 {
-	total = total + 1;
+func main() {
+	var total = 0;
+	while total < 5 {
+		total = total + 1;
+	}
+	display(total);
+	newline();
 }
-display(total);
-newline();
+
+main();
 ```
 
 Whitespace is mostly insignificant, and single-line (`//`) plus block (`/* ... */`) comments work the same way as in Go.
@@ -86,10 +90,13 @@ const pi = 3.141592653589793;
 var area = pi * radius * radius;
 
 display("Circle area: ");
-display(area);      // prints 19.634954084936208
+display(area);
 newline();
 
-var ratio = 7 / 2;  // -> 3.5 (real), even though 7 and 2 are integers
+var ratio = 7 / 2;
+display("Ratio 7/2 = ");
+display(ratio);
+newline();
 ```
 
 Use scientific notation (`1.2e-3`) for very small or large values. The parser tests cover integers, decimals, and exponent forms, so you get the same behaviour in scripts and the REPL.
@@ -99,13 +106,17 @@ Use scientific notation (`1.2e-3`) for very small or large values. The parser te
 Strings use double quotes and support standard escape sequences (`\n`, `\t`, `\\`, `\"`). Booleans are `true` and `false`, and only `false` is considered falsy at runtime.
 
 ```gisp
-var greeting = "Line one\nLine two";
-var excited = true;
+func main() {
+	var greeting = "Line one\nLine two";
+	var excited = true;
 
-if excited {
-	display(greeting);
-	newline();
+	if excited {
+		display(greeting);
+		newline();
+	}
 }
+
+main();
 ```
 
 ### Variables and Lexical Scope
@@ -139,11 +150,22 @@ newline();
 func classify(n) {
 	if n < 0 {
 		return "negative";
-	} else if n == 0 {
-		return "zero";
+	} else {
+		if n == 0 {
+			return "zero";
+		}
 	}
 	return "positive";
 }
+
+func main() {
+	display(classify(-3));
+	display(classify(0));
+	display(classify(8));
+	newline();
+}
+
+main();
 ```
 
 ### Loops
@@ -161,6 +183,9 @@ func accumulateUntil(limit) {
 	}
 	return sum;
 }
+
+display(accumulateUntil(2.0));
+newline();
 ```
 
 ### Higher-Order Functions
@@ -251,13 +276,17 @@ Anything wrapped in backticks is copied straight into the Scheme expansion, whic
 	(list 'if condition '#f (cons 'begin body)));
 
 func demo(value) {
-	unless value {
-		display("value was false\n");
-	}
+	`(unless value
+		(begin (display "value was false")
+		       (newline)));
 }
 
-demo(false);
-demo(true);
+func main() {
+	demo(false);
+	demo(true);
+}
+
+main();
 ```
 
 You can also splice in existing Scheme libraries:
@@ -286,11 +315,27 @@ func abs(x) {
 	}
 	return x;
 }
+
+display(abs(-3.5));
+display(abs(2));
+newline();
 ```
 
 ### Running Averages
 
 ```gisp
+func isEmpty(xs) {
+	return nullp(xs);
+}
+
+func head(xs) {
+	return car(xs);
+}
+
+func tail(xs) {
+	return cdr(xs);
+}
+
 func runningAverage(samples) {
 	var sum = 0.0;
 	var count = 0;
@@ -420,54 +465,54 @@ func isTagged(expr, tag) {
 }
 
 func makeSum(a, b) {
-	if isNumberValue(a) && `(= a 0) {
+	if isNumberValue(a) && a == 0 {
 		return b;
 	}
-	if isNumberValue(b) && `(= b 0) {
+	if isNumberValue(b) && b == 0 {
 		return a;
 	}
-	return cons(`(quote +), [a, b]);
+	return cons(`'+ , [a, b]);
 }
 
 func makeProduct(a, b) {
-	if (isNumberValue(a) && `(= a 0)) || (isNumberValue(b) && `(= b 0)) {
+	if (isNumberValue(a) && a == 0) || (isNumberValue(b) && b == 0) {
 		return 0;
 	}
-	if isNumberValue(a) && `(= a 1) {
+	if isNumberValue(a) && a == 1 {
 		return b;
 	}
-	if isNumberValue(b) && `(= b 1) {
+	if isNumberValue(b) && b == 1 {
 		return a;
 	}
-	return cons(`(quote *), [a, b]);
+	return cons(`'* , [a, b]);
 }
 
 func makeExponent(base, exponent) {
-	return cons(`(quote pow), [base, exponent]);
+	return cons(`'pow , [base, exponent]);
 }
 
 func sumAddend(expr) {
-	return `(cadr expr);
+	return `(car (cdr expr));
 }
 
 func sumAugend(expr) {
-	return `(caddr expr);
+	return `(car (cdr (cdr expr)));
 }
 
 func productMultiplier(expr) {
-	return `(cadr expr);
+	return `(car (cdr expr));
 }
 
 func productMultiplicand(expr) {
-	return `(caddr expr);
+	return `(car (cdr (cdr expr)));
 }
 
 func exponentBase(expr) {
-	return `(cadr expr);
+	return `(car (cdr expr));
 }
 
 func exponentPower(expr) {
-	return `(caddr expr);
+	return `(car (cdr (cdr expr)));
 }
 
 func deriv(expr, variable) {
@@ -480,41 +525,41 @@ func deriv(expr, variable) {
 		}
 		return 0;
 	}
-	if isTagged(expr, `(quote +)) {
+	if isTagged(expr, `'+ ) {
 		return makeSum(
 			deriv(sumAddend(expr), variable),
-			deriv(sumAugend(expr), variable),
+			deriv(sumAugend(expr), variable)
 		);
 	}
-	if isTagged(expr, `(quote *)) {
+	if isTagged(expr, `'* ) {
 		return makeSum(
 			makeProduct(
 				deriv(productMultiplier(expr), variable),
-				productMultiplicand(expr),
+				productMultiplicand(expr)
 			),
 			makeProduct(
 				productMultiplier(expr),
-				deriv(productMultiplicand(expr), variable),
-			),
+				deriv(productMultiplicand(expr), variable)
+			)
 		);
 	}
-	if isTagged(expr, `(quote pow)) {
+	if isTagged(expr, `'pow ) {
 		var base = exponentBase(expr);
 		var power = exponentPower(expr);
 		return makeProduct(
 			makeProduct(power, deriv(base, variable)),
-			makeExponent(base, makeSum(power, -1)),
+			makeExponent(base, makeSum(power, -1))
 		);
 	}
-	return cons(`(quote unknown-derivative), [expr]);
+	return cons(`'unknown-derivative , [expr]);
 }
 
-var expression = cons(`(quote *), [
-	makeSum(`(quote x), 1),
-	makeExponent(`(quote x), 3),
+var expression = cons(`'* , [
+	makeSum(`'x , 1),
+	makeExponent(`'x , 3),
 ]);
 
-display(deriv(expression, `(quote x)));
+display(deriv(expression, `'x ));
 newline();
 ```
 
@@ -525,18 +570,22 @@ The emphasis is on reusing Scheme's list selectors (`cadr`, `caddr`) via inline 
 One of Scheme's signature features is `call/cc`. We can reproduce the classic "search for a solution and exit early" example in Gisp:
 
 ```gisp
-func findFirst(pred, xs) {
-	return `(call/cc (lambda (exit)
+var findFirst = `(lambda (pred xs)
+	(call/cc (lambda (exit)
 		(let loop ((items xs))
-			(cond
-				((nullp items) '#f)
-				((,pred (car items)) (exit (car items)))
-				(else (loop (cdr items)))))));
+			(if (nullp items)
+				'#f
+				(if (pred (car items))
+					(exit (car items))
+					(loop (cdr items))))))));
+
+func main() {
+	var firstLarge = findFirst(func(n) { return n > 10; }, [1, 3, 5, 8, 13, 21]);
+	display(firstLarge);
+	newline();
 }
 
-var firstLarge = findFirst(func(n) { return n > 10; }, [1, 3, 5, 8, 13, 21]);
-display(firstLarge);
-newline();
+main();
 ```
 
 Here we embed a short Scheme loop that uses `call/cc` to escape. The predicate itself is a Gisp closure, showing how values move freely between the two syntaxes. This pattern is particularly useful when porting Scheme code that already relies on continuations.
@@ -550,6 +599,61 @@ The following full script pulls together control flow, floating-point math, list
 ```gisp
 `(define-macro (when condition . body)
 	(list 'if condition (cons 'begin body) '#f));
+
+func abs(x) {
+	if x < 0 {
+		return -x;
+	}
+	return x;
+}
+
+func average(a, b) {
+	return (a + b) / 2.0;
+}
+
+func improve(guess, x) {
+	return average(guess, x / guess);
+}
+
+func goodEnough(guess, x, tolerance) {
+	return abs(guess * guess - x) < tolerance;
+}
+
+func sqrtNewton(x) {
+	if x == 0 {
+		return 0;
+	}
+
+	var guess = x / 2.0;
+	const tolerance = 1e-9;
+
+	while true {
+		var next = improve(guess, x);
+		if goodEnough(next, x, tolerance) {
+			return next;
+		}
+		guess = next;
+	}
+}
+
+func isEmpty(xs) {
+	return nullp(xs);
+}
+
+func head(xs) {
+	return car(xs);
+}
+
+func tail(xs) {
+	return cdr(xs);
+}
+
+func map(fn, xs) {
+	if isEmpty(xs) {
+		return [];
+	}
+	return cons(fn(head(xs)), map(fn, tail(xs)));
+}
 
 func mean(xs) {
 	var total = 0.0;
@@ -603,7 +707,7 @@ func alertOnOutlier(xs, threshold) {
 
 	while !isEmpty(cursor) {
 		var score = head(cursor);
-		when abs(score) > threshold {
+		if abs(score) > threshold {
 			display("Outlier at index ");
 			display(index);
 			display(": ");

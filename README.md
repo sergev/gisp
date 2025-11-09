@@ -1,9 +1,9 @@
 # gisp
 
-`gisp` is a minimal Scheme-inspired interpreter written in Go. It embraces a simple type system,
-lexical scoping, macros, and first-class continuations while keeping the language concise
-and approachable. On top of the original S-expression syntax, gisp now includes **Gisp**, a Go-like
-language that compiles into the same Scheme semantics (tail calls, macros, continuations).
+`gisp` is a minimal Scheme-inspired interpreter written in Go. It offers a simple type system,
+lexical scoping, macros, and first-class continuations while keeping the language approachable.
+Alongside the traditional S-expression syntax, the project ships with **Gisp**, a Go-flavoured
+surface language that compiles down to the same Scheme semantics (tail calls, macros, continuations).
 
 The project intentionally favors clarity over strict Scheme compatibility: standard procedures use
 explicit names (`list`, `append`, `call/cc`, etc.), but the runtime behaviour follows familiar Lisp
@@ -29,13 +29,13 @@ Garbage collection relies entirely on the Go runtime—no additional memory mana
 - [Gisp language guide](docs/Language.md)
 - [Runtime primitives](docs/Primitives.md)
 - [S-expression grammar](docs/S-Expressions.md)
-- [Gisp tutorial](docs/Gisp-Tutorial.md)
+- [Step-by-step tutorial](docs/Gisp-Tutorial.md)
 
 ## Getting Started
 
 ### Prerequisites
 
-- Go 1.25 or newer (the project targets Go 1.25.4)
+- Go 1.25 or newer (the module targets Go 1.25.4)
 
 ### Build
 
@@ -43,16 +43,16 @@ Garbage collection relies entirely on the Go runtime—no additional memory mana
 make
 ```
 
-This produces the `gisp` executable in the repository root using the project `Makefile`.
+This builds the `gisp` executable in the repository root.
 
 ### Install
 
 ```bash
-make install
+DESTDIR=$HOME/.local make install
 ```
 
-This installs the binary into `$GOBIN` (default: `$GOPATH/bin`). You can still run `go install`
-directly if you prefer, but `make install` keeps the workflow consistent with the other targets.
+`make install` drops the binary under `$DESTDIR/usr/bin` (default: `$HOME/.local/usr/bin`).
+Adjust `DESTDIR` to suit your environment, or run `go install` if you prefer the standard Go flow.
 
 ### Run the REPL
 
@@ -76,21 +76,21 @@ Passing `-` runs code from standard input.
 
 ## Examples
 
-Example programs live in the `examples/` directory:
+Sample programs live in `examples/`:
 
-- `examples/hello.gs` – hello-world via `display` and `newline`
-- `examples/continuation.gs` – demonstrates capturing and invoking continuations with `call/cc`
-- `examples/fact.gisp` – factorial and tail-recursive factorial using the Go-like syntax
+- `hello.gs` – hello world via `display` and `newline`
+- `continuation.gs` – demonstrates capturing and invoking continuations with `call/cc`
+- `fact.gisp` – factorials using the Go-like syntax
+- `tutorial_*.gisp` – end-to-end walkthrough files referenced by the tutorial
 
-Run them with:
+Run any of them with the interpreter:
 
 ```bash
 ./gisp examples/hello.gs
-./gisp examples/continuation.gs
 ./gisp examples/fact.gisp
 ```
 
-Unit tests also execute these examples to ensure they stay in sync with the runtime.
+The regression test suite keeps these examples in sync with the runtime.
 
 ## Testing
 
@@ -98,21 +98,27 @@ Unit tests also execute these examples to ensure they stay in sync with the runt
 make test
 ```
 
-This wraps `go test ./...`, running unit tests for the interpreter core, parser, and examples.
+The `test` target drives `gotestsum` over `go test ./...`. If `gotestsum` is missing it will be installed
+automatically (`go install gotest.tools/gotestsum@latest`).
+
+Generate coverage with:
+
+```bash
+make cover
+```
 
 ## Project Layout
 
 ```
 .
-├── docs/                # Language docs (Gisp overview, grammars, primitives)
+├── docs/                # Language docs (syntax, primitives, tutorial)
 ├── examples/            # Sample Scheme (.gs) and Gisp (.gisp) programs
-├── lang/                # Runtime values, environments, evaluator
-├── parser/              # Gisp lexer/parser and S-expression translator
+├── lang/                # Runtime values, environments, and evaluator
+├── parser/              # Gisp lexer/parser and compiler
+├── runtime/             # Primitives, library bootstrap, helpers, tests
 ├── sexpr/               # Shared s-expression parsing utilities
-├── runtime/             # Primitives, library bootstrap, helpers
 ├── main.go              # CLI entry point / REPL
-├── runtime_test.go      # End-to-end evaluator and example tests
-├── Makefile             # make, make install, make test targets
+├── Makefile             # build, test, install targets
 ├── go.mod               # Go module definition
 └── LICENSE              # MIT License
 ```
