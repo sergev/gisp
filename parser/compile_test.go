@@ -1,0 +1,694 @@
+package parser
+
+import (
+	"fmt"
+	"math"
+	"strings"
+	"testing"
+
+	"github.com/sergev/gisp/lang"
+)
+
+type datumSymbol string
+
+func valueToDatum(t testing.TB, v lang.Value) interface{} {
+	t.Helper()
+	switch v.Type {
+	case lang.TypeSymbol:
+		return datumSymbol(v.Sym)
+	case lang.TypeInt:
+		return v.Int
+	case lang.TypeReal:
+		return v.Real
+	case lang.TypeString:
+		return v.Str
+	case lang.TypeBool:
+		return v.Bool
+	case lang.TypeEmpty:
+		return []interface{}{}
+	case lang.TypePair:
+		items, err := lang.ToSlice(v)
+		if err != nil {
+			t.Fatalf("expected proper list, got error: %v", err)
+		}
+		out := make([]interface{}, len(items))
+		for i, item := range items {
+			out[i] = valueToDatum(t, item)
+		}
+		return out
+	default:
+		t.Fatalf("unsupported lang.Value type %v", v.Type)
+		return nil
+	}
+}
+
+func valueToSymbolSlice(t testing.TB, v lang.Value) []string {
+	t.Helper()
+	items := valueToDatum(t, v).([]interface{})
+	out := make([]string, len(items))
+	for i, item := range items {
+		sym, ok := item.(datumSymbol)
+		if !ok {
+			t.Fatalf("expected symbol at index %d, got %#v", i, item)
+		}
+		out[i] = string(sym)
+	}
+	return out
+}
+
+func requireListHead(t testing.TB, v lang.Value, head string) []interface{} {
+	t.Helper()
+	datum := valueToDatum(t, v)
+	list, ok := datum.([]interface{})
+	if !ok {
+		t.Fatalf("expected list, got %#v", datum)
+	}
+	if len(list) == 0 {
+		t.Fatalf("expected non-empty list")
+	}
+	sym, ok := list[0].(datumSymbol)
+	if !ok {
+		t.Fatalf("expected symbol head, got %#v", list[0])
+	}
+	if string(sym) != head {
+		t.Fatalf("expected head %q, got %q", head, sym)
+	}
+	return list
+}
+
+func containsSymbolWithPrefix(node interface{}, prefix string) bool {
+	switch n := node.(type) {
+	case datumSymbol:
+		return strings.HasPrefix(string(n), prefix)
+	case []interface{}:
+		for _, child := range n {
+			if containsSymbolWithPrefix(child, prefix) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func TestCompileProgramNil(t *testing.T) {
+	forms, err := CompileProgram(nil)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if forms != nil {
+		t.Fatalf("expected nil forms, got %#v", forms)
+	}
+}
+
+func TestCompileProgramMultipleDecls(t *testing.T) {
+	prog := &Program{
+		Decls: []Decl{
+			&VarDecl{
+				Name: "x",
+				Init: &NumberExpr{Value: "1"},
+			},
+			&ExprDecl{
+				Expr: &CallExpr{
+					Callee: &IdentifierExpr{Name: "print"},
+					Args:   []Expr{&IdentifierExpr{Name: "x"}},
+				},
+			},
+		},
+	}
+	forms, err := CompileProgram(prog)
+	if err != nil {
+		t.Fatalf("CompileProgram error: %v", err)
+	}
+	if len(forms) != 2 {
+		t.Fatalf("expected 2 forms, got %d", len(forms))
+	}
+	defineDatum := valueToDatum(t, forms[0]).([]interface{})
+	if head := defineDatum[0].(datumSymbol); string(head) != "define" {
+		t.Fatalf("expected define head, got %q", head)
+	}
+	callDatum := valueToDatum(t, forms[1]).([]interface{})
+	if head := callDatum[0].(datumSymbol); string(head) != "print" {
+		t.Fatalf("expected print call, got %q", head)
+	}
+	if arg := callDatum[1].(datumSymbol); string(arg) != "x" {
+		t.Fatalf("expected argument x, got %q", arg)
+	}
+}
+
+func TestCompileDeclFunction(t *testing.T) {
+	b := &builder{}
+	decl := &FuncDecl{
+		Name:   "identity",
+		Params: []string{"x"},
+		Body: &BlockStmt{
+			Stmts: []Stmt{
+				&ReturnStmt{Result: &IdentifierExpr{Name: "x"}},
+			},
+		},
+	}
+	form, err := compileFuncDecl(b, decl, compileContext{})
+	if err != nil {
+		t.Fatalf("compileFuncDecl: %v", err)
+	}
+	define := requireListHead(t, form, "define")
+	if len(define) != 3 {
+		t.Fatalf("expected define form of length 3, got %d", len(define))
+	}
+	if sym := define[1].(datumSymbol); string(sym) != "identity" {
+		t.Fatalf("expected identity, got %q", sym)
+	}
+	lambdaList, ok := define[2].([]interface{})
+	if !ok {
+		t.Fatalf("expected lambda list, got %#v", define[2])
+	}
+	if sym := lambdaList[0].(datumSymbol); string(sym) != "lambda" {
+		t.Fatalf("expected lambda head, got %q", sym)
+	}
+	params := lambdaList[1].([]interface{})
+	if len(params) != 1 || string(params[0].(datumSymbol)) != "x" {
+		t.Fatalf("unexpected params %#v", params)
+	}
+	body := lambdaList[2]
+	if !containsSymbolWithPrefix(body, "__gisp_return_") {
+		t.Fatalf("expected return gensym in body: %#v", body)
+	}
+}
+
+func TestCompileFuncDeclReturnError(t *testing.T) {
+	b := &builder{}
+	decl := &FuncDecl{Name: "noop", Body: &BlockStmt{}}
+	if _, err := compileFuncDecl(b, decl, compileContext{}.withReturn("r")); err != nil {
+		t.Fatalf("unexpected error with existing return context: %v", err)
+	}
+}
+
+func TestCompileTopLevelBinding(t *testing.T) {
+	b := &builder{}
+	decl := &VarDecl{Name: "answer", Init: &NumberExpr{Value: "42"}}
+	val, err := compileTopLevelBinding(b, decl, compileContext{})
+	if err != nil {
+		t.Fatalf("compileTopLevelBinding: %v", err)
+	}
+	define := requireListHead(t, val, "define")
+	if len(define) != 3 {
+		t.Fatalf("expected define list length 3, got %d", len(define))
+	}
+	if sym := define[1].(datumSymbol); string(sym) != "answer" {
+		t.Fatalf("expected answer symbol, got %q", sym)
+	}
+	if num := define[2].(int64); num != 42 {
+		t.Fatalf("expected value 42, got %d", num)
+	}
+}
+
+func TestCompileTopLevelBindingEmpty(t *testing.T) {
+	b := &builder{}
+	decl := &VarDecl{Name: "empty"}
+	val, err := compileTopLevelBinding(b, decl, compileContext{})
+	if err != nil {
+		t.Fatalf("compileTopLevelBinding: %v", err)
+	}
+	define := requireListHead(t, val, "define")
+	if _, ok := define[2].([]interface{}); !ok {
+		t.Fatalf("expected empty list value, got %#v", define[2])
+	}
+}
+
+func TestCompileExprDecl(t *testing.T) {
+	b := &builder{}
+	ctx := compileContext{}
+	expr, err := compileDecl(b, &ExprDecl{Expr: &IdentifierExpr{Name: "foo"}}, ctx)
+	if err != nil {
+		t.Fatalf("compileDecl: %v", err)
+	}
+	if len(expr) != 1 {
+		t.Fatalf("expected single form, got %d", len(expr))
+	}
+	if sym := expr[0].Sym; sym != "foo" {
+		t.Fatalf("expected symbol foo, got %s", sym)
+	}
+}
+
+func TestCompileDeclUnsupported(t *testing.T) {
+	b := &builder{}
+	_, err := compileDecl(b, unsupportedDecl{}, compileContext{})
+	if err == nil || !strings.Contains(err.Error(), "unsupported top-level declaration") {
+		t.Fatalf("expected unsupported decl error, got %v", err)
+	}
+}
+
+func TestCompileBlockNil(t *testing.T) {
+	val, err := compileBlock(&builder{}, nil, compileContext{})
+	if err != nil {
+		t.Fatalf("compileBlock: %v", err)
+	}
+	if datum := valueToDatum(t, val); fmt.Sprintf("%#v", datum) != "[]interface {}{}" {
+		t.Fatalf("expected empty list, got %#v", datum)
+	}
+}
+
+func TestCompileStmtsVarDecl(t *testing.T) {
+	b := &builder{}
+	stmt := &VarDecl{Name: "temp", Init: &NumberExpr{Value: "5"}}
+	result, err := compileStmtWithRest(b, stmt, lang.StringValue("done"), compileContext{})
+	if err != nil {
+		t.Fatalf("compileStmtWithRest: %v", err)
+	}
+	let := requireListHead(t, result, "let")
+	if !containsSymbolWithPrefix(let, "temp") {
+		t.Fatalf("expected binding for temp, got %#v", let)
+	}
+}
+
+func TestCompileStmtAssign(t *testing.T) {
+	b := &builder{}
+	stmt := &AssignStmt{Name: "x", Expr: &NumberExpr{Value: "10"}}
+	result, err := compileStmtWithRest(b, stmt, lang.SymbolValue("rest"), compileContext{})
+	if err != nil {
+		t.Fatalf("compileStmtWithRest: %v", err)
+	}
+	begin := requireListHead(t, result, "begin")
+	setExpr := begin[1].([]interface{})
+	if string(setExpr[0].(datumSymbol)) != "set!" {
+		t.Fatalf("expected set!, got %#v", setExpr[0])
+	}
+	if string(setExpr[1].(datumSymbol)) != "x" {
+		t.Fatalf("expected set! target x, got %q", setExpr[1])
+	}
+	if val := setExpr[2].(int64); val != 10 {
+		t.Fatalf("expected value 10, got %d", val)
+	}
+}
+
+func TestCompileStmtExpr(t *testing.T) {
+	b := &builder{}
+	stmt := &ExprStmt{Expr: &IdentifierExpr{Name: "print"}}
+	result, err := compileStmtWithRest(b, stmt, lang.SymbolValue("rest"), compileContext{})
+	if err != nil {
+		t.Fatalf("compileStmtWithRest: %v", err)
+	}
+	begin := requireListHead(t, result, "begin")
+	if sym := begin[1].(datumSymbol); string(sym) != "print" {
+		t.Fatalf("expected print expression, got %q", sym)
+	}
+}
+
+func TestCompileStmtBlock(t *testing.T) {
+	b := &builder{}
+	stmt := &BlockStmt{
+		Stmts: []Stmt{
+			&ExprStmt{Expr: &IdentifierExpr{Name: "inner"}},
+		},
+	}
+	result, err := compileStmtWithRest(b, stmt, lang.SymbolValue("rest"), compileContext{})
+	if err != nil {
+		t.Fatalf("compileStmtWithRest: %v", err)
+	}
+	begin := requireListHead(t, result, "begin")
+	if !containsSymbolWithPrefix(begin, "inner") {
+		t.Fatalf("expected inner symbol, got %#v", begin)
+	}
+}
+
+func TestCompileStmtIfWithElse(t *testing.T) {
+	b := &builder{}
+	stmt := &IfStmt{
+		Cond: &BoolExpr{Value: true},
+		Then: &BlockStmt{
+			Stmts: []Stmt{&ExprStmt{Expr: &IdentifierExpr{Name: "then-branch"}}},
+		},
+		Else: &BlockStmt{
+			Stmts: []Stmt{&ExprStmt{Expr: &IdentifierExpr{Name: "else-branch"}}},
+		},
+	}
+	result, err := compileStmtWithRest(b, stmt, lang.SymbolValue("rest"), compileContext{})
+	if err != nil {
+		t.Fatalf("compileStmtWithRest: %v", err)
+	}
+	begin := requireListHead(t, result, "begin")
+	ifExpr := begin[1].([]interface{})
+	if string(ifExpr[0].(datumSymbol)) != "if" {
+		t.Fatalf("expected if form, got %#v", ifExpr[0])
+	}
+	thenDatum := ifExpr[2].([]interface{})
+	if !containsSymbolWithPrefix(thenDatum, "then-branch") {
+		t.Fatalf("missing then branch, got %#v", thenDatum)
+	}
+	elseDatum := ifExpr[3].([]interface{})
+	if !containsSymbolWithPrefix(elseDatum, "else-branch") {
+		t.Fatalf("missing else branch, got %#v", elseDatum)
+	}
+}
+
+func TestCompileStmtIfWithoutElse(t *testing.T) {
+	b := &builder{}
+	stmt := &IfStmt{
+		Cond: &BoolExpr{Value: false},
+		Then: &BlockStmt{Stmts: []Stmt{}},
+	}
+	result, err := compileStmtWithRest(b, stmt, lang.SymbolValue("rest"), compileContext{})
+	if err != nil {
+		t.Fatalf("compileStmtWithRest: %v", err)
+	}
+	begin := requireListHead(t, result, "begin")
+	ifExpr := begin[1].([]interface{})
+	if _, ok := ifExpr[3].([]interface{}); !ok {
+		t.Fatalf("expected empty else list, got %#v", ifExpr[3])
+	}
+}
+
+func TestCompileStmtWhile(t *testing.T) {
+	b := &builder{}
+	stmt := &WhileStmt{
+		Cond: &BoolExpr{Value: true},
+		Body: &BlockStmt{
+			Stmts: []Stmt{
+				&ExprStmt{Expr: &IdentifierExpr{Name: "loop-body"}},
+			},
+		},
+	}
+	result, err := compileStmtWithRest(b, stmt, lang.SymbolValue("rest"), compileContext{})
+	if err != nil {
+		t.Fatalf("compileStmtWithRest: %v", err)
+	}
+	begin := requireListHead(t, result, "begin")
+	letForm := begin[1].([]interface{})
+	if string(letForm[0].(datumSymbol)) != "let" {
+		t.Fatalf("expected let form, got %#v", letForm[0])
+	}
+	if !containsSymbolWithPrefix(letForm, "__gisp_loop_") {
+		t.Fatalf("expected loop gensym, got %#v", letForm)
+	}
+}
+
+func TestCompileStmtReturnWithValue(t *testing.T) {
+	b := &builder{}
+	ctx := compileContext{}.withReturn("ret")
+	stmt := &ReturnStmt{Result: &NumberExpr{Value: "7"}}
+	result, err := compileStmtWithRest(b, stmt, lang.SymbolValue("rest"), ctx)
+	if err != nil {
+		t.Fatalf("compileStmtWithRest: %v", err)
+	}
+	call := valueToDatum(t, result).([]interface{})
+	if len(call) != 2 {
+		t.Fatalf("expected return invocation length 2, got %d", len(call))
+	}
+	if sym := call[0].(datumSymbol); string(sym) != "ret" {
+		t.Fatalf("expected ret symbol, got %q", sym)
+	}
+	if val := call[1].(int64); val != 7 {
+		t.Fatalf("expected return value 7, got %d", val)
+	}
+}
+
+func TestCompileStmtReturnWithoutValue(t *testing.T) {
+	b := &builder{}
+	ctx := compileContext{}.withReturn("ret")
+	stmt := &ReturnStmt{}
+	result, err := compileStmtWithRest(b, stmt, lang.SymbolValue("rest"), ctx)
+	if err != nil {
+		t.Fatalf("compileStmtWithRest: %v", err)
+	}
+	call := valueToDatum(t, result).([]interface{})
+	if _, ok := call[1].([]interface{}); !ok {
+		t.Fatalf("expected empty list return value, got %#v", call[1])
+	}
+}
+
+func TestCompileStmtReturnWithoutContext(t *testing.T) {
+	b := &builder{}
+	stmt := &ReturnStmt{}
+	_, err := compileStmtWithRest(b, stmt, lang.SymbolValue("rest"), compileContext{})
+	if err == nil || !strings.Contains(err.Error(), "return not allowed") {
+		t.Fatalf("expected return context error, got %v", err)
+	}
+}
+
+func TestCompileStmtUnsupported(t *testing.T) {
+	b := &builder{}
+	_, err := compileStmtWithRest(b, unsupportedStmt{}, lang.SymbolValue("rest"), compileContext{})
+	if err == nil || !strings.Contains(err.Error(), "unsupported statement") {
+		t.Fatalf("expected unsupported statement error, got %v", err)
+	}
+}
+
+func TestCompileExprIdentifier(t *testing.T) {
+	val, err := compileExpr(&builder{}, &IdentifierExpr{Name: "x"}, compileContext{})
+	if err != nil {
+		t.Fatalf("compileExpr: %v", err)
+	}
+	if sym := val.Sym; sym != "x" {
+		t.Fatalf("expected symbol x, got %s", sym)
+	}
+}
+
+func TestCompileExprNumber(t *testing.T) {
+	val, err := compileExpr(&builder{}, &NumberExpr{Value: "123"}, compileContext{})
+	if err != nil {
+		t.Fatalf("compileExpr: %v", err)
+	}
+	if val.Type != lang.TypeInt || val.Int != 123 {
+		t.Fatalf("expected int 123, got %#v", val)
+	}
+	floatVal, err := compileExpr(&builder{}, &NumberExpr{Value: "3.5"}, compileContext{})
+	if err != nil {
+		t.Fatalf("compileExpr float: %v", err)
+	}
+	if floatVal.Type != lang.TypeReal || math.Abs(floatVal.Real-3.5) > 1e-9 {
+		t.Fatalf("expected real 3.5, got %#v", floatVal)
+	}
+}
+
+func TestCompileExprStringBoolList(t *testing.T) {
+	b := &builder{}
+	strVal, err := compileExpr(b, &StringExpr{Value: "hello"}, compileContext{})
+	if err != nil || strVal.Type != lang.TypeString || strVal.Str != "hello" {
+		t.Fatalf("unexpected string result %#v, err %v", strVal, err)
+	}
+	boolVal, err := compileExpr(b, &BoolExpr{Value: true}, compileContext{})
+	if err != nil || boolVal.Type != lang.TypeBool || !boolVal.Bool {
+		t.Fatalf("unexpected bool result %#v, err %v", boolVal, err)
+	}
+	listVal, err := compileExpr(b, &ListExpr{
+		Elements: []Expr{
+			&NumberExpr{Value: "1"},
+			&NumberExpr{Value: "2"},
+		},
+	}, compileContext{})
+	if err != nil {
+		t.Fatalf("compileExpr list: %v", err)
+	}
+	list := valueToDatum(t, listVal).([]interface{})
+	if len(list) != 2 || list[0].(int64) != 1 || list[1].(int64) != 2 {
+		t.Fatalf("unexpected list %#v", list)
+	}
+}
+
+func TestCompileExprLambda(t *testing.T) {
+	b := &builder{}
+	expr := &LambdaExpr{
+		Params: []string{"x", "y"},
+		Body: &BlockStmt{
+			Stmts: []Stmt{&ReturnStmt{Result: &IdentifierExpr{Name: "x"}}},
+		},
+	}
+	val, err := compileExpr(b, expr, compileContext{})
+	if err != nil {
+		t.Fatalf("compileExpr lambda: %v", err)
+	}
+	lambda := requireListHead(t, val, "lambda")
+	params := lambda[1].([]interface{})
+	if len(params) != 2 || string(params[0].(datumSymbol)) != "x" || string(params[1].(datumSymbol)) != "y" {
+		t.Fatalf("unexpected parameters %#v", params)
+	}
+	body := lambda[2]
+	if !containsSymbolWithPrefix(body, "__gisp_return_") {
+		t.Fatalf("expected gensym return in lambda body, got %#v", body)
+	}
+}
+
+func TestCompileExprCall(t *testing.T) {
+	b := &builder{}
+	expr := &CallExpr{
+		Callee: &IdentifierExpr{Name: "sum"},
+		Args: []Expr{
+			&NumberExpr{Value: "1"},
+			&NumberExpr{Value: "2"},
+		},
+	}
+	val, err := compileExpr(b, expr, compileContext{})
+	if err != nil {
+		t.Fatalf("compileExpr call: %v", err)
+	}
+	call := valueToDatum(t, val).([]interface{})
+	if len(call) != 3 {
+		t.Fatalf("expected 3 elements, got %d", len(call))
+	}
+	if string(call[0].(datumSymbol)) != "sum" || call[1].(int64) != 1 || call[2].(int64) != 2 {
+		t.Fatalf("unexpected call %#v", call)
+	}
+}
+
+func TestCompileExprUnary(t *testing.T) {
+	b := &builder{}
+	tests := []struct {
+		name string
+		op   TokenType
+		head string
+	}{
+		{"negate", tokenMinus, "-"},
+		{"not", tokenBang, "not"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			val, err := compileExpr(b, &UnaryExpr{Op: tc.op, Expr: &NumberExpr{Value: "1"}}, compileContext{})
+			if err != nil {
+				t.Fatalf("compileExpr unary: %v", err)
+			}
+			list := requireListHead(t, val, tc.head)
+			if len(list) != 2 || list[1].(int64) != 1 {
+				t.Fatalf("unexpected unary list %#v", list)
+			}
+		})
+	}
+}
+
+func TestCompileExprUnaryUnsupported(t *testing.T) {
+	_, err := compileExpr(&builder{}, &UnaryExpr{Op: tokenPlus, Expr: &NumberExpr{Value: "1"}}, compileContext{})
+	if err == nil || !strings.Contains(err.Error(), "unsupported unary operator") {
+		t.Fatalf("expected unsupported unary operator error, got %v", err)
+	}
+}
+
+func TestCompileExprBinary(t *testing.T) {
+	b := &builder{}
+	tests := []struct {
+		name string
+		op   TokenType
+		head string
+	}{
+		{"add", tokenPlus, "+"},
+		{"sub", tokenMinus, "-"},
+		{"mul", tokenStar, "*"},
+		{"div", tokenSlash, "/"},
+		{"eq", tokenEqualEqual, "="},
+		{"lt", tokenLess, "<"},
+		{"le", tokenLessEqual, "<="},
+		{"gt", tokenGreater, ">"},
+		{"ge", tokenGreaterEqual, ">="},
+		{"and", tokenAndAnd, "and"},
+		{"or", tokenOrOr, "or"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			val, err := compileExpr(b, &BinaryExpr{
+				Op:    tc.op,
+				Left:  &NumberExpr{Value: "1"},
+				Right: &NumberExpr{Value: "2"},
+			}, compileContext{})
+			if err != nil {
+				t.Fatalf("compileExpr binary: %v", err)
+			}
+			list := requireListHead(t, val, tc.head)
+			if len(list) != 3 || list[1].(int64) != 1 || list[2].(int64) != 2 {
+				t.Fatalf("unexpected binary list %#v", list)
+			}
+		})
+	}
+}
+
+func TestCompileExprBinaryNotEqual(t *testing.T) {
+	val, err := compileExpr(&builder{}, &BinaryExpr{
+		Op:    tokenBangEqual,
+		Left:  &NumberExpr{Value: "1"},
+		Right: &NumberExpr{Value: "2"},
+	}, compileContext{})
+	if err != nil {
+		t.Fatalf("compileExpr binary !=: %v", err)
+	}
+	not := requireListHead(t, val, "not")
+	inner := not[1].([]interface{})
+	if string(inner[0].(datumSymbol)) != "=" {
+		t.Fatalf("expected equals inside not, got %#v", inner[0])
+	}
+}
+
+func TestCompileExprBinaryUnsupported(t *testing.T) {
+	_, err := compileExpr(&builder{}, &BinaryExpr{
+		Op:    tokenIllegal,
+		Left:  &NumberExpr{Value: "1"},
+		Right: &NumberExpr{Value: "2"},
+	}, compileContext{})
+	if err == nil || !strings.Contains(err.Error(), "unsupported binary operator") {
+		t.Fatalf("expected unsupported binary operator error, got %v", err)
+	}
+}
+
+func TestCompileExprSExprLiteral(t *testing.T) {
+	raw := lang.List(lang.SymbolValue("list"), lang.IntValue(1))
+	val, err := compileExpr(&builder{}, &SExprLiteral{Value: raw}, compileContext{})
+	if err != nil {
+		t.Fatalf("compileExpr sexpr: %v", err)
+	}
+	if val.String() != raw.String() {
+		t.Fatalf("expected literal to pass through, got %s", val.String())
+	}
+}
+
+func TestCompileExprUnsupported(t *testing.T) {
+	_, err := compileExpr(&builder{}, badExpr{}, compileContext{})
+	if err == nil || !strings.Contains(err.Error(), "unsupported expression") {
+		t.Fatalf("expected unsupported expression error, got %v", err)
+	}
+}
+
+func TestParseNumberIntegerAndFloat(t *testing.T) {
+	val, err := parseNumber("42")
+	if err != nil {
+		t.Fatalf("parseNumber: %v", err)
+	}
+	if val.Type != lang.TypeInt || val.Int != 42 {
+		t.Fatalf("expected int 42, got %#v", val)
+	}
+	val, err = parseNumber("6.022")
+	if err != nil {
+		t.Fatalf("parseNumber float: %v", err)
+	}
+	if val.Type != lang.TypeReal || math.Abs(val.Real-6.022) > 1e-9 {
+		t.Fatalf("expected real 6.022, got %#v", val)
+	}
+	val, err = parseNumber("1e2")
+	if err != nil {
+		t.Fatalf("parseNumber exp: %v", err)
+	}
+	if val.Type != lang.TypeReal || math.Abs(val.Real-100) > 1e-9 {
+		t.Fatalf("expected real 100, got %#v", val)
+	}
+}
+
+func TestParseNumberInvalid(t *testing.T) {
+	if _, err := parseNumber("123abc"); err == nil || !strings.Contains(err.Error(), "invalid integer literal") {
+		t.Fatalf("expected integer error, got %v", err)
+	}
+	if _, err := parseNumber("not-a-number"); err == nil || !strings.Contains(err.Error(), "invalid float literal") {
+		t.Fatalf("expected float error, got %v", err)
+	}
+	if _, err := parseNumber("1.2.3"); err == nil || !strings.Contains(err.Error(), "invalid float literal") {
+		t.Fatalf("expected float error, got %v", err)
+	}
+}
+
+type unsupportedDecl struct{}
+
+func (unsupportedDecl) Pos() Position { return Position{} }
+func (unsupportedDecl) declNode()     {}
+
+type unsupportedStmt struct{}
+
+func (unsupportedStmt) Pos() Position { return Position{} }
+func (unsupportedStmt) stmtNode()     {}
+
+type badExpr struct{}
+
+func (badExpr) Pos() Position { return Position{} }
+func (badExpr) exprNode()     {}
