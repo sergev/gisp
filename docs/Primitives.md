@@ -66,6 +66,8 @@ All of the following expect exactly one argument and return `#t` or `#f`. Predic
 
 ## String and Symbol Operations
 
+- `stringLength` — Returns the length of a string. Errors on non-string input.
+- `makeString` — Builds a new string of a given non-negative length. An optional single-character string supplies the fill character (defaults to a space). Errors on non-integer lengths, negative lengths, non-string fills, or fill strings longer than one character.
 - `stringAppend` — Concatenates string arguments. Non-string arguments raise a type error.
 - `symbolToString` — Converts a symbol to a string. Requires exactly one symbol argument.
 - `stringToSymbol` — Interns a string as a symbol. Requires exactly one string argument.

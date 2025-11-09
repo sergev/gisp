@@ -62,6 +62,8 @@ func installPrimitives(ev *lang.Evaluator) {
 
 	define("apply", primApply)
 	define("gensym", primGensym)
+	define("stringLength", primStringLength)
+	define("makeString", primMakeString)
 	define("stringAppend", primStringAppend)
 	define("symbolToString", primSymbolToString)
 	define("stringToSymbol", primStringToSymbol)
@@ -522,6 +524,48 @@ func primStringAppend(ev *lang.Evaluator, args []lang.Value) (lang.Value, error)
 			return lang.Value{}, typeError("stringAppend", "string", arg)
 		}
 		builder.WriteString(arg.Str)
+	}
+	return lang.StringValue(builder.String()), nil
+}
+
+func primStringLength(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	if len(args) != 1 {
+		return lang.Value{}, fmt.Errorf("stringLength expects 1 argument, got %d", len(args))
+	}
+	if args[0].Type != lang.TypeString {
+		return lang.Value{}, typeError("stringLength", "string", args[0])
+	}
+	return lang.IntValue(int64(len(args[0].Str))), nil
+}
+
+func primMakeString(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	if len(args) < 1 || len(args) > 2 {
+		return lang.Value{}, fmt.Errorf("makeString expects 1 or 2 arguments, got %d", len(args))
+	}
+	lengthArg := args[0]
+	if lengthArg.Type != lang.TypeInt {
+		return lang.Value{}, typeError("makeString", "integer", lengthArg)
+	}
+	if lengthArg.Int < 0 {
+		return lang.Value{}, fmt.Errorf("makeString length must be non-negative, got %d", lengthArg.Int)
+	}
+	fill := " "
+	if len(args) == 2 {
+		if args[1].Type != lang.TypeString {
+			return lang.Value{}, typeError("makeString", "string", args[1])
+		}
+		if len(args[1].Str) != 1 {
+			return lang.Value{}, fmt.Errorf("makeString expects single-character fill string, got length %d", len(args[1].Str))
+		}
+		fill = args[1].Str
+	}
+	if lengthArg.Int == 0 {
+		return lang.StringValue(""), nil
+	}
+	var builder strings.Builder
+	builder.Grow(int(lengthArg.Int))
+	for i := int64(0); i < lengthArg.Int; i++ {
+		builder.WriteString(fill)
 	}
 	return lang.StringValue(builder.String()), nil
 }

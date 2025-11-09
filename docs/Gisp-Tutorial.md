@@ -363,6 +363,8 @@ Because division always returns a real, the averages stay in floating-point even
 
 Each program below starts life as a Scheme example and is rewritten in Gisp. All of them run unmodified in the interpreter. Comments highlight where the Gisp version diverges from the original.
 
+The `examples/sierpinski.gisp` port shows how the new `stringLength` and `makeString` primitives let us carry over string-heavy Scheme programs (like the classic Sierpiński triangle) without rethinking the original recursion.
+
 ### 7.1 Newton's Method for Square Roots (SICP Section 1.1)
 
 The SICP procedure iteratively improves a guess `g` using `(average g (/ x g))` until the square is close enough. In Gisp we translate the structure while keeping the floating-point behaviour explicit:
