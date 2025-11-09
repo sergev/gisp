@@ -46,7 +46,7 @@ func TestMetacircularEvaluatorGisp(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to read mceval.gisp: %v", err)
 	}
-	if _, err := runtime.EvaluateReader(ev, bytes.NewReader(code)); err != nil {
+	if _, err := runtime.EvaluateGispReader(ev, bytes.NewReader(code)); err != nil {
 		t.Fatalf("failed loading mceval.gisp: %v", err)
 	}
 	runMetacircularAssertions(t, ev)

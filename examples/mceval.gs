@@ -1,25 +1,8 @@
 ;; Metacircular evaluator from SICP (Sections 4.1.1–4.1.4) ported to Gisp.
 
-;; Boolean aliases
-(define true #t)
-(define false #f)
-
-;; Predicate wrappers for Scheme-style names
-(define (number? x) (numberp x))
-(define (integer? x) (integerp x))
-(define (real? x) (realp x))
-(define (string? x) (stringp x))
-(define (symbol? x) (symbolp x))
-(define (pair? x) (pairp x))
-(define (null? x) (nullp x))
-(define (list? x) (listp x))
-(define (procedure? x) (procedurep x))
-(define (boolean? x) (booleanp x))
-(define (eq? a b) (eq a b))
-
 ;; List helpers
 (define (map proc lst)
-  (if (null? lst)
+  (if (nullp lst)
       '()
       (cons (proc (car lst)) (map proc (cdr lst)))))
 
@@ -30,19 +13,6 @@
 (define (caadr x) (car (car (cdr x))))
 (define (cddr x) (cdr (cdr x)))
 (define (cdddr x) (cdr (cdr (cdr x))))
-
-(define-macro (cond . clauses)
-  (define (expand remaining)
-    (if (null? remaining)
-        false
-        (let ((first (car remaining))
-              (rest (cdr remaining)))
-          (if (eq? (car first) 'else)
-              (cons 'begin (cdr first))
-              (list 'if (car first)
-                    (cons 'begin (cdr first))
-                    (expand rest))))))
-  (expand clauses))
 
 ;; Preserve access to host apply
 (define apply-in-underlying-scheme apply)
@@ -113,9 +83,9 @@
 ;;; SECTION 4.1.2
 
 (define (self-evaluating? exp)
-  (cond ((number? exp) true)
-        ((string? exp) true)
-        (else false)))
+  (cond ((numberp exp) #t)
+        ((stringp exp) #t)
+        (else #f)))
 
 (define (quoted? exp)
   (tagged-list? exp 'quote))
@@ -123,11 +93,11 @@
 (define (text-of-quotation exp) (cadr exp))
 
 (define (tagged-list? exp tag)
-  (if (pair? exp)
-      (eq? (car exp) tag)
-      false))
+  (if (pairp exp)
+      (eq (car exp) tag)
+      #f))
 
-(define (variable? exp) (symbol? exp))
+(define (variable? exp) (symbolp exp))
 
 (define (assignment? exp)
   (tagged-list? exp 'set!))
@@ -140,12 +110,12 @@
   (tagged-list? exp 'define))
 
 (define (definition-variable exp)
-  (if (symbol? (cadr exp))
+  (if (symbolp (cadr exp))
       (cadr exp)
       (caadr exp)))
 
 (define (definition-value exp)
-  (if (symbol? (cadr exp))
+  (if (symbolp (cadr exp))
       (caddr exp)
       (make-lambda (cdadr exp)
                    (cddr exp))))
@@ -165,9 +135,9 @@
 (define (if-consequent exp) (caddr exp))
 
 (define (if-alternative exp)
-  (if (not (null? (cdddr exp)))
+  (if (not (nullp (cdddr exp)))
       (cadddr exp)
-      false))
+      #f))
 
 (define (make-if predicate consequent alternative)
   (list 'if predicate consequent alternative))
@@ -176,22 +146,22 @@
 
 (define (begin-actions exp) (cdr exp))
 
-(define (last-exp? seq) (null? (cdr seq)))
+(define (last-exp? seq) (nullp (cdr seq)))
 (define (first-exp seq) (car seq))
 (define (rest-exps seq) (cdr seq))
 
 (define (sequence->exp seq)
-  (cond ((null? seq) seq)
+  (cond ((nullp seq) seq)
         ((last-exp? seq) (first-exp seq))
         (else (make-begin seq))))
 
 (define (make-begin seq) (cons 'begin seq))
 
-(define (application? exp) (pair? exp))
+(define (application? exp) (pairp exp))
 (define (operator exp) (car exp))
 (define (operands exp) (cdr exp))
 
-(define (no-operands? ops) (null? ops))
+(define (no-operands? ops) (nullp ops))
 (define (first-operand ops) (car ops))
 (define (rest-operands ops) (cdr ops))
 
@@ -200,7 +170,7 @@
 (define (cond-clauses exp) (cdr exp))
 
 (define (cond-else-clause? clause)
-  (eq? (cond-predicate clause) 'else))
+  (eq (cond-predicate clause) 'else))
 
 (define (cond-predicate clause) (car clause))
 
@@ -210,12 +180,12 @@
   (expand-clauses (cond-clauses exp)))
 
 (define (expand-clauses clauses)
-  (if (null? clauses)
-      false                          ; no else clause
+  (if (nullp clauses)
+      #f                          ; no else clause
       (let ((first (car clauses))
             (rest (cdr clauses)))
         (if (cond-else-clause? first)
-            (if (null? rest)
+            (if (nullp rest)
                 (sequence->exp (cond-actions first))
                 (error "ELSE clause isn't last -- COND->IF"
                        clauses))
@@ -226,10 +196,10 @@
 ;;; SECTION 4.1.3
 
 (define (true? x)
-  (not (eq? x false)))
+  (not (eq x #f)))
 
 (define (false? x)
-  (eq? x false))
+  (eq x #f))
 
 (define (make-procedure parameters body env)
   (list 'procedure parameters body env))
@@ -267,12 +237,12 @@
 (define (lookup-variable-value var env)
   (define (env-loop env)
     (define (scan vars vals)
-      (cond ((null? vars)
+      (cond ((nullp vars)
              (env-loop (enclosing-environment env)))
-            ((eq? var (car vars))
+            ((eq var (car vars))
              (car vals))
             (else (scan (cdr vars) (cdr vals)))))
-    (if (eq? env the-empty-environment)
+    (if (eq env the-empty-environment)
         (error "Unbound variable" var)
         (let ((frame (first-frame env)))
           (scan (frame-variables frame)
@@ -282,12 +252,12 @@
 (define (set-variable-value! var val env)
   (define (env-loop env)
     (define (scan vars vals)
-      (cond ((null? vars)
+      (cond ((nullp vars)
              (env-loop (enclosing-environment env)))
-            ((eq? var (car vars))
+            ((eq var (car vars))
              (set-car! vals val))
             (else (scan (cdr vars) (cdr vals)))))
-    (if (eq? env the-empty-environment)
+    (if (eq env the-empty-environment)
         (error "Unbound variable -- SET!" var)
         (let ((frame (first-frame env)))
           (scan (frame-variables frame)
@@ -297,9 +267,9 @@
 (define (define-variable! var val env)
   (let ((frame (first-frame env)))
     (define (scan vars vals)
-      (cond ((null? vars)
+      (cond ((nullp vars)
              (add-binding-to-frame! var val frame))
-            ((eq? var (car vars))
+            ((eq var (car vars))
              (set-car! vals val))
             (else (scan (cdr vars) (cdr vals)))))
     (scan (frame-variables frame)
@@ -312,8 +282,8 @@
          (extend-environment (primitive-procedure-names)
                              (primitive-procedure-objects)
                              the-empty-environment)))
-    (define-variable! 'true true initial-env)
-    (define-variable! 'false false initial-env)
+    (define-variable! 'true #t initial-env)
+    (define-variable! 'false #f initial-env)
     initial-env))
 
 (define (primitive-procedure? proc)
@@ -325,9 +295,9 @@
   (list (list 'car car)
         (list 'cdr cdr)
         (list 'cons cons)
-        (list 'null? null?)
-        (list 'pair? pair?)
-        (list 'eq? eq?)
+        (list 'null? nullp)
+        (list 'pair? pairp)
+        (list 'eq? eq)
         (list '+ +)
         (list '- -)
         (list '* *)
@@ -339,9 +309,9 @@
         (list '>= >=)
         (list 'not not)
         (list 'list list)
-        (list 'number? number?)
-        (list 'symbol? symbol?)
-        (list 'boolean? boolean?)
+        (list 'number? numberp)
+        (list 'symbol? symbolp)
+        (list 'boolean? booleanp)
         (list 'map map)))
 
 (define (primitive-procedure-names)
@@ -386,4 +356,3 @@
 ;; (driver-loop)
 
 'METACIRCULAR-EVALUATOR-LOADED
-

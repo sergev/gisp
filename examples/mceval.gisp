@@ -380,68 +380,67 @@ func extendEnvironment(vars, vals, baseEnv) {
 }
 
 func lookupVariableValue(variable, env) {
-	var envLoop = func(currentEnv) {
-		var scan = func(vars, vals) {
-			return switch {
-			case nullp(vars):
-				envLoop(enclosingEnvironment(currentEnv));
-			case eq(variable, car(vars)):
-				car(vals);
-			default:
-				scan(cdr(vars), cdr(vals));
-			};
-		};
-
+	var currentEnv = env;
+	while true {
 		if eq(currentEnv, theEmptyEnvironment) {
 			return error("Unbound variable", variable);
 		}
 
 		var frame = firstFrame(currentEnv);
-		return scan(frameVariables(frame), frameValues(frame));
-	};
+		var vars = frameVariables(frame);
+		var vals = frameValues(frame);
 
-	return envLoop(env);
+		while not(nullp(vars)) {
+			if eq(variable, car(vars)) {
+				return car(vals);
+			}
+			vars = cdr(vars);
+			vals = cdr(vals);
+		}
+
+		currentEnv = enclosingEnvironment(currentEnv);
+	}
 }
 
 func setVariableValue(variable, value, env) {
-	var envLoop = func(currentEnv) {
-		var scan = func(vars, vals) {
-			return switch {
-			case nullp(vars):
-				envLoop(enclosingEnvironment(currentEnv));
-			case eq(variable, car(vars)):
-				`(set-car! vals value);
-			default:
-				scan(cdr(vars), cdr(vals));
-			};
-		};
-
+	var currentEnv = env;
+	while true {
 		if eq(currentEnv, theEmptyEnvironment) {
 			return error("Unbound variable -- SET!", variable);
 		}
 
 		var frame = firstFrame(currentEnv);
-		return scan(frameVariables(frame), frameValues(frame));
-	};
+		var vars = frameVariables(frame);
+		var vals = frameValues(frame);
 
-	envLoop(env);
+		while not(nullp(vars)) {
+			if eq(variable, car(vars)) {
+				`(set-car! vals value);
+				return;
+			}
+			vars = cdr(vars);
+			vals = cdr(vals);
+		}
+
+		currentEnv = enclosingEnvironment(currentEnv);
+	}
 }
 
 func defineVariable(variable, value, env) {
 	var frame = firstFrame(env);
+	var vars = frameVariables(frame);
+	var vals = frameValues(frame);
 
-	var scan = func(vars, vals) {
-		return switch {
-		case nullp(vars):
-			addBindingToFrame(variable, value, frame);
-		case eq(variable, car(vars)):
+	while not(nullp(vars)) {
+		if eq(variable, car(vars)) {
 			`(set-car! vals value);
-		default:
-			scan(cdr(vars), cdr(vals));
-		};
-	};
+			return;
+		}
+		vars = cdr(vars);
+		vals = cdr(vals);
+	}
 
-	scan(frameVariables(frame), frameValues(frame));
+	addBindingToFrame(variable, value, frame);
 }
 
 // SECTION 4.1.4
@@ -456,6 +455,8 @@ func setupEnvironment() {
 	defineVariable(`'false, false, initialEnv);
 	return initialEnv;
 }
+
+`(define setup-environment setupEnvironment);
 
 func isPrimitiveProcedure(proc) {
 	return isTaggedList(proc, `'primitive);
@@ -486,7 +487,7 @@ var primitiveProcedures = [
 	[`'number?, numberp],
 	[`'symbol?, symbolp],
 	[`'boolean?, booleanp],
-	[`'map, mapList],
+	[`'map, mapList]
 ];
 
 func primitiveProcedureNames() {
