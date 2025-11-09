@@ -17,8 +17,8 @@ func TestPrimStringLength(t *testing.T) {
 	if val.Type != lang.TypeInt {
 		t.Fatalf("expected integer result, got %v", val)
 	}
-	if val.Int != 5 {
-		t.Fatalf("expected length 5, got %d", val.Int)
+	if val.Int() != 5 {
+		t.Fatalf("expected length 5, got %d", val.Int())
 	}
 }
 
@@ -44,8 +44,8 @@ func TestPrimMakeStringDefaultsToSpace(t *testing.T) {
 	if val.Type != lang.TypeString {
 		t.Fatalf("expected string result, got %v", val)
 	}
-	if val.Str != "   " {
-		t.Fatalf("expected three spaces, got %q", val.Str)
+	if val.Str() != "   " {
+		t.Fatalf("expected three spaces, got %q", val.Str())
 	}
 }
 
@@ -59,8 +59,8 @@ func TestPrimMakeStringCustomFill(t *testing.T) {
 	if err != nil {
 		t.Fatalf("primMakeString returned error: %v", err)
 	}
-	if val.Str != "****" {
-		t.Fatalf("expected \"****\", got %q", val.Str)
+	if val.Str() != "****" {
+		t.Fatalf("expected \"****\", got %q", val.Str())
 	}
 }
 

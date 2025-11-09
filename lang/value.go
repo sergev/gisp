@@ -24,19 +24,8 @@ const (
 
 // Value represents any runtime object in the interpreter.
 type Value struct {
-	Type ValueType
-
-	Bool bool
-	Int  int64
-	Real float64
-	Str  string
-	Sym  string
-
-	Pair         *Pair
-	Primitive    Primitive
-	Closure      *Closure
-	Continuation *Continuation
-	Macro        *Macro
+	Type    ValueType
+	payload interface{}
 }
 
 // Pair represents a cons cell.
@@ -76,37 +65,37 @@ var EmptyList = Value{Type: TypeEmpty}
 
 // BoolValue returns the boolean Value equivalent.
 func BoolValue(b bool) Value {
-	return Value{Type: TypeBool, Bool: b}
+	return Value{Type: TypeBool, payload: b}
 }
 
 // IntValue constructs an integer Value.
 func IntValue(i int64) Value {
-	return Value{Type: TypeInt, Int: i}
+	return Value{Type: TypeInt, payload: i}
 }
 
 // RealValue constructs a floating-point Value.
 func RealValue(f float64) Value {
 	if math.IsNaN(f) || math.IsInf(f, 0) {
-		return Value{Type: TypeReal, Real: f}
+		return Value{Type: TypeReal, payload: f}
 	}
-	return Value{Type: TypeReal, Real: f}
+	return Value{Type: TypeReal, payload: f}
 }
 
 // StringValue constructs a string Value.
 func StringValue(s string) Value {
-	return Value{Type: TypeString, Str: s}
+	return Value{Type: TypeString, payload: s}
 }
 
 // SymbolValue constructs a symbol Value.
 func SymbolValue(s string) Value {
-	return Value{Type: TypeSymbol, Sym: s}
+	return Value{Type: TypeSymbol, payload: s}
 }
 
 // PairValue constructs a pair Value.
 func PairValue(car, cdr Value) Value {
 	return Value{
-		Type: TypePair,
-		Pair: &Pair{Car: car, Cdr: cdr},
+		Type:    TypePair,
+		payload: &Pair{Car: car, Cdr: cdr},
 	}
 }
 
@@ -124,11 +113,12 @@ func ToSlice(list Value) ([]Value, error) {
 	var out []Value
 	cur := list
 	for cur.Type != TypeEmpty {
-		if cur.Type != TypePair || cur.Pair == nil {
+		p := cur.Pair()
+		if cur.Type != TypePair || p == nil {
 			return nil, fmt.Errorf("expected proper list")
 		}
-		out = append(out, cur.Pair.Car)
-		cur = cur.Pair.Cdr
+		out = append(out, p.Car)
+		cur = p.Cdr
 	}
 	return out, nil
 }
@@ -136,8 +126,8 @@ func ToSlice(list Value) ([]Value, error) {
 // PrimitiveValue wraps the primitive function.
 func PrimitiveValue(fn Primitive) Value {
 	return Value{
-		Type:      TypePrimitive,
-		Primitive: fn,
+		Type:    TypePrimitive,
+		payload: fn,
 	}
 }
 
@@ -145,15 +135,15 @@ func PrimitiveValue(fn Primitive) Value {
 func ClosureValue(params []string, rest string, body []Value, env *Env) Value {
 	return Value{
 		Type:    TypeClosure,
-		Closure: &Closure{Params: params, Rest: rest, Body: body, Env: env},
+		payload: &Closure{Params: params, Rest: rest, Body: body, Env: env},
 	}
 }
 
 // MacroValue wraps a macro transformer.
 func MacroValue(params []string, rest string, body []Value, env *Env) Value {
 	return Value{
-		Type:  TypeMacro,
-		Macro: &Macro{Params: params, Rest: rest, Body: body, Env: env},
+		Type:    TypeMacro,
+		payload: &Macro{Params: params, Rest: rest, Body: body, Env: env},
 	}
 }
 
@@ -161,7 +151,7 @@ func MacroValue(params []string, rest string, body []Value, env *Env) Value {
 func ContinuationValue(frames []frame, env *Env, ev *Evaluator) Value {
 	return Value{
 		Type: TypeContinuation,
-		Continuation: &Continuation{
+		payload: &Continuation{
 			Frames: frames,
 			Env:    env,
 			Eval:   ev,
@@ -169,23 +159,93 @@ func ContinuationValue(frames []frame, env *Env, ev *Evaluator) Value {
 	}
 }
 
+func (v Value) Bool() bool {
+	if b, ok := v.payload.(bool); ok {
+		return b
+	}
+	return false
+}
+
+func (v Value) Int() int64 {
+	if i, ok := v.payload.(int64); ok {
+		return i
+	}
+	return 0
+}
+
+func (v Value) Real() float64 {
+	if f, ok := v.payload.(float64); ok {
+		return f
+	}
+	return 0
+}
+
+func (v Value) Str() string {
+	if s, ok := v.payload.(string); ok {
+		return s
+	}
+	return ""
+}
+
+func (v Value) Sym() string {
+	if s, ok := v.payload.(string); ok {
+		return s
+	}
+	return ""
+}
+
+func (v Value) Pair() *Pair {
+	if p, ok := v.payload.(*Pair); ok {
+		return p
+	}
+	return nil
+}
+
+func (v Value) Primitive() Primitive {
+	if p, ok := v.payload.(Primitive); ok {
+		return p
+	}
+	return nil
+}
+
+func (v Value) Closure() *Closure {
+	if c, ok := v.payload.(*Closure); ok {
+		return c
+	}
+	return nil
+}
+
+func (v Value) Continuation() *Continuation {
+	if c, ok := v.payload.(*Continuation); ok {
+		return c
+	}
+	return nil
+}
+
+func (v Value) Macro() *Macro {
+	if m, ok := v.payload.(*Macro); ok {
+		return m
+	}
+	return nil
+}
+
 func (v Value) String() string {
 	switch v.Type {
 	case TypeEmpty:
 		return "()"
 	case TypeBool:
-		if v.Bool {
+		if v.Bool() {
 			return "#t"
 		}
 		return "#f"
 	case TypeInt:
-		return fmt.Sprintf("%d", v.Int)
+		return fmt.Sprintf("%d", v.Int())
 	case TypeReal:
-		return fmt.Sprintf("%g", v.Real)
+		return fmt.Sprintf("%g", v.Real())
 	case TypeString:
-		return fmt.Sprintf("%q", v.Str)
+		return fmt.Sprintf("%q", v.Str())
 	case TypeSymbol:
-		return v.Sym
+		return v.Sym()
 	case TypePair:
 		return pairToString(v)
 	case TypePrimitive:
@@ -206,15 +266,16 @@ func pairToString(v Value) string {
 	cur := v
 	first := true
 	for {
-		if cur.Type != TypePair || cur.Pair == nil {
+		p := cur.Pair()
+		if cur.Type != TypePair || p == nil {
 			out += fmt.Sprintf(". %s)", cur.String())
 			break
 		}
 		if !first {
 			out += " "
 		}
-		out += cur.Pair.Car.String()
-		cdr := cur.Pair.Cdr
+		out += p.Car.String()
+		cdr := p.Cdr
 		if cdr.Type == TypeEmpty {
 			out += ")"
 			break

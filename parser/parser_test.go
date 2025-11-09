@@ -33,15 +33,15 @@ func toDatum(t *testing.T, v lang.Value) interface{} {
 	t.Helper()
 	switch v.Type {
 	case lang.TypeSymbol:
-		return sexprSymbol(v.Sym)
+		return sexprSymbol(v.Sym())
 	case lang.TypeInt:
-		return v.Int
+		return v.Int()
 	case lang.TypeReal:
-		return v.Real
+		return v.Real()
 	case lang.TypeString:
-		return v.Str
+		return v.Str()
 	case lang.TypeBool:
-		return v.Bool
+		return v.Bool()
 	case lang.TypeEmpty:
 		return []interface{}{}
 	case lang.TypePair:
@@ -157,10 +157,10 @@ func identity(x) {
 	if len(items) != 3 {
 		t.Fatalf("expected define form of length 3, got %d", len(items))
 	}
-	if items[0].Type != lang.TypeSymbol || items[0].Sym != "define" {
+	if items[0].Type != lang.TypeSymbol || items[0].Sym() != "define" {
 		t.Fatalf("expected define symbol, got %v", items[0])
 	}
-	if items[1].Type != lang.TypeSymbol || items[1].Sym != "identity" {
+	if items[1].Type != lang.TypeSymbol || items[1].Sym() != "identity" {
 		t.Fatalf("expected identity symbol, got %v", items[1])
 	}
 	lambdaForm := items[2]
@@ -168,7 +168,7 @@ func identity(x) {
 	if err != nil {
 		t.Fatalf("expected lambda list: %v", err)
 	}
-	if len(lambdaSlice) < 3 || lambdaSlice[0].Sym != "lambda" {
+	if len(lambdaSlice) < 3 || lambdaSlice[0].Sym() != "lambda" {
 		t.Fatalf("expected lambda form, got %v", lambdaForm)
 	}
 	bodyStr := lambdaSlice[2].String()
@@ -194,10 +194,10 @@ func TestInlineSExprLiteral(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected proper list: %v", err)
 	}
-	if formSlice[0].Sym != "define" {
+	if formSlice[0].Sym() != "define" {
 		t.Fatalf("expected define, got %v", formSlice[0])
 	}
-	if formSlice[1].Sym != "expr" {
+	if formSlice[1].Sym() != "expr" {
 		t.Fatalf("expected binding name expr, got %v", formSlice[1])
 	}
 	expected := "(list 1 2 3)"
@@ -992,12 +992,12 @@ func TestParseNumber(t *testing.T) {
 			}
 			switch tc.wantTyp {
 			case lang.TypeInt:
-				if val.Int != tc.wantInt {
-					t.Fatalf("expected int %d, got %d", tc.wantInt, val.Int)
+				if val.Int() != tc.wantInt {
+					t.Fatalf("expected int %d, got %d", tc.wantInt, val.Int())
 				}
 			case lang.TypeReal:
-				if math.Abs(val.Real-tc.wantF) > 1e-9 {
-					t.Fatalf("expected float %f, got %f", tc.wantF, val.Real)
+				if math.Abs(val.Real()-tc.wantF) > 1e-9 {
+					t.Fatalf("expected float %f, got %f", tc.wantF, val.Real())
 				}
 			}
 		})

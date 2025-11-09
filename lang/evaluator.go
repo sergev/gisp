@@ -103,7 +103,7 @@ type frame interface {
 func (ev *Evaluator) evaluateCurrent(state *evalState) error {
 	switch state.expr.Type {
 	case TypeSymbol:
-		val, err := state.env.Get(state.expr.Sym)
+		val, err := state.env.Get(state.expr.Sym())
 		if err != nil {
 			return err
 		}
@@ -120,38 +120,42 @@ func (ev *Evaluator) evaluateCurrent(state *evalState) error {
 
 func (ev *Evaluator) evaluatePair(state *evalState) error {
 	list := state.expr
-	head := list.Pair.Car
+	pair := list.Pair()
+	if pair == nil {
+		return fmt.Errorf("expected pair value")
+	}
+	head := pair.Car
 
 	if head.Type == TypeSymbol {
-		switch head.Sym {
+		switch head.Sym() {
 		case "quote":
-			return ev.evalQuote(list.Pair.Cdr, state)
+			return ev.evalQuote(pair.Cdr, state)
 		case "if":
-			return ev.evalIf(list.Pair.Cdr, state)
+			return ev.evalIf(pair.Cdr, state)
 		case "begin":
-			return ev.evalBegin(list.Pair.Cdr, state)
+			return ev.evalBegin(pair.Cdr, state)
 		case "lambda":
-			return ev.evalLambda(list.Pair.Cdr, state)
+			return ev.evalLambda(pair.Cdr, state)
 		case "define":
-			return ev.evalDefine(list.Pair.Cdr, state)
+			return ev.evalDefine(pair.Cdr, state)
 		case "define-macro":
-			return ev.evalDefineMacro(list.Pair.Cdr, state)
+			return ev.evalDefineMacro(pair.Cdr, state)
 		case "set!":
-			return ev.evalSet(list.Pair.Cdr, state)
+			return ev.evalSet(pair.Cdr, state)
 		case "let":
-			return ev.evalLet(list.Pair.Cdr, state)
+			return ev.evalLet(pair.Cdr, state)
 		case "quasiquote":
-			return ev.evalQuasiQuote(list.Pair.Cdr, state)
+			return ev.evalQuasiQuote(pair.Cdr, state)
 		case "call/cc":
-			return ev.evalCallCC(list.Pair.Cdr, state)
+			return ev.evalCallCC(pair.Cdr, state)
 		case "cond":
-			return ev.evalCond(list.Pair.Cdr, state)
+			return ev.evalCond(pair.Cdr, state)
 		}
 	}
 
 	if head.Type == TypeSymbol {
-		if macroVal, err := state.env.Get(head.Sym); err == nil && macroVal.Type == TypeMacro {
-			expanded, err := ev.expandMacro(macroVal.Macro, list.Pair.Cdr, state.env)
+		if macroVal, err := state.env.Get(head.Sym()); err == nil && macroVal.Type == TypeMacro {
+			expanded, err := ev.expandMacro(macroVal.Macro(), pair.Cdr, state.env)
 			if err != nil {
 				return err
 			}
@@ -162,10 +166,10 @@ func (ev *Evaluator) evaluatePair(state *evalState) error {
 
 	frame := &callFrame{
 		env:       state.env,
-		remaining: list.Pair.Cdr,
+		remaining: pair.Cdr,
 	}
 	state.push(frame)
-	state.setExpr(list.Pair.Car, state.env)
+	state.setExpr(pair.Car, state.env)
 	return nil
 }
 
@@ -257,7 +261,7 @@ func (ev *Evaluator) runCondClauses(clauses []Value, env *Env, state *evalState)
 	}
 	predicate := items[0]
 	body := items[1]
-	if predicate.Type == TypeSymbol && predicate.Sym == "else" {
+	if predicate.Type == TypeSymbol && predicate.Sym() == "else" {
 		if len(clauses) != 1 {
 			return fmt.Errorf("cond else clause must be last")
 		}
@@ -378,23 +382,27 @@ func (ev *Evaluator) evalDefine(args Value, state *evalState) error {
 		if len(body) != 1 {
 			return fmt.Errorf("define expects a single value expression")
 		}
-		state.push(&defineFrame{name: target.Sym, env: state.env})
+		state.push(&defineFrame{name: target.Sym(), env: state.env})
 		state.setExpr(body[0], state.env)
 		return nil
 	}
 
 	if target.Type == TypePair {
-		nameVal := target.Pair.Car
+		targetPair := target.Pair()
+		if targetPair == nil {
+			return fmt.Errorf("invalid function definition target")
+		}
+		nameVal := targetPair.Car
 		if nameVal.Type != TypeSymbol {
 			return fmt.Errorf("function name in define must be a symbol")
 		}
-		paramsVal := target.Pair.Cdr
+		paramsVal := targetPair.Cdr
 		params, rest, err := parseParams(paramsVal)
 		if err != nil {
 			return err
 		}
 		lambda := ClosureValue(params, rest, body, state.env)
-		state.env.Define(nameVal.Sym, lambda)
+		state.env.Define(nameVal.Sym(), lambda)
 		state.value = lambda
 		state.returning = true
 		return nil
@@ -429,16 +437,20 @@ func (ev *Evaluator) evalDefineMacro(args Value, state *evalState) error {
 	}
 	head := parts[0]
 	body := parts[1:]
-	nameVal := head.Pair.Car
+	headPair := head.Pair()
+	if headPair == nil {
+		return fmt.Errorf("macro head must be a pair")
+	}
+	nameVal := headPair.Car
 	if nameVal.Type != TypeSymbol {
 		return fmt.Errorf("macro name must be a symbol")
 	}
-	params, rest, err := parseParams(head.Pair.Cdr)
+	params, rest, err := parseParams(headPair.Cdr)
 	if err != nil {
 		return err
 	}
 	macro := MacroValue(params, rest, body, state.env)
-	state.env.Define(nameVal.Sym, macro)
+	state.env.Define(nameVal.Sym(), macro)
 	state.value = macro
 	state.returning = true
 	return nil
@@ -456,7 +468,7 @@ func (ev *Evaluator) evalSet(args Value, state *evalState) error {
 	if nameVal.Type != TypeSymbol {
 		return fmt.Errorf("set! target must be a symbol")
 	}
-	state.push(&setFrame{name: nameVal.Sym, env: state.env})
+	state.push(&setFrame{name: nameVal.Sym(), env: state.env})
 	state.setExpr(parts[1], state.env)
 	return nil
 }
@@ -491,7 +503,7 @@ func (ev *Evaluator) evalLet(args Value, state *evalState) error {
 	bodyStart := 1
 	var letName string
 	if bindings.Type == TypeSymbol {
-		letName = bindings.Sym
+		letName = bindings.Sym()
 		if len(parts) < 3 {
 			return fmt.Errorf("named let expects bindings and body")
 		}
@@ -507,11 +519,18 @@ func (ev *Evaluator) evalLet(args Value, state *evalState) error {
 		if iter.Type != TypePair {
 			return fmt.Errorf("invalid binding list")
 		}
-		bind := iter.Pair.Car
+		iterPair := iter.Pair()
+		if iterPair == nil {
+			return fmt.Errorf("invalid binding list")
+		}
+		bind := iterPair.Car
 		if bind.Type != TypePair {
 			return fmt.Errorf("binding must be a list")
 		}
-		bPair := bind.Pair
+		bPair := bind.Pair()
+		if bPair == nil {
+			return fmt.Errorf("binding must be a pair")
+		}
 		name := bPair.Car
 		if name.Type != TypeSymbol {
 			return fmt.Errorf("binding name must be a symbol")
@@ -523,7 +542,7 @@ func (ev *Evaluator) evalLet(args Value, state *evalState) error {
 		}
 		names = append(names, name)
 		values = append(values, valueSlice[0])
-		iter = iter.Pair.Cdr
+		iter = iterPair.Cdr
 	}
 	paramNames := make([]Value, len(names))
 	copy(paramNames, names)
@@ -622,18 +641,26 @@ func (ev *Evaluator) expandMacro(m *Macro, args Value, env *Env) (Value, error) 
 func (ev *Evaluator) invokeProcedure(state *evalState, operator Value, args []Value) error {
 	switch operator.Type {
 	case TypePrimitive:
-		val, err := operator.Primitive(ev, args)
+		fn := operator.Primitive()
+		if fn == nil {
+			return fmt.Errorf("invalid primitive")
+		}
+		val, err := fn(ev, args)
 		if err != nil {
 			return err
 		}
 		state.value = val
 		state.returning = true
 	case TypeClosure:
-		newEnv := NewEnv(operator.Closure.Env)
-		if err := bindParameters(newEnv, operator.Closure.Params, operator.Closure.Rest, args); err != nil {
+		closure := operator.Closure()
+		if closure == nil {
+			return fmt.Errorf("invalid closure")
+		}
+		newEnv := NewEnv(closure.Env)
+		if err := bindParameters(newEnv, closure.Params, closure.Rest, args); err != nil {
 			return err
 		}
-		body := operator.Closure.Body
+		body := closure.Body
 		if len(body) == 0 {
 			state.value = EmptyList
 			state.returning = true
@@ -646,15 +673,16 @@ func (ev *Evaluator) invokeProcedure(state *evalState, operator Value, args []Va
 		}
 		state.setExpr(first, newEnv)
 	case TypeContinuation:
-		if operator.Continuation == nil || operator.Continuation.Eval == nil {
+		cont := operator.Continuation()
+		if cont == nil || cont.Eval == nil {
 			return fmt.Errorf("invalid continuation")
 		}
 		var arg Value = EmptyList
 		if len(args) > 0 {
 			arg = args[0]
 		}
-		state.cont = cloneFrames(operator.Continuation.Frames)
-		state.env = operator.Continuation.Env
+		state.cont = cloneFrames(cont.Frames)
+		state.env = cont.Env
 		state.value = arg
 		state.returning = true
 	default:
@@ -683,11 +711,15 @@ func (f *callFrame) apply(ev *Evaluator, val Value, state *evalState) error {
 		return ev.invokeProcedure(state, f.operator, f.args)
 	}
 
-	if f.remaining.Type != TypePair || f.remaining.Pair == nil {
+	if f.remaining.Type != TypePair {
 		return fmt.Errorf("malformed argument list")
 	}
-	next := f.remaining.Pair.Car
-	f.remaining = f.remaining.Pair.Cdr
+	remPair := f.remaining.Pair()
+	if remPair == nil {
+		return fmt.Errorf("malformed argument list")
+	}
+	next := remPair.Car
+	f.remaining = remPair.Cdr
 	state.push(f)
 	state.setExpr(next, f.env)
 	return nil
@@ -713,18 +745,22 @@ func parseParams(val Value) ([]string, string, error) {
 			if rest != "" {
 				return nil, "", fmt.Errorf("multiple rest parameters")
 			}
-			rest = val.Sym
+			rest = val.Sym()
 			break
 		}
 		if val.Type != TypePair {
 			return nil, "", fmt.Errorf("invalid parameter list")
 		}
-		name := val.Pair.Car
+		p := val.Pair()
+		if p == nil {
+			return nil, "", fmt.Errorf("invalid parameter list")
+		}
+		name := p.Car
 		if name.Type != TypeSymbol {
 			return nil, "", fmt.Errorf("parameter must be a symbol")
 		}
-		params = append(params, name.Sym)
-		val = val.Pair.Cdr
+		params = append(params, name.Sym())
+		val = p.Cdr
 	}
 	return params, rest, nil
 }
@@ -754,8 +790,12 @@ func listFromArgs(args []Value) Value {
 func expandQuasiQuote(expr Value, depth int) (Value, error) {
 	switch expr.Type {
 	case TypePair:
-		head := expr.Pair.Car
-		tail := expr.Pair.Cdr
+		p := expr.Pair()
+		if p == nil {
+			return Value{}, fmt.Errorf("expected pair")
+		}
+		head := p.Car
+		tail := p.Cdr
 		if tagged, ok, err := taggedForm(head, "unquote"); err != nil {
 			return Value{}, err
 		} else if ok {
@@ -824,17 +864,21 @@ func expandQuasiQuote(expr Value, depth int) (Value, error) {
 }
 
 func isSymbolNamed(v Value, name string) bool {
-	return v.Type == TypeSymbol && v.Sym == name
+	return v.Type == TypeSymbol && v.Sym() == name
 }
 
 func taggedForm(v Value, tag string) (Value, bool, error) {
-	if v.Type != TypePair || v.Pair == nil {
+	if v.Type != TypePair {
 		return Value{}, false, nil
 	}
-	if !isSymbolNamed(v.Pair.Car, tag) {
+	p := v.Pair()
+	if p == nil {
 		return Value{}, false, nil
 	}
-	args, err := listToSliceRaw(v.Pair.Cdr)
+	if !isSymbolNamed(p.Car, tag) {
+		return Value{}, false, nil
+	}
+	args, err := listToSliceRaw(p.Cdr)
 	if err != nil {
 		return Value{}, false, err
 	}
@@ -848,11 +892,15 @@ func listToSliceRaw(list Value) ([]Value, error) {
 	var out []Value
 	cur := list
 	for cur.Type != TypeEmpty {
-		if cur.Type != TypePair || cur.Pair == nil {
+		if cur.Type != TypePair {
 			return nil, fmt.Errorf("expected proper list")
 		}
-		out = append(out, cur.Pair.Car)
-		cur = cur.Pair.Cdr
+		p := cur.Pair()
+		if p == nil {
+			return nil, fmt.Errorf("expected proper list")
+		}
+		out = append(out, p.Car)
+		cur = p.Cdr
 	}
 	return out, nil
 }
@@ -870,5 +918,5 @@ func cloneFrames(frames []frame) []frame {
 
 // IsTruthy reports whether a value counts as true.
 func IsTruthy(v Value) bool {
-	return !(v.Type == TypeBool && !v.Bool)
+	return !(v.Type == TypeBool && !v.Bool())
 }

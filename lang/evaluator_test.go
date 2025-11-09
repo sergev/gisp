@@ -16,7 +16,7 @@ func newTestEvaluator() *Evaluator {
 		for _, arg := range args {
 			switch arg.Type {
 			case TypeInt:
-				sum += arg.Int
+				sum += arg.Int()
 			default:
 				return Value{}, errors.New("+: expected integers")
 			}
@@ -29,7 +29,7 @@ func newTestEvaluator() *Evaluator {
 		for _, arg := range args {
 			switch arg.Type {
 			case TypeInt:
-				prod *= arg.Int
+				prod *= arg.Int()
 			default:
 				return Value{}, errors.New("*: expected integers")
 			}
@@ -122,7 +122,7 @@ func TestEvaluatorEvalSymbol(t *testing.T) {
 	ev.Global.Define("answer", IntValue(42))
 
 	got := mustEval(t, ev, SymbolValue("answer"))
-	if got.Type != TypeInt || got.Int != 42 {
+	if got.Type != TypeInt || got.Int() != 42 {
 		t.Fatalf("expected 42, got %v", got)
 	}
 }
@@ -138,7 +138,7 @@ func TestEvaluatorEvalSymbolUnbound(t *testing.T) {
 func TestEvaluatorEvalAll(t *testing.T) {
 	ev := newTestEvaluator()
 	result := mustEvalAll(t, ev, IntValue(1), IntValue(2), IntValue(3))
-	if result.Type != TypeInt || result.Int != 3 {
+	if result.Type != TypeInt || result.Int() != 3 {
 		t.Fatalf("expected last value 3, got %v", result)
 	}
 }
@@ -148,7 +148,7 @@ func TestEvaluatorApplyPrimitive(t *testing.T) {
 	proc := SymbolValue("+")
 	call := List(proc, IntValue(1), IntValue(2), IntValue(3))
 	res := mustEval(t, ev, call)
-	if res.Type != TypeInt || res.Int != 6 {
+	if res.Type != TypeInt || res.Int() != 6 {
 		t.Fatalf("expected 6, got %v", res)
 	}
 }
@@ -158,7 +158,7 @@ func TestEvaluatorApplyClosure(t *testing.T) {
 	fn := List(SymbolValue("lambda"), List(SymbolValue("x"), SymbolValue("y")), List(SymbolValue("+"), SymbolValue("x"), SymbolValue("y")))
 	call := List(fn, IntValue(5), IntValue(7))
 	res := mustEval(t, ev, call)
-	if res.Type != TypeInt || res.Int != 12 {
+	if res.Type != TypeInt || res.Int() != 12 {
 		t.Fatalf("expected 12, got %v", res)
 	}
 }
@@ -170,7 +170,7 @@ func TestEvaluatorApplyContinuation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Apply error: %v", err)
 	}
-	if val.Type != TypeInt || val.Int != 99 {
+	if val.Type != TypeInt || val.Int() != 99 {
 		t.Fatalf("expected 99, got %v", val)
 	}
 }
@@ -202,13 +202,13 @@ func TestEvaluatorIf(t *testing.T) {
 
 	thenExpr := List(SymbolValue("if"), BoolValue(true), IntValue(1), IntValue(2))
 	ifVal := mustEval(t, ev, thenExpr)
-	if ifVal.Type != TypeInt || ifVal.Int != 1 {
+	if ifVal.Type != TypeInt || ifVal.Int() != 1 {
 		t.Fatalf("expected 1, got %v", ifVal)
 	}
 
 	elseExpr := List(SymbolValue("if"), BoolValue(false), IntValue(1), IntValue(2))
 	elseVal := mustEval(t, ev, elseExpr)
-	if elseVal.Type != TypeInt || elseVal.Int != 2 {
+	if elseVal.Type != TypeInt || elseVal.Int() != 2 {
 		t.Fatalf("expected 2, got %v", elseVal)
 	}
 
@@ -233,7 +233,7 @@ func TestEvaluatorCondSelectsClause(t *testing.T) {
 		List(SymbolValue("else"), IntValue(3)),
 	)
 	val := mustEval(t, ev, expr)
-	if val.Type != TypeInt || val.Int != 2 {
+	if val.Type != TypeInt || val.Int() != 2 {
 		t.Fatalf("expected 2, got %v", val)
 	}
 }
@@ -246,7 +246,7 @@ func TestEvaluatorCondElseFallback(t *testing.T) {
 		List(SymbolValue("else"), IntValue(5)),
 	)
 	val := mustEval(t, ev, expr)
-	if val.Type != TypeInt || val.Int != 5 {
+	if val.Type != TypeInt || val.Int() != 5 {
 		t.Fatalf("expected 5, got %v", val)
 	}
 
@@ -293,7 +293,7 @@ func TestEvaluatorBegin(t *testing.T) {
 	}
 
 	val := mustEval(t, ev, List(SymbolValue("begin"), IntValue(1), IntValue(2), IntValue(3)))
-	if val.Type != TypeInt || val.Int != 3 {
+	if val.Type != TypeInt || val.Int() != 3 {
 		t.Fatalf("expected 3, got %v", val)
 	}
 }
@@ -323,11 +323,11 @@ func TestEvaluatorDefine(t *testing.T) {
 
 	defineVal := List(SymbolValue("define"), SymbolValue("x"), IntValue(5))
 	res := mustEval(t, ev, defineVal)
-	if res.Type != TypeInt || res.Int != 5 {
+	if res.Type != TypeInt || res.Int() != 5 {
 		t.Fatalf("expected 5, got %v", res)
 	}
 	got, err := ev.Global.Get("x")
-	if err != nil || got.Int != 5 {
+	if err != nil || got.Int() != 5 {
 		t.Fatalf("expected global x = 5, got %v err=%v", got, err)
 	}
 
@@ -342,7 +342,7 @@ func TestEvaluatorDefine(t *testing.T) {
 	}
 	call := List(SymbolValue("add1"), IntValue(10))
 	callRes := mustEval(t, ev, call)
-	if callRes.Int != 11 {
+	if callRes.Int() != 11 {
 		t.Fatalf("expected 11, got %v", callRes)
 	}
 
@@ -368,12 +368,12 @@ func TestEvaluatorDefineMacro(t *testing.T) {
 
 	ev.Global.Define("#f", BoolValue(false))
 	whenTrue := mustEval(t, ev, List(SymbolValue("when"), BoolValue(true), IntValue(9)))
-	if whenTrue.Type != TypeInt || whenTrue.Int != 9 {
+	if whenTrue.Type != TypeInt || whenTrue.Int() != 9 {
 		t.Fatalf("expected 9, got %v", whenTrue)
 	}
 
 	whenFalse := mustEval(t, ev, List(SymbolValue("when"), BoolValue(false), IntValue(9)))
-	if whenFalse.Type != TypeBool || whenFalse.Bool {
+	if whenFalse.Type != TypeBool || whenFalse.Bool() {
 		t.Fatalf("expected #f, got %v", whenFalse)
 	}
 
@@ -389,11 +389,11 @@ func TestEvaluatorSet(t *testing.T) {
 
 	setExpr := List(SymbolValue("set!"), SymbolValue("x"), IntValue(10))
 	val := mustEval(t, ev, setExpr)
-	if val.Type != TypeInt || val.Int != 10 {
+	if val.Type != TypeInt || val.Int() != 10 {
 		t.Fatalf("expected 10, got %v", val)
 	}
 	bound, err := ev.Global.Get("x")
-	if err != nil || bound.Int != 10 {
+	if err != nil || bound.Int() != 10 {
 		t.Fatalf("expected x updated to 10, got %v err=%v", bound, err)
 	}
 
@@ -414,7 +414,7 @@ func TestEvaluatorLet(t *testing.T) {
 		List(SymbolValue("+"), SymbolValue("x"), SymbolValue("y")),
 	)
 	val := mustEval(t, ev, letExpr)
-	if val.Type != TypeInt || val.Int != 5 {
+	if val.Type != TypeInt || val.Int() != 5 {
 		t.Fatalf("expected 5, got %v", val)
 	}
 
@@ -431,13 +431,13 @@ func TestEvaluatorQuasiQuote(t *testing.T) {
 
 	symExpr := List(SymbolValue("quasiquote"), SymbolValue("foo"))
 	symVal := mustEval(t, ev, symExpr)
-	if symVal.Type != TypeSymbol || symVal.Sym != "foo" {
+	if symVal.Type != TypeSymbol || symVal.Sym() != "foo" {
 		t.Fatalf("expected foo, got %v", symVal)
 	}
 
 	expr := List(SymbolValue("quasiquote"), List(List(SymbolValue("unquote"), SymbolValue("a"))))
 	val := mustEval(t, ev, expr)
-	if val.Type != TypeInt || val.Int != 4 {
+	if val.Type != TypeInt || val.Int() != 4 {
 		t.Fatalf("expected 4, got %v", val)
 	}
 
@@ -453,7 +453,7 @@ func TestEvaluatorQuasiQuote(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ToSlice error: %v", err)
 	}
-	if len(items) != 3 || items[0].Int != 1 || items[1].Int != 2 || items[2].Int != 3 {
+	if len(items) != 3 || items[0].Int() != 1 || items[1].Int() != 2 || items[2].Int() != 3 {
 		t.Fatalf("unexpected quasiquote result: %v", valList)
 	}
 
@@ -479,7 +479,7 @@ func TestEvaluatorCallCC(t *testing.T) {
 		),
 	)
 	val := mustEval(t, ev, escape)
-	if val.Type != TypeInt || val.Int != 42 {
+	if val.Type != TypeInt || val.Int() != 42 {
 		t.Fatalf("expected 42, got %v", val)
 	}
 
@@ -500,7 +500,7 @@ func TestEvaluatorCallCC(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Apply continuation error: %v", err)
 	}
-	if result.Int != 7 {
+	if result.Int() != 7 {
 		t.Fatalf("expected 7 from continuation, got %v", result)
 	}
 }
@@ -536,7 +536,7 @@ func TestBindParameters(t *testing.T) {
 	}
 	x, _ := env.Get("x")
 	y, _ := env.Get("y")
-	if x.Int != 1 || y.Int != 2 {
+	if x.Int() != 1 || y.Int() != 2 {
 		t.Fatalf("unexpected bindings x=%v y=%v", x, y)
 	}
 
@@ -547,7 +547,7 @@ func TestBindParameters(t *testing.T) {
 	}
 	rest, _ := env2.Get("rest")
 	list, err2 := ToSlice(rest)
-	if err2 != nil || len(list) != 2 || list[0].Int != 2 || list[1].Int != 3 {
+	if err2 != nil || len(list) != 2 || list[0].Int() != 2 || list[1].Int() != 3 {
 		t.Fatalf("unexpected rest binding: %v", rest)
 	}
 
@@ -576,7 +576,7 @@ func TestExpandQuasiQuote(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expandQuasiQuote error: %v", err)
 	}
-	if expanded.Type != TypeSymbol || expanded.Sym != "a" {
+	if expanded.Type != TypeSymbol || expanded.Sym() != "a" {
 		t.Fatalf("unexpected expansion: %v", expanded)
 	}
 
@@ -592,7 +592,7 @@ func TestTaggedForm(t *testing.T) {
 	if err != nil || !ok {
 		t.Fatalf("expected tagged form, err=%v ok=%v", err, ok)
 	}
-	if arg.Type != TypeInt || arg.Int != 1 {
+	if arg.Type != TypeInt || arg.Int() != 1 {
 		t.Fatalf("unexpected argument %v", arg)
 	}
 
@@ -613,7 +613,7 @@ func TestListToSliceRaw(t *testing.T) {
 	if err != nil {
 		t.Fatalf("listToSliceRaw error: %v", err)
 	}
-	if len(slice) != 3 || slice[0].Int != 1 || slice[2].Int != 3 {
+	if len(slice) != 3 || slice[0].Int() != 1 || slice[2].Int() != 3 {
 		t.Fatalf("unexpected slice: %v", slice)
 	}
 
@@ -672,31 +672,35 @@ func valuesEqual(a, b Value) bool {
 	case TypeEmpty:
 		return true
 	case TypeBool:
-		return a.Bool == b.Bool
+		return a.Bool() == b.Bool()
 	case TypeInt:
-		return a.Int == b.Int
+		return a.Int() == b.Int()
 	case TypeReal:
-		return a.Real == b.Real
+		return a.Real() == b.Real()
 	case TypeString:
-		return a.Str == b.Str
+		return a.Str() == b.Str()
 	case TypeSymbol:
-		return a.Sym == b.Sym
+		return a.Sym() == b.Sym()
 	case TypePair:
-		if a.Pair == nil || b.Pair == nil {
-			return a.Pair == b.Pair
+		ap := a.Pair()
+		bp := b.Pair()
+		if ap == nil || bp == nil {
+			return ap == bp
 		}
-		return valuesEqual(a.Pair.Car, b.Pair.Car) && valuesEqual(a.Pair.Cdr, b.Pair.Cdr)
+		return valuesEqual(ap.Car, bp.Car) && valuesEqual(ap.Cdr, bp.Cdr)
 	case TypePrimitive:
-		if a.Primitive == nil || b.Primitive == nil {
-			return a.Primitive == nil && b.Primitive == nil
+		ap := a.Primitive()
+		bp := b.Primitive()
+		if ap == nil || bp == nil {
+			return ap == nil && bp == nil
 		}
-		return reflect.ValueOf(a.Primitive).Pointer() == reflect.ValueOf(b.Primitive).Pointer()
+		return reflect.ValueOf(ap).Pointer() == reflect.ValueOf(bp).Pointer()
 	case TypeClosure:
-		return a.Closure == b.Closure
+		return a.Closure() == b.Closure()
 	case TypeContinuation:
-		return a.Continuation == b.Continuation
+		return a.Continuation() == b.Continuation()
 	case TypeMacro:
-		return a.Macro == b.Macro
+		return a.Macro() == b.Macro()
 	default:
 		return false
 	}

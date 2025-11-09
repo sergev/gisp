@@ -27,8 +27,8 @@ fact(5);
 	if val.Type != lang.TypeInt {
 		t.Fatalf("expected integer result, got %v", val)
 	}
-	if val.Int != 120 {
-		t.Fatalf("expected 120, got %d", val.Int)
+	if val.Int() != 120 {
+		t.Fatalf("expected 120, got %d", val.Int())
 	}
 }
 
@@ -47,7 +47,7 @@ sign;
 	if err != nil {
 		t.Fatalf("EvaluateGispString switch returned error: %v", err)
 	}
-	if val.Type != lang.TypeInt || val.Int != -1 {
+	if val.Type != lang.TypeInt || val.Int() != -1 {
 		t.Fatalf("expected -1, got %v", val)
 	}
 }

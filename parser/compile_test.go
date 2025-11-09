@@ -15,15 +15,15 @@ func valueToDatum(t testing.TB, v lang.Value) interface{} {
 	t.Helper()
 	switch v.Type {
 	case lang.TypeSymbol:
-		return datumSymbol(v.Sym)
+		return datumSymbol(v.Sym())
 	case lang.TypeInt:
-		return v.Int
+		return v.Int()
 	case lang.TypeReal:
-		return v.Real
+		return v.Real()
 	case lang.TypeString:
-		return v.Str
+		return v.Str()
 	case lang.TypeBool:
-		return v.Bool
+		return v.Bool()
 	case lang.TypeEmpty:
 		return []interface{}{}
 	case lang.TypePair:
@@ -224,7 +224,7 @@ func TestCompileExprDecl(t *testing.T) {
 	if len(expr) != 1 {
 		t.Fatalf("expected single form, got %d", len(expr))
 	}
-	if sym := expr[0].Sym; sym != "foo" {
+	if sym := expr[0].Sym(); sym != "foo" {
 		t.Fatalf("expected symbol foo, got %s", sym)
 	}
 }
@@ -476,7 +476,7 @@ func TestCompileExprIdentifier(t *testing.T) {
 	if err != nil {
 		t.Fatalf("compileExpr: %v", err)
 	}
-	if sym := val.Sym; sym != "x" {
+	if sym := val.Sym(); sym != "x" {
 		t.Fatalf("expected symbol x, got %s", sym)
 	}
 }
@@ -486,14 +486,14 @@ func TestCompileExprNumber(t *testing.T) {
 	if err != nil {
 		t.Fatalf("compileExpr: %v", err)
 	}
-	if val.Type != lang.TypeInt || val.Int != 123 {
+	if val.Type != lang.TypeInt || val.Int() != 123 {
 		t.Fatalf("expected int 123, got %#v", val)
 	}
 	floatVal, err := compileExpr(&builder{}, &NumberExpr{Value: "3.5"}, compileContext{})
 	if err != nil {
 		t.Fatalf("compileExpr float: %v", err)
 	}
-	if floatVal.Type != lang.TypeReal || math.Abs(floatVal.Real-3.5) > 1e-9 {
+	if floatVal.Type != lang.TypeReal || math.Abs(floatVal.Real()-3.5) > 1e-9 {
 		t.Fatalf("expected real 3.5, got %#v", floatVal)
 	}
 }
@@ -501,11 +501,11 @@ func TestCompileExprNumber(t *testing.T) {
 func TestCompileExprStringBoolList(t *testing.T) {
 	b := &builder{}
 	strVal, err := compileExpr(b, &StringExpr{Value: "hello"}, compileContext{})
-	if err != nil || strVal.Type != lang.TypeString || strVal.Str != "hello" {
+	if err != nil || strVal.Type != lang.TypeString || strVal.Str() != "hello" {
 		t.Fatalf("unexpected string result %#v, err %v", strVal, err)
 	}
 	boolVal, err := compileExpr(b, &BoolExpr{Value: true}, compileContext{})
-	if err != nil || boolVal.Type != lang.TypeBool || !boolVal.Bool {
+	if err != nil || boolVal.Type != lang.TypeBool || !boolVal.Bool() {
 		t.Fatalf("unexpected bool result %#v, err %v", boolVal, err)
 	}
 	listVal, err := compileExpr(b, &ListExpr{
@@ -832,21 +832,21 @@ func TestParseNumberIntegerAndFloat(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parseNumber: %v", err)
 	}
-	if val.Type != lang.TypeInt || val.Int != 42 {
+	if val.Type != lang.TypeInt || val.Int() != 42 {
 		t.Fatalf("expected int 42, got %#v", val)
 	}
 	val, err = parseNumber("6.022")
 	if err != nil {
 		t.Fatalf("parseNumber float: %v", err)
 	}
-	if val.Type != lang.TypeReal || math.Abs(val.Real-6.022) > 1e-9 {
+	if val.Type != lang.TypeReal || math.Abs(val.Real()-6.022) > 1e-9 {
 		t.Fatalf("expected real 6.022, got %#v", val)
 	}
 	val, err = parseNumber("1e2")
 	if err != nil {
 		t.Fatalf("parseNumber exp: %v", err)
 	}
-	if val.Type != lang.TypeReal || math.Abs(val.Real-100) > 1e-9 {
+	if val.Type != lang.TypeReal || math.Abs(val.Real()-100) > 1e-9 {
 		t.Fatalf("expected real 100, got %#v", val)
 	}
 }

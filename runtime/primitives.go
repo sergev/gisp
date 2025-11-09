@@ -79,16 +79,16 @@ func primAdd(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 		switch arg.Type {
 		case lang.TypeInt:
 			if useFloat {
-				sumFloat += float64(arg.Int)
+				sumFloat += float64(arg.Int())
 			} else {
-				sumInt += arg.Int
+				sumInt += arg.Int()
 			}
 		case lang.TypeReal:
 			if !useFloat {
 				useFloat = true
 				sumFloat = float64(sumInt)
 			}
-			sumFloat += arg.Real
+			sumFloat += arg.Real()
 		default:
 			return lang.Value{}, typeError("+", "number", arg)
 		}
@@ -110,16 +110,16 @@ func primMul(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 		switch arg.Type {
 		case lang.TypeInt:
 			if useFloat {
-				prodFloat *= float64(arg.Int)
+				prodFloat *= float64(arg.Int())
 			} else {
-				prodInt *= arg.Int
+				prodInt *= arg.Int()
 			}
 		case lang.TypeReal:
 			if !useFloat {
 				useFloat = true
 				prodFloat = float64(prodInt)
 			}
-			prodFloat *= arg.Real
+			prodFloat *= arg.Real()
 		default:
 			return lang.Value{}, typeError("*", "number", arg)
 		}
@@ -140,9 +140,9 @@ func primSub(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 	accFloat := 0.0
 	switch first.Type {
 	case lang.TypeInt:
-		accInt = first.Int
+		accInt = first.Int()
 	case lang.TypeReal:
-		accFloat = first.Real
+		accFloat = first.Real()
 	default:
 		return lang.Value{}, typeError("-", "number", first)
 	}
@@ -156,16 +156,16 @@ func primSub(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 		switch arg.Type {
 		case lang.TypeInt:
 			if useFloat {
-				accFloat -= float64(arg.Int)
+				accFloat -= float64(arg.Int())
 			} else {
-				accInt -= arg.Int
+				accInt -= arg.Int()
 			}
 		case lang.TypeReal:
 			if !useFloat {
 				useFloat = true
 				accFloat = float64(accInt)
 			}
-			accFloat -= arg.Real
+			accFloat -= arg.Real()
 		default:
 			return lang.Value{}, typeError("-", "number", arg)
 		}
@@ -341,10 +341,11 @@ func primCar(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 		return lang.Value{}, fmt.Errorf("car expects 1 argument, got %d", len(args))
 	}
 	v := args[0]
-	if v.Type != lang.TypePair || v.Pair == nil {
+	p := v.Pair()
+	if v.Type != lang.TypePair || p == nil {
 		return lang.Value{}, fmt.Errorf("car expects a pair")
 	}
-	return v.Pair.Car, nil
+	return p.Car, nil
 }
 
 func primCdr(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
@@ -352,10 +353,11 @@ func primCdr(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 		return lang.Value{}, fmt.Errorf("cdr expects 1 argument, got %d", len(args))
 	}
 	v := args[0]
-	if v.Type != lang.TypePair || v.Pair == nil {
+	p := v.Pair()
+	if v.Type != lang.TypePair || p == nil {
 		return lang.Value{}, fmt.Errorf("cdr expects a pair")
 	}
-	return v.Pair.Cdr, nil
+	return p.Cdr, nil
 }
 
 func primSetCar(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
@@ -363,10 +365,11 @@ func primSetCar(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 		return lang.Value{}, fmt.Errorf("set-car! expects 2 arguments, got %d", len(args))
 	}
 	pair := args[0]
-	if pair.Type != lang.TypePair || pair.Pair == nil {
+	p := pair.Pair()
+	if pair.Type != lang.TypePair || p == nil {
 		return lang.Value{}, fmt.Errorf("set-car! expects a pair")
 	}
-	pair.Pair.Car = args[1]
+	p.Car = args[1]
 	return pair, nil
 }
 
@@ -375,10 +378,11 @@ func primSetCdr(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 		return lang.Value{}, fmt.Errorf("set-cdr! expects 2 arguments, got %d", len(args))
 	}
 	pair := args[0]
-	if pair.Type != lang.TypePair || pair.Pair == nil {
+	p := pair.Pair()
+	if pair.Type != lang.TypePair || p == nil {
 		return lang.Value{}, fmt.Errorf("set-cdr! expects a pair")
 	}
-	pair.Pair.Cdr = args[1]
+	p.Cdr = args[1]
 	return pair, nil
 }
 
@@ -435,7 +439,7 @@ func primDisplay(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 	v := args[0]
 	switch v.Type {
 	case lang.TypeString:
-		fmt.Fprint(os.Stdout, v.Str)
+		fmt.Fprint(os.Stdout, v.Str())
 	default:
 		fmt.Fprint(os.Stdout, v.String())
 	}
@@ -458,9 +462,9 @@ func primExit(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 		}
 		switch args[0].Type {
 		case lang.TypeInt:
-			code = int(args[0].Int)
+			code = int(args[0].Int())
 		case lang.TypeBool:
-			if args[0].Bool {
+			if args[0].Bool() {
 				code = 0
 			} else {
 				code = 1
@@ -480,7 +484,7 @@ func primError(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 	parts := make([]string, len(args))
 	for i, arg := range args {
 		if arg.Type == lang.TypeString {
-			parts[i] = arg.Str
+			parts[i] = arg.Str()
 		} else {
 			parts[i] = arg.String()
 		}
@@ -523,7 +527,7 @@ func primStringAppend(ev *lang.Evaluator, args []lang.Value) (lang.Value, error)
 		if arg.Type != lang.TypeString {
 			return lang.Value{}, typeError("stringAppend", "string", arg)
 		}
-		builder.WriteString(arg.Str)
+		builder.WriteString(arg.Str())
 	}
 	return lang.StringValue(builder.String()), nil
 }
@@ -535,7 +539,7 @@ func primStringLength(ev *lang.Evaluator, args []lang.Value) (lang.Value, error)
 	if args[0].Type != lang.TypeString {
 		return lang.Value{}, typeError("stringLength", "string", args[0])
 	}
-	return lang.IntValue(int64(len(args[0].Str))), nil
+	return lang.IntValue(int64(len(args[0].Str()))), nil
 }
 
 func primMakeString(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
@@ -546,25 +550,27 @@ func primMakeString(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 	if lengthArg.Type != lang.TypeInt {
 		return lang.Value{}, typeError("makeString", "integer", lengthArg)
 	}
-	if lengthArg.Int < 0 {
-		return lang.Value{}, fmt.Errorf("makeString length must be non-negative, got %d", lengthArg.Int)
+	length := lengthArg.Int()
+	if length < 0 {
+		return lang.Value{}, fmt.Errorf("makeString length must be non-negative, got %d", length)
 	}
 	fill := " "
 	if len(args) == 2 {
 		if args[1].Type != lang.TypeString {
 			return lang.Value{}, typeError("makeString", "string", args[1])
 		}
-		if len(args[1].Str) != 1 {
-			return lang.Value{}, fmt.Errorf("makeString expects single-character fill string, got length %d", len(args[1].Str))
+		str := args[1].Str()
+		if len(str) != 1 {
+			return lang.Value{}, fmt.Errorf("makeString expects single-character fill string, got length %d", len(str))
 		}
-		fill = args[1].Str
+		fill = str
 	}
-	if lengthArg.Int == 0 {
+	if length == 0 {
 		return lang.StringValue(""), nil
 	}
 	var builder strings.Builder
-	builder.Grow(int(lengthArg.Int))
-	for i := int64(0); i < lengthArg.Int; i++ {
+	builder.Grow(int(length))
+	for i := int64(0); i < length; i++ {
 		builder.WriteString(fill)
 	}
 	return lang.StringValue(builder.String()), nil
@@ -577,7 +583,7 @@ func primSymbolToString(ev *lang.Evaluator, args []lang.Value) (lang.Value, erro
 	if args[0].Type != lang.TypeSymbol {
 		return lang.Value{}, typeError("symbolToString", "symbol", args[0])
 	}
-	return lang.StringValue(args[0].Sym), nil
+	return lang.StringValue(args[0].Sym()), nil
 }
 
 func primStringToSymbol(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
@@ -587,7 +593,7 @@ func primStringToSymbol(ev *lang.Evaluator, args []lang.Value) (lang.Value, erro
 	if args[0].Type != lang.TypeString {
 		return lang.Value{}, typeError("stringToSymbol", "string", args[0])
 	}
-	return lang.SymbolValue(args[0].Str), nil
+	return lang.SymbolValue(args[0].Str()), nil
 }
 
 func primNumberToString(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
@@ -596,9 +602,9 @@ func primNumberToString(ev *lang.Evaluator, args []lang.Value) (lang.Value, erro
 	}
 	switch args[0].Type {
 	case lang.TypeInt:
-		return lang.StringValue(strconv.FormatInt(args[0].Int, 10)), nil
+		return lang.StringValue(strconv.FormatInt(args[0].Int(), 10)), nil
 	case lang.TypeReal:
-		return lang.StringValue(strconv.FormatFloat(args[0].Real, 'g', -1, 64)), nil
+		return lang.StringValue(strconv.FormatFloat(args[0].Real(), 'g', -1, 64)), nil
 	default:
 		return lang.Value{}, typeError("numberToString", "number", args[0])
 	}
@@ -611,7 +617,7 @@ func primStringToNumber(ev *lang.Evaluator, args []lang.Value) (lang.Value, erro
 	if args[0].Type != lang.TypeString {
 		return lang.Value{}, typeError("stringToNumber", "string", args[0])
 	}
-	str := strings.TrimSpace(args[0].Str)
+	str := strings.TrimSpace(args[0].Str())
 	if str == "" {
 		return lang.BoolValue(false), nil
 	}
@@ -667,9 +673,9 @@ func typeName(v lang.Value) string {
 func toFloat(v lang.Value) (float64, error) {
 	switch v.Type {
 	case lang.TypeInt:
-		return float64(v.Int), nil
+		return float64(v.Int()), nil
 	case lang.TypeReal:
-		return v.Real, nil
+		return v.Real(), nil
 	default:
 		return 0, fmt.Errorf("expected number")
 	}
@@ -683,25 +689,25 @@ func eqValues(a, b lang.Value) bool {
 	case lang.TypeEmpty:
 		return true
 	case lang.TypeBool:
-		return a.Bool == b.Bool
+		return a.Bool() == b.Bool()
 	case lang.TypeInt:
-		return a.Int == b.Int
+		return a.Int() == b.Int()
 	case lang.TypeReal:
-		return a.Real == b.Real
+		return a.Real() == b.Real()
 	case lang.TypeString:
-		return a.Str == b.Str
+		return a.Str() == b.Str()
 	case lang.TypeSymbol:
-		return a.Sym == b.Sym
+		return a.Sym() == b.Sym()
 	case lang.TypePair:
-		return a.Pair == b.Pair
+		return a.Pair() == b.Pair()
 	case lang.TypePrimitive:
-		return primitivePointer(a.Primitive) == primitivePointer(b.Primitive)
+		return primitivePointer(a.Primitive()) == primitivePointer(b.Primitive())
 	case lang.TypeClosure:
-		return a.Closure == b.Closure
+		return a.Closure() == b.Closure()
 	case lang.TypeContinuation:
-		return a.Continuation == b.Continuation
+		return a.Continuation() == b.Continuation()
 	case lang.TypeMacro:
-		return a.Macro == b.Macro
+		return a.Macro() == b.Macro()
 	default:
 		return false
 	}
@@ -709,10 +715,10 @@ func eqValues(a, b lang.Value) bool {
 
 func equalValues(a, b lang.Value) bool {
 	if a.Type == lang.TypeInt && b.Type == lang.TypeReal {
-		return float64(a.Int) == b.Real
+		return float64(a.Int()) == b.Real()
 	}
 	if a.Type == lang.TypeReal && b.Type == lang.TypeInt {
-		return a.Real == float64(b.Int)
+		return a.Real() == float64(b.Int())
 	}
 	if a.Type != b.Type {
 		return false
@@ -721,28 +727,30 @@ func equalValues(a, b lang.Value) bool {
 	case lang.TypeEmpty:
 		return true
 	case lang.TypeBool:
-		return a.Bool == b.Bool
+		return a.Bool() == b.Bool()
 	case lang.TypeInt:
-		return a.Int == b.Int
+		return a.Int() == b.Int()
 	case lang.TypeReal:
-		return a.Real == b.Real
+		return a.Real() == b.Real()
 	case lang.TypeString:
-		return a.Str == b.Str
+		return a.Str() == b.Str()
 	case lang.TypeSymbol:
-		return a.Sym == b.Sym
+		return a.Sym() == b.Sym()
 	case lang.TypePair:
-		if a.Pair == nil || b.Pair == nil {
-			return a.Pair == b.Pair
+		ap := a.Pair()
+		bp := b.Pair()
+		if ap == nil || bp == nil {
+			return ap == bp
 		}
-		return equalValues(a.Pair.Car, b.Pair.Car) && equalValues(a.Pair.Cdr, b.Pair.Cdr)
+		return equalValues(ap.Car, bp.Car) && equalValues(ap.Cdr, bp.Cdr)
 	case lang.TypePrimitive:
-		return primitivePointer(a.Primitive) == primitivePointer(b.Primitive)
+		return primitivePointer(a.Primitive()) == primitivePointer(b.Primitive())
 	case lang.TypeClosure:
-		return a.Closure == b.Closure
+		return a.Closure() == b.Closure()
 	case lang.TypeContinuation:
-		return a.Continuation == b.Continuation
+		return a.Continuation() == b.Continuation()
 	case lang.TypeMacro:
-		return a.Macro == b.Macro
+		return a.Macro() == b.Macro()
 	default:
 		return false
 	}

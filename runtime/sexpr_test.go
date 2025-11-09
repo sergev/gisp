@@ -27,11 +27,11 @@ func evalString(t *testing.T, ev *lang.Evaluator, src string) lang.Value {
 func TestArithmetic(t *testing.T) {
 	ev := NewEvaluator()
 	val := evalString(t, ev, "(+ 1 2 3 4)")
-	if val.Type != lang.TypeInt || val.Int != 10 {
+	if val.Type != lang.TypeInt || val.Int() != 10 {
 		t.Fatalf("expected 10, got %s", val.String())
 	}
 	val = evalString(t, ev, "(* 2 3 4)")
-	if val.Type != lang.TypeInt || val.Int != 24 {
+	if val.Type != lang.TypeInt || val.Int() != 24 {
 		t.Fatalf("expected 24, got %s", val.String())
 	}
 }
@@ -50,7 +50,7 @@ func TestMacroExpansion(t *testing.T) {
   (when #t (set! flag 42))
   flag)
 `)
-	if val.Type != lang.TypeInt || val.Int != 42 {
+	if val.Type != lang.TypeInt || val.Int() != 42 {
 		t.Fatalf("expected 42, got %s", val.String())
 	}
 }
@@ -68,7 +68,7 @@ func TestContinuation(t *testing.T) {
       (saved 'second)
       result))
 `)
-	if val.Type != lang.TypeSymbol || val.Sym != "second" {
+	if val.Type != lang.TypeSymbol || val.Sym() != "second" {
 		t.Fatalf("expected symbol second, got %s", val.String())
 	}
 }
@@ -83,7 +83,7 @@ func TestTailRecursion(t *testing.T) {
         (sum (- n 1) (+ acc n))))
   (sum 10000 0))
 `)
-	if val.Type != lang.TypeInt || val.Int != 50005000 {
+	if val.Type != lang.TypeInt || val.Int() != 50005000 {
 		t.Fatalf("unexpected result: %s", val.String())
 	}
 }
@@ -110,7 +110,7 @@ func TestExamples(t *testing.T) {
 			path: filepath.Join(baseExamples, "continuation.gs"),
 			validate: func(t *testing.T, v lang.Value) {
 				t.Helper()
-				if v.Type != lang.TypeInt || v.Int != 42 {
+				if v.Type != lang.TypeInt || v.Int() != 42 {
 					t.Fatalf("expected 42 from continuation example, got %s", v.String())
 				}
 			},

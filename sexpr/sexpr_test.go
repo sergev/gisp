@@ -246,20 +246,22 @@ func valuesEqual(a, b lang.Value) bool {
 	case lang.TypeEmpty:
 		return true
 	case lang.TypeBool:
-		return a.Bool == b.Bool
+		return a.Bool() == b.Bool()
 	case lang.TypeInt:
-		return a.Int == b.Int
+		return a.Int() == b.Int()
 	case lang.TypeReal:
-		return a.Real == b.Real
+		return a.Real() == b.Real()
 	case lang.TypeString:
-		return a.Str == b.Str
+		return a.Str() == b.Str()
 	case lang.TypeSymbol:
-		return a.Sym == b.Sym
+		return a.Sym() == b.Sym()
 	case lang.TypePair:
-		if a.Pair == nil || b.Pair == nil {
-			return a.Pair == nil && b.Pair == nil
+		ap := a.Pair()
+		bp := b.Pair()
+		if ap == nil || bp == nil {
+			return ap == nil && bp == nil
 		}
-		return valuesEqual(a.Pair.Car, b.Pair.Car) && valuesEqual(a.Pair.Cdr, b.Pair.Cdr)
+		return valuesEqual(ap.Car, bp.Car) && valuesEqual(ap.Cdr, bp.Cdr)
 	default:
 		return false
 	}

@@ -85,20 +85,20 @@ func runMetacircularAssertions(t *testing.T, ev *lang.Evaluator) {
 		return result
 	}
 
-	if got := evalSICP("(+ 1 2)"); got.Type != lang.TypeInt || got.Int != 3 {
+	if got := evalSICP("(+ 1 2)"); got.Type != lang.TypeInt || got.Int() != 3 {
 		t.Fatalf("expected (+ 1 2) => 3, got %s", got.String())
 	}
 
-	if got := evalSICP("((lambda (x) (* x x)) 5)"); got.Type != lang.TypeInt || got.Int != 25 {
+	if got := evalSICP("((lambda (x) (* x x)) 5)"); got.Type != lang.TypeInt || got.Int() != 25 {
 		t.Fatalf("expected lambda square => 25, got %s", got.String())
 	}
 
 	defineRes := evalSICP("(define (fact n) (if (= n 0) 1 (* n (fact (- n 1)))))")
-	if defineRes.Type != lang.TypeSymbol || defineRes.Sym != "ok" {
+	if defineRes.Type != lang.TypeSymbol || defineRes.Sym() != "ok" {
 		t.Fatalf("expected define to return symbol ok, got %s", defineRes.String())
 	}
 
-	if got := evalSICP("(fact 5)"); got.Type != lang.TypeInt || got.Int != 120 {
+	if got := evalSICP("(fact 5)"); got.Type != lang.TypeInt || got.Int() != 120 {
 		t.Fatalf("expected (fact 5) => 120, got %s", got.String())
 	}
 }
