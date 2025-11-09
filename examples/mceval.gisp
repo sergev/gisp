@@ -1,376 +1,548 @@
-;; Metacircular evaluator from SICP (Sections 4.1.1–4.1.4) ported to Gisp.
-
-;; Boolean aliases
-(define true #t)
-(define false #f)
-
-;; Predicate wrappers for Scheme-style names
-(define (number? x) (numberp x))
-(define (integer? x) (integerp x))
-(define (real? x) (realp x))
-(define (string? x) (stringp x))
-(define (symbol? x) (symbolp x))
-(define (pair? x) (pairp x))
-(define (null? x) (nullp x))
-(define (list? x) (listp x))
-(define (procedure? x) (procedurep x))
-(define (boolean? x) (booleanp x))
-(define (eq? a b) (eq a b))
-
-;; List helpers
-(define (map proc lst)
-  (if (null? lst)
-      '()
-      (cons (proc (car lst)) (map proc (cdr lst)))))
-
-(define (cadr x) (car (cdr x)))
-(define (caddr x) (car (cdr (cdr x))))
-(define (cadddr x) (car (cdr (cdr (cdr x)))))
-(define (cdadr x) (cdr (car (cdr x))))
-(define (caadr x) (car (car (cdr x))))
-(define (cddr x) (cdr (cdr x)))
-(define (cdddr x) (cdr (cdr (cdr x))))
-
-;; Preserve access to host apply
-(define apply-in-underlying-scheme apply)
-
-;;; SECTION 4.1.1
-
-(define (eval exp env)
-  (cond ((self-evaluating? exp) exp)
-        ((variable? exp) (lookup-variable-value exp env))
-        ((quoted? exp) (text-of-quotation exp))
-        ((assignment? exp) (eval-assignment exp env))
-        ((definition? exp) (eval-definition exp env))
-        ((if? exp) (eval-if exp env))
-        ((lambda? exp)
-         (make-procedure (lambda-parameters exp)
-                         (lambda-body exp)
-                         env))
-        ((begin? exp)
-         (eval-sequence (begin-actions exp) env))
-        ((cond? exp) (eval (cond->if exp) env))
-        ((application? exp)
-         (apply (eval (operator exp) env)
-                (list-of-values (operands exp) env)))
-        (else
-         (error "Unknown expression type -- EVAL" exp))))
-
-(define (apply procedure arguments)
-  (cond ((primitive-procedure? procedure)
-         (apply-primitive-procedure procedure arguments))
-        ((compound-procedure? procedure)
-         (eval-sequence
-          (procedure-body procedure)
-          (extend-environment
-           (procedure-parameters procedure)
-           arguments
-           (procedure-environment procedure))))
-        (else
-         (error "Unknown procedure type -- APPLY" procedure))))
-
-(define (list-of-values exps env)
-  (if (no-operands? exps)
-      '()
-      (cons (eval (first-operand exps) env)
-            (list-of-values (rest-operands exps) env))))
-
-(define (eval-if exp env)
-  (if (true? (eval (if-predicate exp) env))
-      (eval (if-consequent exp) env)
-      (eval (if-alternative exp) env)))
-
-(define (eval-sequence exps env)
-  (cond ((last-exp? exps) (eval (first-exp exps) env))
-        (else (eval (first-exp exps) env)
-              (eval-sequence (rest-exps exps) env))))
-
-(define (eval-assignment exp env)
-  (set-variable-value! (assignment-variable exp)
-                       (eval (assignment-value exp) env)
-                       env)
-  'ok)
-
-(define (eval-definition exp env)
-  (define-variable! (definition-variable exp)
-                    (eval (definition-value exp) env)
-                    env)
-  'ok)
-
-;;; SECTION 4.1.2
-
-(define (self-evaluating? exp)
-  (cond ((number? exp) true)
-        ((string? exp) true)
-        (else false)))
-
-(define (quoted? exp)
-  (tagged-list? exp 'quote))
-
-(define (text-of-quotation exp) (cadr exp))
-
-(define (tagged-list? exp tag)
-  (if (pair? exp)
-      (eq? (car exp) tag)
-      false))
-
-(define (variable? exp) (symbol? exp))
-
-(define (assignment? exp)
-  (tagged-list? exp 'set!))
-
-(define (assignment-variable exp) (cadr exp))
-
-(define (assignment-value exp) (caddr exp))
-
-(define (definition? exp)
-  (tagged-list? exp 'define))
-
-(define (definition-variable exp)
-  (if (symbol? (cadr exp))
-      (cadr exp)
-      (caadr exp)))
-
-(define (definition-value exp)
-  (if (symbol? (cadr exp))
-      (caddr exp)
-      (make-lambda (cdadr exp)
-                   (cddr exp))))
-
-(define (lambda? exp) (tagged-list? exp 'lambda))
-
-(define (lambda-parameters exp) (cadr exp))
-(define (lambda-body exp) (cddr exp))
-
-(define (make-lambda parameters body)
-  (cons 'lambda (cons parameters body)))
-
-(define (if? exp) (tagged-list? exp 'if))
-
-(define (if-predicate exp) (cadr exp))
-
-(define (if-consequent exp) (caddr exp))
-
-(define (if-alternative exp)
-  (if (not (null? (cdddr exp)))
-      (cadddr exp)
-      false))
-
-(define (make-if predicate consequent alternative)
-  (list 'if predicate consequent alternative))
-
-(define (begin? exp) (tagged-list? exp 'begin))
-
-(define (begin-actions exp) (cdr exp))
-
-(define (last-exp? seq) (null? (cdr seq)))
-(define (first-exp seq) (car seq))
-(define (rest-exps seq) (cdr seq))
-
-(define (sequence->exp seq)
-  (cond ((null? seq) seq)
-        ((last-exp? seq) (first-exp seq))
-        (else (make-begin seq))))
-
-(define (make-begin seq) (cons 'begin seq))
-
-(define (application? exp) (pair? exp))
-(define (operator exp) (car exp))
-(define (operands exp) (cdr exp))
-
-(define (no-operands? ops) (null? ops))
-(define (first-operand ops) (car ops))
-(define (rest-operands ops) (cdr ops))
-
-(define (cond? exp) (tagged-list? exp 'cond))
-
-(define (cond-clauses exp) (cdr exp))
-
-(define (cond-else-clause? clause)
-  (eq? (cond-predicate clause) 'else))
-
-(define (cond-predicate clause) (car clause))
-
-(define (cond-actions clause) (cdr clause))
-
-(define (cond->if exp)
-  (expand-clauses (cond-clauses exp)))
-
-(define (expand-clauses clauses)
-  (if (null? clauses)
-      false                          ; no else clause
-      (let ((first (car clauses))
-            (rest (cdr clauses)))
-        (if (cond-else-clause? first)
-            (if (null? rest)
-                (sequence->exp (cond-actions first))
-                (error "ELSE clause isn't last -- COND->IF"
-                       clauses))
-            (make-if (cond-predicate first)
-                     (sequence->exp (cond-actions first))
-                     (expand-clauses rest))))))
-
-;;; SECTION 4.1.3
-
-(define (true? x)
-  (not (eq? x false)))
-
-(define (false? x)
-  (eq? x false))
-
-(define (make-procedure parameters body env)
-  (list 'procedure parameters body env))
-
-(define (compound-procedure? p)
-  (tagged-list? p 'procedure))
-
-(define (procedure-parameters p) (cadr p))
-(define (procedure-body p) (caddr p))
-(define (procedure-environment p) (cadddr p))
-
-(define (enclosing-environment env) (cdr env))
-
-(define (first-frame env) (car env))
-
-(define the-empty-environment '())
-
-(define (make-frame variables values)
-  (cons variables values))
-
-(define (frame-variables frame) (car frame))
-(define (frame-values frame) (cdr frame))
-
-(define (add-binding-to-frame! var val frame)
-  (set-car! frame (cons var (car frame)))
-  (set-cdr! frame (cons val (cdr frame))))
-
-(define (extend-environment vars vals base-env)
-  (if (= (length vars) (length vals))
-      (cons (make-frame vars vals) base-env)
-      (if (< (length vars) (length vals))
-          (error "Too many arguments supplied" vars vals)
-          (error "Too few arguments supplied" vars vals))))
-
-(define (lookup-variable-value var env)
-  (define (env-loop env)
-    (define (scan vars vals)
-      (cond ((null? vars)
-             (env-loop (enclosing-environment env)))
-            ((eq? var (car vars))
-             (car vals))
-            (else (scan (cdr vars) (cdr vals)))))
-    (if (eq? env the-empty-environment)
-        (error "Unbound variable" var)
-        (let ((frame (first-frame env)))
-          (scan (frame-variables frame)
-                (frame-values frame)))))
-  (env-loop env))
-
-(define (set-variable-value! var val env)
-  (define (env-loop env)
-    (define (scan vars vals)
-      (cond ((null? vars)
-             (env-loop (enclosing-environment env)))
-            ((eq? var (car vars))
-             (set-car! vals val))
-            (else (scan (cdr vars) (cdr vals)))))
-    (if (eq? env the-empty-environment)
-        (error "Unbound variable -- SET!" var)
-        (let ((frame (first-frame env)))
-          (scan (frame-variables frame)
-                (frame-values frame)))))
-  (env-loop env))
-
-(define (define-variable! var val env)
-  (let ((frame (first-frame env)))
-    (define (scan vars vals)
-      (cond ((null? vars)
-             (add-binding-to-frame! var val frame))
-            ((eq? var (car vars))
-             (set-car! vals val))
-            (else (scan (cdr vars) (cdr vals)))))
-    (scan (frame-variables frame)
-          (frame-values frame))))
-
-;;; SECTION 4.1.4
-
-(define (setup-environment)
-  (let ((initial-env
-         (extend-environment (primitive-procedure-names)
-                             (primitive-procedure-objects)
-                             the-empty-environment)))
-    (define-variable! 'true true initial-env)
-    (define-variable! 'false false initial-env)
-    initial-env))
-
-(define (primitive-procedure? proc)
-  (tagged-list? proc 'primitive))
-
-(define (primitive-implementation proc) (cadr proc))
-
-(define primitive-procedures
-  (list (list 'car car)
-        (list 'cdr cdr)
-        (list 'cons cons)
-        (list 'null? null?)
-        (list 'pair? pair?)
-        (list 'eq? eq?)
-        (list '+ +)
-        (list '- -)
-        (list '* *)
-        (list '/ /)
-        (list '= =)
-        (list '< <)
-        (list '<= <=)
-        (list '> >)
-        (list '>= >=)
-        (list 'not not)
-        (list 'list list)
-        (list 'number? number?)
-        (list 'symbol? symbol?)
-        (list 'boolean? boolean?)
-        (list 'map map)))
-
-(define (primitive-procedure-names)
-  (map car
-       primitive-procedures))
-
-(define (primitive-procedure-objects)
-  (map (lambda (proc) (list 'primitive (cadr proc)))
-       primitive-procedures))
-
-(define (apply-primitive-procedure proc args)
-  (apply-in-underlying-scheme
-   (primitive-implementation proc) args))
-
-(define input-prompt ";;; M-Eval input:")
-(define output-prompt ";;; M-Eval value:")
-
-(define (driver-loop)
-  (prompt-for-input input-prompt)
-  (let ((input (read)))
-    (let ((output (eval input the-global-environment)))
-      (announce-output output-prompt)
-      (user-print output)))
-  (driver-loop))
-
-(define (prompt-for-input string)
-  (newline) (newline) (display string) (newline))
-
-(define (announce-output string)
-  (newline) (display string) (newline))
-
-(define (user-print object)
-  (if (compound-procedure? object)
-      (display (list 'compound-procedure
-                     (procedure-parameters object)
-                     (procedure-body object)
-                     '<procedure-env>))
-      (display object)))
-
-;; Optional boot sequence from original file. Uncomment to run interactively.
-;; (define the-global-environment (setup-environment))
-;; (driver-loop)
-
-'METACIRCULAR-EVALUATOR-LOADED
-
+// Metacircular evaluator from SICP (Sections 4.1.1–4.1.4) rewritten using the Go-like Gisp syntax.
+
+// List helpers
+func mapList(proc, lst) {
+	if nullp(lst) {
+		return [];
+	}
+	return cons(proc(car(lst)), mapList(proc, cdr(lst)));
+}
+
+func cadr(x) {
+	return car(cdr(x));
+}
+
+func caddr(x) {
+	return car(cdr(cdr(x)));
+}
+
+func cadddr(x) {
+	return car(cdr(cdr(cdr(x))));
+}
+
+func cdadr(x) {
+	return cdr(car(cdr(x)));
+}
+
+func caadr(x) {
+	return car(car(cdr(x)));
+}
+
+func cddr(x) {
+	return cdr(cdr(x));
+}
+
+func cdddr(x) {
+	return cdr(cdr(cdr(x)));
+}
+
+// Preserve access to host apply
+var applyInUnderlyingScheme = `apply;
+
+// SECTION 4.1.1
+
+func eval(exp, env) {
+	return switch {
+	case isSelfEvaluating(exp): exp;
+	case isVariable(exp): lookupVariableValue(exp, env);
+	case isQuoted(exp): textOfQuotation(exp);
+	case isAssignment(exp): evalAssignment(exp, env);
+	case isDefinition(exp): evalDefinition(exp, env);
+	case isIf(exp): evalIf(exp, env);
+	case isLambda(exp):
+		makeProcedure(lambdaParameters(exp), lambdaBody(exp), env);
+	case isBegin(exp):
+		evalSequence(beginActions(exp), env);
+	case isCond(exp):
+		eval(condToIf(exp), env);
+	case isApplication(exp):
+		apply(eval(operator(exp), env), listOfValues(operands(exp), env));
+	default:
+		error("Unknown expression type -- EVAL", exp);
+	};
+}
+
+func apply(procedure, arguments) {
+	return switch {
+	case isPrimitiveProcedure(procedure):
+		applyPrimitiveProcedure(procedure, arguments);
+	case isCompoundProcedure(procedure):
+		evalSequence(
+			procedureBody(procedure),
+			extendEnvironment(
+				procedureParameters(procedure),
+				arguments,
+				procedureEnvironment(procedure)
+			)
+		);
+	default:
+		error("Unknown procedure type -- APPLY", procedure);
+	};
+}
+
+func listOfValues(exps, env) {
+	if noOperands(exps) {
+		return [];
+	}
+	return cons(eval(firstOperand(exps), env), listOfValues(restOperands(exps), env));
+}
+
+func evalIf(exp, env) {
+	if isTrue(eval(ifPredicate(exp), env)) {
+		return eval(ifConsequent(exp), env);
+	}
+	return eval(ifAlternative(exp), env);
+}
+
+func evalSequence(exps, env) {
+	if isLastExp(exps) {
+		return eval(firstExp(exps), env);
+	}
+	eval(firstExp(exps), env);
+	return evalSequence(restExps(exps), env);
+}
+
+func evalAssignment(exp, env) {
+	setVariableValue(assignmentVariable(exp), eval(assignmentValue(exp), env), env);
+	return `(quote ok);
+}
+
+func evalDefinition(exp, env) {
+	defineVariable(definitionVariable(exp), eval(definitionValue(exp), env), env);
+	return `(quote ok);
+}
+
+// SECTION 4.1.2
+
+func isSelfEvaluating(exp) {
+	return switch {
+	case numberp(exp): true;
+	case stringp(exp): true;
+	default: false;
+	};
+}
+
+func isQuoted(exp) {
+	return isTaggedList(exp, `'quote);
+}
+
+func textOfQuotation(exp) {
+	return cadr(exp);
+}
+
+func isTaggedList(exp, tag) {
+	if pairp(exp) {
+		return eq(car(exp), tag);
+	}
+	return false;
+}
+
+func isVariable(exp) {
+	return symbolp(exp);
+}
+
+func isAssignment(exp) {
+	return isTaggedList(exp, `'set!);
+}
+
+func assignmentVariable(exp) {
+	return cadr(exp);
+}
+
+func assignmentValue(exp) {
+	return caddr(exp);
+}
+
+func isDefinition(exp) {
+	return isTaggedList(exp, `'define);
+}
+
+func definitionVariable(exp) {
+	if symbolp(cadr(exp)) {
+		return cadr(exp);
+	}
+	return caadr(exp);
+}
+
+func definitionValue(exp) {
+	if symbolp(cadr(exp)) {
+		return caddr(exp);
+	}
+	return makeLambda(cdadr(exp), cddr(exp));
+}
+
+func isLambda(exp) {
+	return isTaggedList(exp, `'lambda);
+}
+
+func lambdaParameters(exp) {
+	return cadr(exp);
+}
+
+func lambdaBody(exp) {
+	return cddr(exp);
+}
+
+func makeLambda(parameters, body) {
+	return cons(`'lambda, cons(parameters, body));
+}
+
+func isIf(exp) {
+	return isTaggedList(exp, `'if);
+}
+
+func ifPredicate(exp) {
+	return cadr(exp);
+}
+
+func ifConsequent(exp) {
+	return caddr(exp);
+}
+
+func ifAlternative(exp) {
+	if not(nullp(cdddr(exp))) {
+		return cadddr(exp);
+	}
+	return false;
+}
+
+func makeIf(predicate, consequent, alternative) {
+	return [`'if, predicate, consequent, alternative];
+}
+
+func isBegin(exp) {
+	return isTaggedList(exp, `'begin);
+}
+
+func beginActions(exp) {
+	return cdr(exp);
+}
+
+func isLastExp(seq) {
+	return nullp(cdr(seq));
+}
+
+func firstExp(seq) {
+	return car(seq);
+}
+
+func restExps(seq) {
+	return cdr(seq);
+}
+
+func sequenceToExp(seq) {
+	return switch {
+	case nullp(seq): seq;
+	case isLastExp(seq): firstExp(seq);
+	default: makeBegin(seq);
+	};
+}
+
+func makeBegin(seq) {
+	return cons(`'begin, seq);
+}
+
+func isApplication(exp) {
+	return pairp(exp);
+}
+
+func operator(exp) {
+	return car(exp);
+}
+
+func operands(exp) {
+	return cdr(exp);
+}
+
+func noOperands(ops) {
+	return nullp(ops);
+}
+
+func firstOperand(ops) {
+	return car(ops);
+}
+
+func restOperands(ops) {
+	return cdr(ops);
+}
+
+func isCond(exp) {
+	return isTaggedList(exp, `'cond);
+}
+
+func condClauses(exp) {
+	return cdr(exp);
+}
+
+func isCondElseClause(clause) {
+	return eq(condPredicate(clause), `'else);
+}
+
+func condPredicate(clause) {
+	return car(clause);
+}
+
+func condActions(clause) {
+	return cdr(clause);
+}
+
+func condToIf(exp) {
+	return expandClauses(condClauses(exp));
+}
+
+func expandClauses(clauses) {
+	if nullp(clauses) {
+		return false;
+	}
+
+	var first = car(clauses);
+	var rest = cdr(clauses);
+
+	if isCondElseClause(first) {
+		if nullp(rest) {
+			return sequenceToExp(condActions(first));
+		}
+		return error("ELSE clause isn't last -- COND->IF", clauses);
+	}
+
+	return makeIf(
+		condPredicate(first),
+		sequenceToExp(condActions(first)),
+		expandClauses(rest)
+	);
+}
+
+// SECTION 4.1.3
+
+func isTrue(x) {
+	return not(eq(x, false));
+}
+
+func isFalse(x) {
+	return eq(x, false);
+}
+
+func makeProcedure(parameters, body, env) {
+	return [`'procedure, parameters, body, env];
+}
+
+func isCompoundProcedure(p) {
+	return isTaggedList(p, `'procedure);
+}
+
+func procedureParameters(p) {
+	return cadr(p);
+}
+
+func procedureBody(p) {
+	return caddr(p);
+}
+
+func procedureEnvironment(p) {
+	return cadddr(p);
+}
+
+func enclosingEnvironment(env) {
+	return cdr(env);
+}
+
+func firstFrame(env) {
+	return car(env);
+}
+
+var theEmptyEnvironment = [];
+
+func makeFrame(variables, values) {
+	return cons(variables, values);
+}
+
+func frameVariables(frame) {
+	return car(frame);
+}
+
+func frameValues(frame) {
+	return cdr(frame);
+}
+
+func addBindingToFrame(variable, value, frame) {
+	`(set-car! frame (cons variable (car frame)));
+	`(set-cdr! frame (cons value (cdr frame)));
+}
+
+func extendEnvironment(vars, vals, baseEnv) {
+	if length(vars) == length(vals) {
+		return cons(makeFrame(vars, vals), baseEnv);
+	}
+	if length(vars) < length(vals) {
+		return error("Too many arguments supplied", vars, vals);
+	}
+	return error("Too few arguments supplied", vars, vals);
+}
+
+func lookupVariableValue(variable, env) {
+	var envLoop = func(currentEnv) {
+		var scan = func(vars, vals) {
+			return switch {
+			case nullp(vars):
+				envLoop(enclosingEnvironment(currentEnv));
+			case eq(variable, car(vars)):
+				car(vals);
+			default:
+				scan(cdr(vars), cdr(vals));
+			};
+		};
+
+		if eq(currentEnv, theEmptyEnvironment) {
+			return error("Unbound variable", variable);
+		}
+
+		var frame = firstFrame(currentEnv);
+		return scan(frameVariables(frame), frameValues(frame));
+	};
+
+	return envLoop(env);
+}
+
+func setVariableValue(variable, value, env) {
+	var envLoop = func(currentEnv) {
+		var scan = func(vars, vals) {
+			return switch {
+			case nullp(vars):
+				envLoop(enclosingEnvironment(currentEnv));
+			case eq(variable, car(vars)):
+				`(set-car! vals value);
+			default:
+				scan(cdr(vars), cdr(vals));
+			};
+		};
+
+		if eq(currentEnv, theEmptyEnvironment) {
+			return error("Unbound variable -- SET!", variable);
+		}
+
+		var frame = firstFrame(currentEnv);
+		return scan(frameVariables(frame), frameValues(frame));
+	};
+
+	envLoop(env);
+}
+
+func defineVariable(variable, value, env) {
+	var frame = firstFrame(env);
+
+	var scan = func(vars, vals) {
+		return switch {
+		case nullp(vars):
+			addBindingToFrame(variable, value, frame);
+		case eq(variable, car(vars)):
+			`(set-car! vals value);
+		default:
+			scan(cdr(vars), cdr(vals));
+		};
+	};
+
+	scan(frameVariables(frame), frameValues(frame));
+}
+
+// SECTION 4.1.4
+
+func setupEnvironment() {
+	var initialEnv = extendEnvironment(
+		primitiveProcedureNames(),
+		primitiveProcedureObjects(),
+		theEmptyEnvironment
+	);
+	defineVariable(`'true, true, initialEnv);
+	defineVariable(`'false, false, initialEnv);
+	return initialEnv;
+}
+
+func isPrimitiveProcedure(proc) {
+	return isTaggedList(proc, `'primitive);
+}
+
+func primitiveImplementation(proc) {
+	return cadr(proc);
+}
+
+var primitiveProcedures = [
+	[`'car, car],
+	[`'cdr, cdr],
+	[`'cons, cons],
+	[`'null?, nullp],
+	[`'pair?, pairp],
+	[`'eq?, eq],
+	[`'+, `+],
+	[`'-, `-],
+	[`'*, `*],
+	[`'/, `/],
+	[`'=, `=],
+	[`'<, `<],
+	[`'<=, `<=],
+	[`'>, `>],
+	[`'>=, `>=],
+	[`'not, not],
+	[`'list, list],
+	[`'number?, numberp],
+	[`'symbol?, symbolp],
+	[`'boolean?, booleanp],
+	[`'map, mapList],
+];
+
+func primitiveProcedureNames() {
+	return mapList(car, primitiveProcedures);
+}
+
+func primitiveProcedureObjects() {
+	return mapList(func(proc) {
+		return [`'primitive, cadr(proc)];
+	}, primitiveProcedures);
+}
+
+func applyPrimitiveProcedure(proc, args) {
+	return applyInUnderlyingScheme(primitiveImplementation(proc), args);
+}
+
+var inputPrompt = ";;; M-Eval input:";
+var outputPrompt = ";;; M-Eval value:";
+
+func driverLoop() {
+	promptForInput(inputPrompt);
+	var input = read();
+	var output = eval(input, theGlobalEnvironment);
+	announceOutput(outputPrompt);
+	userPrint(output);
+	driverLoop();
+}
+
+func promptForInput(text) {
+	newline();
+	newline();
+	display(text);
+	newline();
+}
+
+func announceOutput(text) {
+	newline();
+	display(text);
+	newline();
+}
+
+func userPrint(object) {
+	if isCompoundProcedure(object) {
+		display([
+			`'compound-procedure,
+			procedureParameters(object),
+			procedureBody(object),
+			`'<procedure-env>
+		]);
+		return;
+	}
+	display(object);
+}
+
+// Optional boot sequence from original file. Uncomment to run interactively.
+// var theGlobalEnvironment = setupEnvironment();
+// driverLoop();
+
+`(quote METACIRCULAR-EVALUATOR-LOADED);
