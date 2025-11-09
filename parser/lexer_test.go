@@ -34,10 +34,18 @@ func mustNextToken(t *testing.T, lx *lexer) Token {
 	return tok
 }
 
+func dropTrailingSemicolons(tokens []Token) []Token {
+	for len(tokens) > 0 && tokens[len(tokens)-1].Type == tokenSemicolon {
+		tokens = tokens[:len(tokens)-1]
+	}
+	return tokens
+}
+
 func TestLexerIdentifiersAndKeywords(t *testing.T) {
 	src := "func var const if else while return true false foo _bar baz123"
 	tokens := lexAllTokens(t, src)
 	tokens = tokens[:len(tokens)-1] // drop EOF
+	tokens = dropTrailingSemicolons(tokens)
 
 	want := []struct {
 		typ    TokenType
@@ -76,6 +84,7 @@ func TestLexerNumberLiterals(t *testing.T) {
 	src := "0 123 3.14 6.022e23 1e-9 42e+7 10."
 	tokens := lexAllTokens(t, src)
 	tokens = tokens[:len(tokens)-1]
+	tokens = dropTrailingSemicolons(tokens)
 
 	wantLexemes := []string{
 		"0",
@@ -113,6 +122,7 @@ func TestLexerStringLiterals(t *testing.T) {
 	src := "\"hello\\nworld\" \"tab\\tquote\\\" backslash\\\\\""
 	tokens := lexAllTokens(t, src)
 	tokens = tokens[:len(tokens)-1]
+	tokens = dropTrailingSemicolons(tokens)
 
 	want := []string{
 		"hello\nworld",
@@ -200,8 +210,12 @@ func TestLexerSExprLiteral(t *testing.T) {
 		t.Fatalf("unexpected position: %+v", tok.Pos)
 	}
 
-	if tok, err := lx.nextToken(); err != nil || tok.Type != tokenEOF {
-		t.Fatalf("expected EOF after S-expr literal, got token %v err %v", tok, err)
+	tok = mustNextToken(t, lx)
+	if tok.Type == tokenSemicolon {
+		tok = mustNextToken(t, lx)
+	}
+	if tok.Type != tokenEOF {
+		t.Fatalf("expected EOF after S-expr literal, got token %v", tok)
 	}
 }
 
@@ -294,6 +308,9 @@ func TestLexerOperatorAndPunctuationTokens(t *testing.T) {
 	}
 
 	tok := mustNextToken(t, lx)
+	if tok.Type == tokenSemicolon {
+		tok = mustNextToken(t, lx)
+	}
 	if tok.Type != tokenEOF {
 		t.Fatalf("expected EOF, got %v", tok.Type)
 	}
@@ -337,6 +354,55 @@ func TestLexerSingleAmpersandAndPipe(t *testing.T) {
 				t.Fatalf("unexpected error message: %v", err)
 			}
 		})
+	}
+}
+
+func TestLexerAutomaticSemicolonsAtNewline(t *testing.T) {
+	src := "var x = 1\nvar y = 2\n"
+	tokens := lexAllTokens(t, src)
+
+	var got []TokenType
+	for _, tok := range tokens {
+		got = append(got, tok.Type)
+	}
+
+	want := []TokenType{
+		tokenVar, tokenIdentifier, tokenAssign, tokenNumber, tokenSemicolon,
+		tokenVar, tokenIdentifier, tokenAssign, tokenNumber, tokenSemicolon,
+		tokenEOF,
+	}
+
+	if len(got) != len(want) {
+		t.Fatalf("token count mismatch\ngot:  %v\nwant: %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("token %d: expected %v, got %v", i, want[i], got[i])
+		}
+	}
+}
+
+func TestLexerSemicolonBeforeClosingBrace(t *testing.T) {
+	src := "func f() { return }"
+	tokens := lexAllTokens(t, src)
+
+	var sequence []TokenType
+	for _, tok := range tokens {
+		sequence = append(sequence, tok.Type)
+	}
+
+	if len(sequence) > 1 && sequence[len(sequence)-2] == tokenSemicolon && sequence[len(sequence)-1] == tokenEOF {
+		sequence = append([]TokenType{}, sequence[:len(sequence)-2]...)
+		sequence = append(sequence, tokenEOF)
+	}
+
+	want := []TokenType{
+		tokenFunc, tokenIdentifier, tokenLParen, tokenRParen, tokenLBrace,
+		tokenReturn, tokenSemicolon, tokenRBrace, tokenEOF,
+	}
+
+	if !reflect.DeepEqual(sequence, want) {
+		t.Fatalf("unexpected token sequence\n got: %v\nwant: %v", sequence, want)
 	}
 }
 

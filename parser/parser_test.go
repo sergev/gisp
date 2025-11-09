@@ -95,9 +95,9 @@ func TestParseFunction(t *testing.T) {
 	src := `
 func fact(n) {
 	if n == 0 {
-		return 1;
+		return 1
 	}
-	return n * fact(n - 1);
+	return n * fact(n - 1)
 }
 `
 	prog, err := Parse(src)
@@ -329,19 +329,19 @@ func TestParseFunctionBodyStatements(t *testing.T) {
 func demo(a, b) {
 	var sum = a + b
 	const limit = 10
-	sum = sum + limit;
+	sum = sum + limit
 	if sum > limit {
-		return sum;
+		return sum
 	} else {
-		return;
+		return
 	}
 	while sum < 100 {
-		sum = sum + 1;
+		sum = sum + 1
 	}
 	{
 		var inner = 1
 	}
-	print(sum);
+	print(sum)
 }
 `
 	prog := parseProgramFromSource(t, src)
@@ -469,8 +469,24 @@ func demo() {
 	}
 }
 
+func TestElseMustFollowClosingBraceOnSameLine(t *testing.T) {
+	src := `
+func demo() {
+	if true {
+		return
+	}
+	else {
+		return
+	}
+}
+`
+	if _, err := Parse(src); err == nil || !strings.Contains(err.Error(), "unexpected token") {
+		t.Fatalf("expected parse error complaining about misplaced else, got %v", err)
+	}
+}
+
 func TestParseExpressionPrecedence(t *testing.T) {
-	prog := parseProgramFromSource(t, "var value = 1 + 2 * 3 == 7 && !false;\n")
+	prog := parseProgramFromSource(t, "var value = 1 + 2 * 3 == 7 && !false\n")
 	if len(prog.Decls) != 1 {
 		t.Fatalf("expected single declaration, got %d", len(prog.Decls))
 	}
@@ -635,11 +651,6 @@ func TestParseErrors(t *testing.T) {
 		src     string
 		wantErr string
 	}{
-		{
-			name:    "missing semicolon",
-			src:     "var x = 1",
-			wantErr: "expected ;",
-		},
 		{
 			name:    "unterminated block",
 			src:     "func f() { var x = 1",

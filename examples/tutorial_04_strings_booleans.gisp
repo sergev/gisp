@@ -1,13 +1,13 @@
 #!/usr/bin/env gisp
 
 func main() {
-	var greeting = "Line one\nLine two";
-	var excited = true;
+	var greeting = "Line one\nLine two"
+	var excited = true
 
 	if excited {
-		display(greeting);
-		newline();
+		display(greeting)
+		newline()
 	}
 }
 
-main();
+main()

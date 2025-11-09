@@ -64,6 +64,12 @@ func (p *parser) expect(tt TokenType) (Token, error) {
 func (p *parser) parseProgram() (*Program, error) {
 	var decls []Decl
 	for p.curr.Type != tokenEOF {
+		if p.curr.Type == tokenSemicolon {
+			if err := p.advance(); err != nil {
+				return nil, err
+			}
+			continue
+		}
 		decl, err := p.parseTopLevelDecl()
 		if err != nil {
 			return nil, err
@@ -183,6 +189,12 @@ func (p *parser) parseBlock() (*BlockStmt, error) {
 	}
 	var stmts []Stmt
 	for p.curr.Type != tokenRBrace && p.curr.Type != tokenEOF {
+		if p.curr.Type == tokenSemicolon {
+			if err := p.advance(); err != nil {
+				return nil, err
+			}
+			continue
+		}
 		stmt, err := p.parseStatement()
 		if err != nil {
 			return nil, err

@@ -16,6 +16,12 @@ type lexer struct {
 	pos    int
 	line   int
 	column int
+
+	hasLastToken bool
+	lastToken    TokenType
+	lastPos      Position
+	bufferedTok  *Token
+	parenDepth   int
 }
 
 func newLexer(src string) *lexer {
@@ -69,48 +75,57 @@ func (lx *lexer) unread(state runeState) {
 	lx.restore(state)
 }
 
-func (lx *lexer) skipWhitespace() error {
+func (lx *lexer) skipWhitespace() (bool, error) {
+	sawNewline := false
 	for {
 		r, _, state, err := lx.readRune()
 		if err == io.EOF {
-			return nil
+			return sawNewline, nil
 		}
 		if err != nil {
-			return err
+			return false, err
 		}
 		switch {
 		case unicode.IsSpace(r):
+			if r == '\n' {
+				sawNewline = true
+			}
 			continue
 		case r == '/':
 			next, _, nextState, err := lx.readRune()
 			if err == io.EOF {
 				lx.unread(state)
-				return nil
+				return sawNewline, nil
 			}
 			if err != nil {
-				return err
+				return false, err
 			}
 			if next == '/' {
 				if err := lx.skipLine(); err != nil {
 					if err == io.EOF {
-						return nil
+						return sawNewline, nil
 					}
-					return err
+					return false, err
 				}
+				sawNewline = true
 				continue
 			}
 			if next == '*' {
-				if err := lx.skipBlockComment(); err != nil {
-					return err
+				newlineInComment, err := lx.skipBlockComment()
+				if err != nil {
+					return false, err
+				}
+				if newlineInComment {
+					sawNewline = true
 				}
 				continue
 			}
 			lx.unread(nextState)
 			lx.unread(state)
-			return nil
+			return sawNewline, nil
 		default:
 			lx.unread(state)
-			return nil
+			return sawNewline, nil
 		}
 	}
 }
@@ -127,25 +142,29 @@ func (lx *lexer) skipLine() error {
 	}
 }
 
-func (lx *lexer) skipBlockComment() error {
+func (lx *lexer) skipBlockComment() (bool, error) {
+	sawNewline := false
 	for {
 		r, _, _, err := lx.readRune()
 		if err != nil {
 			if err == io.EOF {
-				return fmt.Errorf("unterminated block comment")
+				return sawNewline, fmt.Errorf("unterminated block comment")
 			}
-			return err
+			return sawNewline, err
+		}
+		if r == '\n' {
+			sawNewline = true
 		}
 		if r == '*' {
 			next, _, state, err := lx.readRune()
 			if err == io.EOF {
-				return fmt.Errorf("unterminated block comment")
+				return sawNewline, fmt.Errorf("unterminated block comment")
 			}
 			if err != nil {
-				return err
+				return sawNewline, err
 			}
 			if next == '/' {
-				return nil
+				return sawNewline, nil
 			}
 			lx.unread(state)
 		}
@@ -153,31 +172,56 @@ func (lx *lexer) skipBlockComment() error {
 }
 
 func (lx *lexer) nextToken() (Token, error) {
-	if err := lx.skipWhitespace(); err != nil {
+	if lx.bufferedTok != nil {
+		defer func() { lx.bufferedTok = nil }()
+		return lx.emit(*lx.bufferedTok), nil
+	}
+
+	sawNewline, err := lx.skipWhitespace()
+	if err != nil {
 		return Token{}, err
 	}
+	if sawNewline && lx.shouldInsertSemicolon() && lx.parenDepth == 0 {
+		return lx.emit(Token{
+			Type: tokenSemicolon,
+			Pos:  lx.lastPos,
+		}), nil
+	}
+
 	if lx.pos >= len(lx.src) {
-		return Token{
+		if lx.shouldInsertSemicolon() && lx.parenDepth == 0 {
+			return lx.emit(Token{
+				Type: tokenSemicolon,
+				Pos:  lx.lastPos,
+			}), nil
+		}
+		return lx.emit(Token{
 			Type: tokenEOF,
 			Pos: Position{
 				Offset: lx.pos,
 				Line:   lx.line,
 				Column: lx.column,
 			},
-		}, nil
+		}), nil
 	}
 
 	start := lx.mark()
 	r, _, _, err := lx.readRune()
 	if err == io.EOF {
-		return Token{
+		if lx.shouldInsertSemicolon() && lx.parenDepth == 0 {
+			return lx.emit(Token{
+				Type: tokenSemicolon,
+				Pos:  lx.lastPos,
+			}), nil
+		}
+		return lx.emit(Token{
 			Type: tokenEOF,
 			Pos: Position{
 				Offset: start.pos,
 				Line:   start.line,
 				Column: start.column,
 			},
-		}, nil
+		}), nil
 	}
 	if err != nil {
 		return Token{}, err
@@ -189,104 +233,176 @@ func (lx *lexer) nextToken() (Token, error) {
 		if err != nil {
 			return Token{}, err
 		}
-		return makeIdentifierToken(lexeme, start), nil
+		tok := makeIdentifierToken(lexeme, start)
+		return lx.maybeEmitWithBuffer(tok)
 	case unicode.IsDigit(r):
 		lexeme, err := lx.scanNumber(r, start)
 		if err != nil {
 			return Token{}, err
 		}
-		return Token{
+		tok := Token{
 			Type:   tokenNumber,
 			Lexeme: lexeme,
 			Pos:    positionFromState(start),
-		}, nil
+		}
+		return lx.maybeEmitWithBuffer(tok)
 	case r == '"':
 		value, err := lx.scanString()
 		if err != nil {
 			return Token{}, err
 		}
-		return Token{
+		tok := Token{
 			Type:  tokenString,
 			Value: value,
 			Pos:   positionFromState(start),
-		}, nil
+		}
+		return lx.maybeEmitWithBuffer(tok)
 	case r == '`':
 		value, err := lx.scanSExpr(start)
 		if err != nil {
 			return Token{}, err
 		}
-		return Token{
+		tok := Token{
 			Type:  tokenSExpr,
 			Value: value,
 			Pos:   positionFromState(start),
-		}, nil
+		}
+		return lx.maybeEmitWithBuffer(tok)
 	}
 
+	var tok Token
 	switch r {
 	case '+':
-		return simpleToken(tokenPlus, start), nil
+		tok = simpleToken(tokenPlus, start)
 	case '-':
-		return simpleToken(tokenMinus, start), nil
+		tok = simpleToken(tokenMinus, start)
 	case '*':
-		return simpleToken(tokenStar, start), nil
+		tok = simpleToken(tokenStar, start)
 	case '/':
-		return simpleToken(tokenSlash, start), nil
+		tok = simpleToken(tokenSlash, start)
 	case '%':
-		return Token{
+		return lx.emit(Token{
 			Type: tokenIllegal,
 			Pos:  positionFromState(start),
-		}, fmt.Errorf("unsupported operator %%")
+		}), fmt.Errorf("unsupported operator %%")
 	case '(':
-		return simpleToken(tokenLParen, start), nil
+		tok = simpleToken(tokenLParen, start)
 	case ')':
-		return simpleToken(tokenRParen, start), nil
+		tok = simpleToken(tokenRParen, start)
 	case '{':
-		return simpleToken(tokenLBrace, start), nil
+		tok = simpleToken(tokenLBrace, start)
 	case '}':
-		return simpleToken(tokenRBrace, start), nil
+		tok = simpleToken(tokenRBrace, start)
 	case '[':
-		return simpleToken(tokenLBracket, start), nil
+		tok = simpleToken(tokenLBracket, start)
 	case ']':
-		return simpleToken(tokenRBracket, start), nil
+		tok = simpleToken(tokenRBracket, start)
 	case ',':
-		return simpleToken(tokenComma, start), nil
+		tok = simpleToken(tokenComma, start)
 	case ';':
-		return simpleToken(tokenSemicolon, start), nil
+		tok = simpleToken(tokenSemicolon, start)
 	case ':':
-		return simpleToken(tokenColon, start), nil
+		tok = simpleToken(tokenColon, start)
 	case '=':
 		if lx.match('=') {
-			return simpleToken(tokenEqualEqual, start), nil
+			tok = simpleToken(tokenEqualEqual, start)
+		} else {
+			tok = simpleToken(tokenAssign, start)
 		}
-		return simpleToken(tokenAssign, start), nil
 	case '!':
 		if lx.match('=') {
-			return simpleToken(tokenBangEqual, start), nil
+			tok = simpleToken(tokenBangEqual, start)
+		} else {
+			tok = simpleToken(tokenBang, start)
 		}
-		return simpleToken(tokenBang, start), nil
 	case '<':
 		if lx.match('=') {
-			return simpleToken(tokenLessEqual, start), nil
+			tok = simpleToken(tokenLessEqual, start)
+		} else {
+			tok = simpleToken(tokenLess, start)
 		}
-		return simpleToken(tokenLess, start), nil
 	case '>':
 		if lx.match('=') {
-			return simpleToken(tokenGreaterEqual, start), nil
+			tok = simpleToken(tokenGreaterEqual, start)
+		} else {
+			tok = simpleToken(tokenGreater, start)
 		}
-		return simpleToken(tokenGreater, start), nil
 	case '&':
 		if lx.match('&') {
-			return simpleToken(tokenAndAnd, start), nil
+			tok = simpleToken(tokenAndAnd, start)
+		} else {
+			illegal, err := illegalToken(start, fmt.Errorf("unexpected '&'"))
+			return lx.emit(illegal), err
 		}
-		return illegalToken(start, fmt.Errorf("unexpected '&'"))
 	case '|':
 		if lx.match('|') {
-			return simpleToken(tokenOrOr, start), nil
+			tok = simpleToken(tokenOrOr, start)
+		} else {
+			illegal, err := illegalToken(start, fmt.Errorf("unexpected '|'"))
+			return lx.emit(illegal), err
 		}
-		return illegalToken(start, fmt.Errorf("unexpected '|'"))
+	default:
+		illegal, err := illegalToken(start, fmt.Errorf("unexpected character %q", r))
+		return lx.emit(illegal), err
 	}
 
-	return illegalToken(start, fmt.Errorf("unexpected character %q", r))
+	return lx.maybeEmitWithBuffer(tok)
+}
+
+func (lx *lexer) maybeEmitWithBuffer(tok Token) (Token, error) {
+	if tok.Type == tokenRBrace && lx.shouldInsertSemicolon() {
+		copied := tok
+		lx.bufferedTok = &copied
+		return lx.emit(Token{
+			Type: tokenSemicolon,
+			Pos:  lx.lastPos,
+		}), nil
+	}
+	return lx.emit(tok), nil
+}
+
+func (lx *lexer) emit(tok Token) Token {
+	lx.adjustParenDepth(tok.Type)
+	if tok.Type != tokenIllegal {
+		lx.hasLastToken = true
+		lx.lastToken = tok.Type
+	} else {
+		lx.hasLastToken = false
+		lx.lastToken = tok.Type
+	}
+	lx.lastPos = tok.Pos
+	return tok
+}
+
+func (lx *lexer) adjustParenDepth(tt TokenType) {
+	switch tt {
+	case tokenLParen, tokenLBracket:
+		lx.parenDepth++
+	case tokenRParen, tokenRBracket:
+		if lx.parenDepth > 0 {
+			lx.parenDepth--
+		}
+	}
+}
+
+func (lx *lexer) shouldInsertSemicolon() bool {
+	if !lx.hasLastToken {
+		return false
+	}
+	switch lx.lastToken {
+	case tokenIdentifier,
+		tokenNumber,
+		tokenString,
+		tokenSExpr,
+		tokenTrue,
+		tokenFalse,
+		tokenReturn,
+		tokenRParen,
+		tokenRBracket,
+		tokenRBrace:
+		return true
+	}
+	return false
 }
 
 func (lx *lexer) match(expected rune) bool {

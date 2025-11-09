@@ -4,39 +4,39 @@
 
 func mapStrings(lst, fn) {
     if nullp(lst) {
-        return [];
+        return []
     }
-    return cons(fn(car(lst)), mapStrings(cdr(lst), fn));
+    return cons(fn(car(lst)), mapStrings(cdr(lst), fn))
 }
 
 func makeSierpinski(n) {
     if n == 0 {
-        return ["*"];
+        return ["*"]
     }
 
-    var prev = makeSierpinski(n - 1);
-    var lineWidth = stringLength(car(prev));
-    var space = makeString(lineWidth, " ");
+    var prev = makeSierpinski(n - 1)
+    var lineWidth = stringLength(car(prev))
+    var space = makeString(lineWidth, " ")
 
     var top = mapStrings(prev, func(line) {
-        return stringAppend(space, line, space);
-    });
+        return stringAppend(space, line, space)
+    })
 
     var bottom = mapStrings(prev, func(line) {
-        return stringAppend(line, " ", line);
-    });
+        return stringAppend(line, " ", line)
+    })
 
-    return append(top, bottom);
+    return append(top, bottom)
 }
 
 func printSierpinski(n) {
-    var lines = makeSierpinski(n);
-    var cursor = lines;
+    var lines = makeSierpinski(n)
+    var cursor = lines
     while !nullp(cursor) {
-        display(car(cursor));
-        newline();
-        cursor = cdr(cursor);
+        display(car(cursor))
+        newline()
+        cursor = cdr(cursor)
     }
 }
 
-printSierpinski(4);
+printSierpinski(4)

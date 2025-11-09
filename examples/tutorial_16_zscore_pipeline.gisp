@@ -1,125 +1,125 @@
 #!/usr/bin/env gisp
 
 `(define-macro (when condition . body)
-	(list 'if condition (cons 'begin body) '#f));
+	(list 'if condition (cons 'begin body) '#f))
 
 func abs(x) {
 	if x < 0 {
-		return -x;
+		return -x
 	}
-	return x;
+	return x
 }
 
 func average(a, b) {
-	return (a + b) / 2.0;
+	return (a + b) / 2.0
 }
 
 func improve(guess, x) {
-	return average(guess, x / guess);
+	return average(guess, x / guess)
 }
 
 func goodEnough(guess, x, tolerance) {
-	return abs(guess * guess - x) < tolerance;
+	return abs(guess * guess - x) < tolerance
 }
 
 func sqrtNewton(x) {
 	if x == 0 {
-		return 0;
+		return 0
 	}
 
-	var guess = x / 2.0;
-	const tolerance = 1e-9;
+	var guess = x / 2.0
+	const tolerance = 1e-9
 
 	while true {
-		var next = improve(guess, x);
+		var next = improve(guess, x)
 		if goodEnough(next, x, tolerance) {
-			return next;
+			return next
 		}
-		guess = next;
+		guess = next
 	}
 }
 
 func isEmpty(xs) {
-	return nullp(xs);
+	return nullp(xs)
 }
 
 func head(xs) {
-	return car(xs);
+	return car(xs)
 }
 
 func tail(xs) {
-	return cdr(xs);
+	return cdr(xs)
 }
 
 func map(fn, xs) {
 	if isEmpty(xs) {
-		return [];
+		return []
 	}
-	return cons(fn(head(xs)), map(fn, tail(xs)));
+	return cons(fn(head(xs)), map(fn, tail(xs)))
 }
 
 func length(xs) {
-	var count = 0;
-	var cursor = xs;
+	var count = 0
+	var cursor = xs
 
 	while !isEmpty(cursor) {
-		count = count + 1;
-		cursor = tail(cursor);
+		count = count + 1
+		cursor = tail(cursor)
 	}
-	return count;
+	return count
 }
 
 func mean(xs) {
-	var total = 0.0;
-	var count = 0;
-	var cursor = xs;
+	var total = 0.0
+	var count = 0
+	var cursor = xs
 
 	while !isEmpty(cursor) {
-		total = total + head(cursor);
-		count = count + 1;
-		cursor = tail(cursor);
+		total = total + head(cursor)
+		count = count + 1
+		cursor = tail(cursor)
 	}
-	return total / count;
+	return total / count
 }
 
 func variance(xs, avg) {
-	var total = 0.0;
-	var cursor = xs;
+	var total = 0.0
+	var cursor = xs
 
 	while !isEmpty(cursor) {
-		var diff = head(cursor) - avg;
-		total = total + diff * diff;
-		cursor = tail(cursor);
+		var diff = head(cursor) - avg
+		total = total + diff * diff
+		cursor = tail(cursor)
 	}
-	return total / length(xs);
+	return total / length(xs)
 }
 
 func zScores(xs) {
-	var avg = mean(xs);
-	var std = sqrtNewton(variance(xs, avg));
+	var avg = mean(xs)
+	var std = sqrtNewton(variance(xs, avg))
 
 	return map(func(x) {
-		return (x - avg) / std;
-	}, xs);
+		return (x - avg) / std
+	}, xs)
 }
 
 func alertOnOutlier(xs, threshold) {
-	var scores = zScores(xs);
-	var cursor = scores;
-	var index = 0;
+	var scores = zScores(xs)
+	var cursor = scores
+	var index = 0
 
 	while !isEmpty(cursor) {
-		var score = head(cursor);
+		var score = head(cursor)
 		if abs(score) > threshold {
-			display("Outlier at index ");
-			display(index);
-			display(": ");
-			display(score);
-			newline();
+			display("Outlier at index ")
+			display(index)
+			display(": ")
+			display(score)
+			newline()
 		}
-		index = index + 1;
-		cursor = tail(cursor);
+		index = index + 1
+		cursor = tail(cursor)
 	}
 }
 
-alertOnOutlier([10.0, 10.5, 10.2, 11.0, 26.0, 10.1], 2.5);
+alertOnOutlier([10.0, 10.5, 10.2, 11.0, 26.0, 10.1], 2.5)

@@ -2,20 +2,20 @@
 
 func classify(n) {
 	if n < 0 {
-		return "negative";
+		return "negative"
 	} else {
 		if n == 0 {
-			return "zero";
+			return "zero"
 		}
 	}
-	return "positive";
+	return "positive"
 }
 
 func main() {
-	display(classify(-3));
-	display(classify(0));
-	display(classify(8));
-	newline();
+	display(classify(-3))
+	display(classify(0))
+	display(classify(8))
+	newline()
 }
 
-main();
+main()

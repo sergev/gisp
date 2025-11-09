@@ -1,17 +1,17 @@
 #!/usr/bin/env gisp
 
 `(define-macro (unless condition . body)
-	(list 'if condition '#f (cons 'begin body)));
+	(list 'if condition '#f (cons 'begin body)))
 
 func demo(value) {
 	`(unless value
 		(begin (display "value was false")
-		       (newline)));
+		       (newline)))
 }
 
 func main() {
-	demo(false);
-	demo(true);
+	demo(false)
+	demo(true)
 }
 
-main();
+main()

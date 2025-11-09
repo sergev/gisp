@@ -1,14 +1,14 @@
 #!/usr/bin/env gisp
 
-var radius = 2.5;
-const pi = 3.141592653589793;
-var area = pi * radius * radius;
+var radius = 2.5
+const pi = 3.141592653589793
+var area = pi * radius * radius
 
-display("Circle area: ");
-display(area);
-newline();
+display("Circle area: ")
+display(area)
+newline()
 
-var ratio = 7 / 2;
-display("Ratio 7/2 = ");
-display(ratio);
-newline();
+var ratio = 7 / 2
+display("Ratio 7/2 = ")
+display(ratio)
+newline()

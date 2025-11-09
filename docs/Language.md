@@ -20,8 +20,10 @@ Go developers.
 
 - **Declarations:** `func`, `var`, and `const` at the top level.
 - **Statements:** variable declarations, assignment, expression statements,
-  `if`/`else`, `while`, and `return`. Every non-block statement must end with a
-  semicolon.
+  `if`/`else`, `while`, and `return`. Semicolons are inserted automatically using
+  Go's rules (after identifiers, literals, `return`, `)`/`]`/`}` at newlines, and
+  before a closing `}`), so you only need to spell them out when you want to
+  force a statement to continue onto the next line.
 - **Expressions:** infix operators `+`, `-`, `*`, `/`, `==`, `!=`, `<`, `<=`,
   `>`, `>=`, logical `&&`/`||`, unary `!` and unary negation. `==` compiles to
   the runtime numeric primitive `=` (and `!=` expands to `(not (= ...))`), so it
@@ -33,7 +35,7 @@ Go developers.
   using `[a, b, ...]`.
 - **Anonymous functions:** `func(params) { ... }` produces a closure with the
   same semantics as Scheme lambdas (including lexical scope and recursion).
-- **Inline Scheme:** `` var quoted = `(list 1 2 3); `` inserts the exact
+- **Inline Scheme:** `` var quoted = `(list 1 2 3) `` inserts the exact
   s-expression `(list 1 2 3)` into the compiled output.
 
 ### Symbol Literals in Backticks
@@ -48,7 +50,10 @@ using backtick literals, which are delegated to the existing Scheme reader.
 
 * Whitespace is insignificant except to separate tokens.
 * Line (`// ...`) and block (`/* ... */`) comments are skipped.
-* All statements that are not blocks must end with a semicolon (`;`).
+* All non-block statements end with a semicolon (`;`). The lexer performs
+  Go-style automatic insertion, so the grammar still mentions `;` even though
+  source files can omit them. Keep `else`, `case`, and `default` on the same line
+  as the closing `}` they follow or the clause will be terminated before it.
 
 ```
 Program        = { TopLevelDecl } ;
@@ -134,9 +139,9 @@ SExpression    = parsed by the Scheme reader (See `reader`).
 ```gisp
 func fact(n) {
 	if n == 0 {
-		return 1;
+		return 1
 	}
-	return n * fact(n - 1);
+	return n * fact(n - 1)
 }
 
 func fact_tr(n, acc) {

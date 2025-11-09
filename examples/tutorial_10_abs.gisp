@@ -2,11 +2,11 @@
 
 func abs(x) {
 	if x < 0 {
-		return -x;
+		return -x
 	}
-	return x;
+	return x
 }
 
-display(abs(-3.5));
-display(abs(2));
-newline();
+display(abs(-3.5))
+display(abs(2))
+newline()

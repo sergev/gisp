@@ -1,16 +1,16 @@
 #!/usr/bin/env gisp
 
 func iterate(fn, value, count) {
-	var result = value;
-	var remaining = count;
+	var result = value
+	var remaining = count
 
 	while remaining > 0 {
-		result = fn(result);
-		remaining = remaining - 1;
+		result = fn(result)
+		remaining = remaining - 1
 	}
-	return result;
+	return result
 }
 
-var double = func(x) { return x * 2; };
-display(iterate(double, 1, 5));
-newline();
+var double = func(x) { return x * 2; }
+display(iterate(double, 1, 5))
+newline()
