@@ -1,3 +1,5 @@
+#!/usr/bin/env gisp
+
 func fact(n) {
 	if n == 0 {
 		return 1;
@@ -17,4 +19,3 @@ newline();
 
 display(fact_tr(5, 1));
 newline();
-
