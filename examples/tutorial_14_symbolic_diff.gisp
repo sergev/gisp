@@ -1,0 +1,120 @@
+#!/usr/bin/env gisp
+
+func isNumberValue(expr) {
+	return `(number? expr);
+}
+
+func isVariable(expr) {
+	return `(symbol? expr);
+}
+
+func sameVariable(v1, v2) {
+	return `(eq? v1 v2);
+}
+
+func isPair(expr) {
+	return `(pair? expr);
+}
+
+func isTagged(expr, tag) {
+	return isPair(expr) && `(eq? (car expr) tag);
+}
+
+func makeSum(a, b) {
+	if isNumberValue(a) && `(= a 0) {
+		return b;
+	}
+	if isNumberValue(b) && `(= b 0) {
+		return a;
+	}
+	return cons(`(quote +), [a, b]);
+}
+
+func makeProduct(a, b) {
+	if (isNumberValue(a) && `(= a 0)) || (isNumberValue(b) && `(= b 0)) {
+		return 0;
+	}
+	if isNumberValue(a) && `(= a 1) {
+		return b;
+	}
+	if isNumberValue(b) && `(= b 1) {
+		return a;
+	}
+	return cons(`(quote *), [a, b]);
+}
+
+func makeExponent(base, exponent) {
+	return cons(`(quote pow), [base, exponent]);
+}
+
+func sumAddend(expr) {
+	return `(cadr expr);
+}
+
+func sumAugend(expr) {
+	return `(caddr expr);
+}
+
+func productMultiplier(expr) {
+	return `(cadr expr);
+}
+
+func productMultiplicand(expr) {
+	return `(caddr expr);
+}
+
+func exponentBase(expr) {
+	return `(cadr expr);
+}
+
+func exponentPower(expr) {
+	return `(caddr expr);
+}
+
+func deriv(expr, variable) {
+	if isNumberValue(expr) {
+		return 0;
+	}
+	if isVariable(expr) {
+		if sameVariable(expr, variable) {
+			return 1;
+		}
+		return 0;
+	}
+	if isTagged(expr, `(quote +)) {
+		return makeSum(
+			deriv(sumAddend(expr), variable),
+			deriv(sumAugend(expr), variable),
+		);
+	}
+	if isTagged(expr, `(quote *)) {
+		return makeSum(
+			makeProduct(
+				deriv(productMultiplier(expr), variable),
+				productMultiplicand(expr),
+			),
+			makeProduct(
+				productMultiplier(expr),
+				deriv(productMultiplicand(expr), variable),
+			),
+		);
+	}
+	if isTagged(expr, `(quote pow)) {
+		var base = exponentBase(expr);
+		var power = exponentPower(expr);
+		return makeProduct(
+			makeProduct(power, deriv(base, variable)),
+			makeExponent(base, makeSum(power, -1)),
+		);
+	}
+	return cons(`(quote unknown-derivative), [expr]);
+}
+
+var expression = cons(`(quote *), [
+	makeSum(`(quote x), 1),
+	makeExponent(`(quote x), 3),
+]);
+
+display(deriv(expression, `(quote x)));
+newline();
+

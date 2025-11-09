@@ -1,0 +1,42 @@
+#!/usr/bin/env gisp
+
+var numbers = [1, 2, 3, 4];
+display(car(numbers));
+display(cdr(numbers));
+newline();
+
+func isEmpty(xs) {
+	return `(null? xs);
+}
+
+func head(xs) {
+	return car(xs);
+}
+
+func tail(xs) {
+	return cdr(xs);
+}
+
+func map(fn, xs) {
+	if isEmpty(xs) {
+		return [];
+	}
+	return cons(fn(head(xs)), map(fn, tail(xs)));
+}
+
+func filter(pred, xs) {
+	if isEmpty(xs) {
+		return [];
+	}
+	var first = head(xs);
+	var rest = tail(xs);
+
+	if pred(first) {
+		return cons(first, filter(pred, rest));
+	}
+	return filter(pred, rest);
+}
+
+display(map(func(n) { return n * n; }, numbers));
+newline();
+

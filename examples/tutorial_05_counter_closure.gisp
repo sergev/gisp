@@ -1,0 +1,15 @@
+#!/usr/bin/env gisp
+
+func counter(start) {
+	var value = start;
+	return func(step) {
+		value = value + step;
+		return value;
+	};
+}
+
+var c = counter(10);
+display(c(1));
+display(c(5));
+newline();
+

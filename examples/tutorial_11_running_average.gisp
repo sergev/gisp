@@ -1,0 +1,32 @@
+#!/usr/bin/env gisp
+
+func isEmpty(xs) {
+	return `(null? xs);
+}
+
+func head(xs) {
+	return car(xs);
+}
+
+func tail(xs) {
+	return cdr(xs);
+}
+
+func runningAverage(samples) {
+	var sum = 0.0;
+	var count = 0;
+	var totals = [];
+	var cursor = samples;
+
+	while !isEmpty(cursor) {
+		sum = sum + head(cursor);
+		count = count + 1;
+		totals = append(totals, [sum / count]);
+		cursor = tail(cursor);
+	}
+	return totals;
+}
+
+display(runningAverage([10.0, 12.0, 18.0, 20.0]));
+newline();
+

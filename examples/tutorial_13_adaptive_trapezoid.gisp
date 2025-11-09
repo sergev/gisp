@@ -1,0 +1,37 @@
+#!/usr/bin/env gisp
+
+func abs(x) {
+	if x < 0 {
+		return -x;
+	}
+	return x;
+}
+
+func trapEstimate(f, a, b) {
+	return (f(a) + f(b)) * (b - a) / 2.0;
+}
+
+func adaptiveTrap(f, a, b, tolerance) {
+	var mid = (a + b) / 2.0;
+	var left = trapEstimate(f, a, mid);
+	var right = trapEstimate(f, mid, b);
+	var together = trapEstimate(f, a, b);
+
+	if abs((left + right) - together) < 3 * tolerance {
+		return left + right;
+	}
+	return adaptiveTrap(f, a, mid, tolerance / 2.0) +
+		adaptiveTrap(f, mid, b, tolerance / 2.0);
+}
+
+func integrate(f, a, b, tolerance) {
+	return adaptiveTrap(f, a, b, tolerance);
+}
+
+func unitCircle(x) {
+	return 4.0 / (1 + x * x);
+}
+
+display(integrate(unitCircle, 0.0, 1.0, 1e-6));
+newline();
+

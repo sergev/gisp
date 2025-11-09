@@ -1,0 +1,22 @@
+#!/usr/bin/env gisp
+
+func classify(n) {
+	if n < 0 {
+		return "negative";
+	} else {
+		if n == 0 {
+			return "zero";
+		}
+	}
+	return "positive";
+}
+
+func main() {
+	display(classify(-3));
+	display(classify(0));
+	display(classify(8));
+	newline();
+}
+
+main();
+

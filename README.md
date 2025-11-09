@@ -29,6 +29,7 @@ Garbage collection relies entirely on the Go runtime—no additional memory mana
 - [Gisp language guide](docs/Language.md)
 - [Runtime primitives](docs/Primitives.md)
 - [S-expression grammar](docs/S-Expressions.md)
+- [Gisp tutorial](docs/Gisp-Tutorial.md)
 
 ## Getting Started
 

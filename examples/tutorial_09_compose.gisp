@@ -1,0 +1,11 @@
+#!/usr/bin/env gisp
+
+var compose = `(lambda (f g)
+	(lambda (x) (f (g x))));
+
+var increment = func(n) { return n + 1; };
+var double = func(n) { return n * 2; };
+
+display(compose(increment, double)(10));
+newline();
+
