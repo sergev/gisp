@@ -27,7 +27,8 @@ test: gotestsum
 	gotestsum --format dots -- ./...
 
 cover: gotestsum
-	gotestsum -- -cover .
+	gotestsum -- -coverprofile=coverage.out ./...
+	go tool cover -func=coverage.out
 
 gotestsum:
 	@command -v gotestsum >/dev/null || go install gotest.tools/gotestsum@latest
