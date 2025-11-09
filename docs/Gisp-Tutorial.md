@@ -63,22 +63,28 @@ main();
 
 ### Statements and Semicolons
 
-Every non-block statement ends with a semicolon. Blocks use braces:
+Gisp follows Go-style automatic semicolon insertion, so most of the time you can end a statement just by starting a new line. A literal semicolon still works when you want to keep multiple statements on one line, but the lexer automatically inserts one after identifiers, literals, `return`, and closing delimiters `)` `]` `}` at a newline.
 
 ```gisp
 func main() {
-	var total = 0;
+	var total = 0
 	while total < 5 {
-		total = total + 1;
+		total = total + 1
 	}
-	display(total);
-	newline();
+	display(total)
+	newline()
 }
 
-main();
+main()
 ```
 
-Whitespace is mostly insignificant, and single-line (`//`) plus block (`/* ... */`) comments work the same way as in Go.
+You can still add explicit semicolons if you prefer:
+
+```gisp
+var a = 1; var b = 2; display(a + b);
+```
+
+Keep `else`, `case`, and `default` on the same line as the closing brace they follow—just like in Go—so the automatically inserted semicolon does not terminate the construct early. Whitespace is otherwise insignificant, and single-line (`//`) plus block (`/* ... */`) comments work the same way as in Go.
 
 ### Numeric Types and Floating-Point Arithmetic
 
@@ -591,6 +597,52 @@ main();
 ```
 
 Here we embed a short Scheme loop that uses `call/cc` to escape. The predicate itself is a Gisp closure, showing how values move freely between the two syntaxes. This pattern is particularly useful when porting Scheme code that already relies on continuations.
+
+### 7.5 Continuations in Surface Gisp
+
+The `examples/continuation.gisp` script demonstrates how to capture and resume a continuation directly from surface Gisp code using the `callcc` primitive. Because `callcc` passes a live continuation into the supplied function, you can store it and invoke it later to resume execution.
+
+```gisp
+func demo() {
+	display("Demonstrating call/cc")
+	newline()
+
+	var saved = false
+	var result = callcc(func(k) {
+		saved = k
+		return "initial return"
+	})
+
+	display("First result: ")
+	display(result)
+	newline()
+
+	if stringp(result) {
+		display("Invoking continuation with 42")
+		newline()
+		saved(42)
+	}
+
+	display("Continuation produced: ")
+	display(result)
+	newline()
+	return result
+}
+
+demo()
+```
+
+When you run the example (`./gisp examples/continuation.gisp`), it prints:
+
+```
+Demonstrating call/cc
+First result: initial return
+Invoking continuation with 42
+First result: 42
+Continuation produced: 42
+```
+
+The key takeaway is that the continuation captures the point after the `callcc` call. The first time through, the `callcc` invocation returns the string `"initial return"`. After invoking the saved continuation with `42`, execution resumes inside the original function, and the `result` binding now holds the value provided to `saved`.
 
 ---
 
