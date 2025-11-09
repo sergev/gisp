@@ -376,8 +376,47 @@ func TestCompileStmtWhile(t *testing.T) {
 	if string(letForm[0].(datumSymbol)) != "let" {
 		t.Fatalf("expected let form, got %#v", letForm[0])
 	}
-	if !containsSymbolWithPrefix(letForm, "__gisp_loop_") {
-		t.Fatalf("expected loop gensym, got %#v", letForm)
+	bindings := letForm[1].([]interface{})
+	if len(bindings) != 1 {
+		t.Fatalf("expected single binding, got %d", len(bindings))
+	}
+	binding := bindings[0].([]interface{})
+	if len(binding) != 2 {
+		t.Fatalf("expected binding pair, got %#v", binding)
+	}
+	loopName, ok := binding[0].(datumSymbol)
+	if !ok || !strings.HasPrefix(string(loopName), "__gisp_loop_") {
+		t.Fatalf("expected loop gensym binding, got %#v", binding[0])
+	}
+	if _, ok := binding[1].([]interface{}); !ok {
+		t.Fatalf("expected empty list initializer, got %#v", binding[1])
+	}
+	letBody := letForm[2].([]interface{})
+	if string(letBody[0].(datumSymbol)) != "begin" {
+		t.Fatalf("expected begin in let body, got %#v", letBody[0])
+	}
+	setForm := letBody[1].([]interface{})
+	if string(setForm[0].(datumSymbol)) != "set!" {
+		t.Fatalf("expected set! form, got %#v", setForm[0])
+	}
+	if setTarget := setForm[1].(datumSymbol); setTarget != loopName {
+		t.Fatalf("expected set! target %q, got %q", loopName, setTarget)
+	}
+	lambdaForm := setForm[2].([]interface{})
+	if string(lambdaForm[0].(datumSymbol)) != "lambda" {
+		t.Fatalf("expected lambda form, got %#v", lambdaForm[0])
+	}
+	lambdaBody := lambdaForm[2]
+	if !containsSymbolWithPrefix(lambdaBody, string(loopName)) {
+		t.Fatalf("expected recursive loop call in lambda body, got %#v", lambdaBody)
+	}
+	callForm := letBody[2].([]interface{})
+	if len(callForm) != 1 {
+		t.Fatalf("expected single-element call form, got %#v", callForm)
+	}
+	callSym, ok := callForm[0].(datumSymbol)
+	if !ok || callSym != loopName {
+		t.Fatalf("expected tail call to loop function %q, got %#v", loopName, callForm[0])
 	}
 }
 

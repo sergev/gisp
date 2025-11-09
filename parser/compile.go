@@ -213,7 +213,14 @@ func compileStmtWithRest(b *builder, stmt Stmt, rest lang.Value, ctx compileCont
 			lang.EmptyList,
 			loopBody,
 		)
-		loopLet := b.let([]binding{{name: loopSym, value: loopLambda}}, b.list(b.symbol(loopSym)))
+		loopSet := b.list(
+			b.symbol("set!"),
+			b.symbol(loopSym),
+			loopLambda,
+		)
+		loopCall := b.list(b.symbol(loopSym))
+		loopLetBody := b.begin([]lang.Value{loopSet, loopCall})
+		loopLet := b.let([]binding{{name: loopSym, value: lang.EmptyList}}, loopLetBody)
 		return b.begin([]lang.Value{loopLet, rest}), nil
 	case *ReturnStmt:
 		if ctx.returnSym == "" {
