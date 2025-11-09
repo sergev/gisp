@@ -13,10 +13,10 @@ func tail(xs) {
 }
 
 func runningAverage(samples) {
-	var sum = 0.0;
-	var count = 0;
-	var totals = [];
-	var cursor = samples;
+	var sum = 0.0
+	var count = 0
+	var totals = []
+	var cursor = samples
 
 	while !isEmpty(cursor) {
 		sum = sum + head(cursor);

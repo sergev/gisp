@@ -1,8 +1,8 @@
 #!/usr/bin/env gisp
 
 func accumulateUntil(limit) {
-	var sum = 0.0;
-	var term = 1.0;
+	var sum = 0.0
+	var term = 1.0
 
 	while sum < limit {
 		sum = sum + term;

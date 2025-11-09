@@ -24,11 +24,11 @@ func sqrtNewton(x) {
 		return 0;
 	}
 
-	var guess = x / 2.0;
-	const tolerance = 1e-9;
+	var guess = x / 2.0
+	const tolerance = 1e-9
 
 	while true {
-		var next = improve(guess, x);
+		var next = improve(guess, x)
 		if goodEnough(next, x, tolerance) {
 			return next;
 		}

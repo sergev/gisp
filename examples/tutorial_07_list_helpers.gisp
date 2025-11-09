@@ -28,8 +28,8 @@ func filter(pred, xs) {
 	if isEmpty(xs) {
 		return [];
 	}
-	var first = head(xs);
-	var rest = tail(xs);
+	var first = head(xs)
+	var rest = tail(xs)
 
 	if pred(first) {
 		return cons(first, filter(pred, rest));

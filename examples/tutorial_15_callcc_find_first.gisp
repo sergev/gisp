@@ -9,7 +9,7 @@ var findFirst = `(lambda (pred xs)
 				(else (loop (cdr items))))))));
 
 func main() {
-	var firstLarge = findFirst(func(n) { return n > 10; }, [1, 3, 5, 8, 13, 21]);
+	var firstLarge = findFirst(func(n) { return n > 10; }, [1, 3, 5, 8, 13, 21])
 	display(firstLarge);
 	newline();
 }
