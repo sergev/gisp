@@ -27,6 +27,8 @@ Go developers.
   the runtime numeric primitive `=` (and `!=` expands to `(not (= ...))`), so it
   expects numbers; use the `eq` and `equal` primitives via backticks when you
   need identity or structural comparison of non-numeric values.
+- **Special forms:** `switch` expressions select the first truthy case and
+  compile down to the runtime `cond`.
 - **Literals:** numbers, strings, booleans (`true`/`false`), and list literals
   using `[a, b, ...]`.
 - **Anonymous functions:** `func(params) { ... }` produces a closure with the
@@ -101,9 +103,14 @@ PrimaryExpr    = Identifier
                | Boolean
                | ListLiteral
                | LambdaExpr
+               | SwitchExpr
                | SExprLiteral
                | "(" Expression ")"
                ;
+SwitchExpr     = "switch" "{" { SwitchClause } [ DefaultClause ] "}"
+SwitchClause   = "case" Expression ":" Expression [ ";" ]
+DefaultClause  = "default" ":" Expression [ ";" ]
+
 
 LambdaExpr     = "func" "(" [ ParamList ] ")" Block ;
 ListLiteral    = "[" [ ArgList ] "]" ;
