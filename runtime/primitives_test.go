@@ -215,3 +215,58 @@ func TestPrimApplyAndDisplay(t *testing.T) {
 		t.Fatalf("expected newline output, got %q", output)
 	}
 }
+
+func TestPrimMap(t *testing.T) {
+	ev := NewEvaluator()
+
+	mapVal, err := ev.Global.Get("map")
+	if err != nil {
+		t.Fatalf("failed to get map primitive: %v", err)
+	}
+
+	doubleProc := lang.ClosureValue(
+		[]string{"x"},
+		"",
+		[]lang.Value{
+			lang.List(
+				lang.SymbolValue("*"),
+				lang.SymbolValue("x"),
+				lang.IntValue(2),
+			),
+		},
+		ev.Global,
+	)
+
+	t.Run("maps over list", func(t *testing.T) {
+		input := lang.List(lang.IntValue(1), lang.IntValue(2), lang.IntValue(3))
+
+		result, err := ev.Apply(mapVal, []lang.Value{doubleProc, input})
+		if err != nil {
+			t.Fatalf("map application failed: %v", err)
+		}
+
+		items, err := lang.ToSlice(result)
+		if err != nil {
+			t.Fatalf("map result not a list: %v", err)
+		}
+		expected := []int64{2, 4, 6}
+		if len(items) != len(expected) {
+			t.Fatalf("expected %d items, got %d", len(expected), len(items))
+		}
+		for i, exp := range expected {
+			if items[i].Type != lang.TypeInt || items[i].Int() != exp {
+				t.Fatalf("item %d: expected %d, got %v", i, exp, items[i])
+			}
+		}
+	})
+
+	t.Run("empty list returns empty list", func(t *testing.T) {
+		result, err := ev.Apply(mapVal, []lang.Value{doubleProc, lang.EmptyList})
+		if err != nil {
+			t.Fatalf("map on empty list failed: %v", err)
+		}
+		if result.Type != lang.TypeEmpty {
+			t.Fatalf("expected empty list, got %v", result)
+		}
+	})
+}

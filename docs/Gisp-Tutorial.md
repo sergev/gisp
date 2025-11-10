@@ -1,6 +1,6 @@
 # Gisp Tutorial
 
-This tutorial walks from the first `display` call through macro metaprogramming and numerical experiments, showing how Gisp's Go-flavored surface maps to the Scheme core that powers the interpreter. Along the way we port several classic Scheme programs, most of them popularised by *Structure and Interpretation of Computer Programs* (SICP), into idiomatic Gisp so you can see how the language handles both floating-point computation and symbolic manipulation.
+This tutorial walks from the first `display` call through macro metaprogramming and numerical experiments, showing how Gisp maps to the Scheme core that powers the interpreter. Along the way we port several classic Scheme programs, most of them popularised by *Structure and Interpretation of Computer Programs* (SICP), into idiomatic Gisp so you can see how the language handles both floating-point computation and symbolic manipulation.
 
 Use this document side by side with `docs/Language.md`, `docs/Primitives.md`, and the examples in `examples/` if you want more precise reference material.
 
@@ -438,7 +438,7 @@ The recursive subdivision mirrors the Scheme version, and the tolerance handling
 
 ### 7.3 Symbolic Differentiation (SICP Section 2.3)
 
-SICP's differentiator manipulates algebraic expressions represented as lists. The Gisp port stays close to the original, leaning on the new predicate names so we can stay in surface Gisp while still reaching into list structures.
+SICP's differentiator manipulates algebraic expressions represented as lists. The Gisp port stays close to the original, leaning on the new predicate names so we can stay in Gisp while still reaching into list structures.
 
 ```gisp
 func isNumberValue(expr) {
@@ -583,9 +583,9 @@ newline()
 
 Here we embed a short Scheme loop that uses `call/cc` to escape. The predicate itself is a Gisp closure, showing how values move freely between the two syntaxes. This pattern is particularly useful when porting Scheme code that already relies on continuations.
 
-### 7.5 Continuations in Surface Gisp
+### 7.5 Continuations in Gisp
 
-The `examples/continuation.gisp` script demonstrates how to capture and resume a continuation directly from surface Gisp code using the `callcc` primitive. Because `callcc` passes a live continuation into the supplied function, you can store it and invoke it later to resume execution.
+The `examples/continuation.gisp` script demonstrates how to capture and resume a continuation directly from Gisp code using the `callcc` primitive. Because `callcc` passes a live continuation into the supplied function, you can store it and invoke it later to resume execution.
 
 ```gisp
 func demo() {
@@ -631,12 +631,9 @@ The key takeaway is that the continuation captures the point after the `callcc` 
 
 ## 8. Putting It All Together: A Mini Data Pipeline
 
-The following full script pulls together control flow, floating-point math, list processing, and a macro. It produces a moving z-score, filtering the stream whenever the absolute deviation crosses a threshold.
+The following full script pulls together control flow, floating-point math, and list processing. It produces a moving z-score, filtering the stream whenever the absolute deviation crosses a threshold.
 
 ```gisp
-`(define-macro (when condition . body)
-    (list 'if condition (cons 'begin body) '#f))
-
 func abs(x) {
     if x < 0 {
         return -x
@@ -673,34 +670,15 @@ func sqrtNewton(x) {
     }
 }
 
-func isEmpty(xs) {
-    return nullp(xs)
-}
-
-func head(xs) {
-    return car(xs)
-}
-
-func tail(xs) {
-    return cdr(xs)
-}
-
-func map(fn, xs) {
-    if isEmpty(xs) {
-        return []
-    }
-    return cons(fn(head(xs)), map(fn, tail(xs)))
-}
-
 func mean(xs) {
     var total = 0.0
     var count = 0
     var cursor = xs
 
-    while !isEmpty(cursor) {
-        total = total + head(cursor)
+    while !nullp(cursor) {
+        total = total + car(cursor)
         count = count + 1
-        cursor = tail(cursor)
+        cursor = cdr(cursor)
     }
     return total / count
 }
@@ -709,10 +687,10 @@ func variance(xs, avg) {
     var total = 0.0
     var cursor = xs
 
-    while !isEmpty(cursor) {
-        var diff = head(cursor) - avg
+    while !nullp(cursor) {
+        var diff = car(cursor) - avg
         total = total + diff * diff
-        cursor = tail(cursor)
+        cursor = cdr(cursor)
     }
     return total / length(xs)
 }
@@ -721,9 +699,9 @@ func length(xs) {
     var count = 0
     var cursor = xs
 
-    while !isEmpty(cursor) {
+    while !nullp(cursor) {
         count = count + 1
-        cursor = tail(cursor)
+        cursor = cdr(cursor)
     }
     return count
 }
@@ -742,8 +720,8 @@ func alertOnOutlier(xs, threshold) {
     var cursor = scores
     var index = 0
 
-    while !isEmpty(cursor) {
-        var score = head(cursor)
+    while !nullp(cursor) {
+        var score = car(cursor)
         if abs(score) > threshold {
             display("Outlier at index ")
             display(index)
@@ -752,7 +730,7 @@ func alertOnOutlier(xs, threshold) {
             newline()
         }
         index = index + 1
-        cursor = tail(cursor)
+        cursor = cdr(cursor)
     }
 }
 

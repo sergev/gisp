@@ -151,7 +151,9 @@ func fact_tr(n, acc) {
     return fact_tr(n - 1, acc * n)
 }
 
-var expr = `(map (lambda (x) (+ x 1)) '(1 2 3))
+var expr = map(func(x) {
+    return x + 1;
+}, [1, 2, 3])
 ```
 
 ## Runtime Integration

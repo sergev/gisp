@@ -39,32 +39,13 @@ func sqrtNewton(x) {
     }
 }
 
-func isEmpty(xs) {
-    return nullp(xs)
-}
-
-func head(xs) {
-    return car(xs)
-}
-
-func tail(xs) {
-    return cdr(xs)
-}
-
-func map(fn, xs) {
-    if isEmpty(xs) {
-        return []
-    }
-    return cons(fn(head(xs)), map(fn, tail(xs)))
-}
-
 func length(xs) {
     var count = 0
     var cursor = xs
 
-    while !isEmpty(cursor) {
+    while !nullp(cursor) {
         count = count + 1
-        cursor = tail(cursor)
+        cursor = cdr(cursor)
     }
     return count
 }
@@ -74,10 +55,10 @@ func mean(xs) {
     var count = 0
     var cursor = xs
 
-    while !isEmpty(cursor) {
-        total = total + head(cursor)
+    while !nullp(cursor) {
+        total = total + car(cursor)
         count = count + 1
-        cursor = tail(cursor)
+        cursor = cdr(cursor)
     }
     return total / count
 }
@@ -86,10 +67,10 @@ func variance(xs, avg) {
     var total = 0.0
     var cursor = xs
 
-    while !isEmpty(cursor) {
-        var diff = head(cursor) - avg
+    while !nullp(cursor) {
+        var diff = car(cursor) - avg
         total = total + diff * diff
-        cursor = tail(cursor)
+        cursor = cdr(cursor)
     }
     return total / length(xs)
 }
@@ -108,8 +89,8 @@ func alertOnOutlier(xs, threshold) {
     var cursor = scores
     var index = 0
 
-    while !isEmpty(cursor) {
-        var score = head(cursor)
+    while !nullp(cursor) {
+        var score = car(cursor)
         if abs(score) > threshold {
             display("Outlier at index ")
             display(index)
@@ -118,7 +99,7 @@ func alertOnOutlier(xs, threshold) {
             newline()
         }
         index = index + 1
-        cursor = tail(cursor)
+        cursor = cdr(cursor)
     }
 }
 

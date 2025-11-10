@@ -2,13 +2,6 @@
 
 // Sierpiński triangle ported from Scheme to Gisp.
 
-func mapStrings(lst, fn) {
-    if nullp(lst) {
-        return []
-    }
-    return cons(fn(car(lst)), mapStrings(cdr(lst), fn))
-}
-
 func makeSierpinski(n) {
     if n == 0 {
         return ["*"]
@@ -18,13 +11,13 @@ func makeSierpinski(n) {
     var lineWidth = stringLength(car(prev))
     var space = makeString(lineWidth, " ")
 
-    var top = mapStrings(prev, func(line) {
+    var top = map(func(line) {
         return stringAppend(space, line, space)
-    })
+    }, prev)
 
-    var bottom = mapStrings(prev, func(line) {
+    var bottom = map(func(line) {
         return stringAppend(line, " ", line)
-    })
+    }, prev)
 
     return append(top, bottom)
 }

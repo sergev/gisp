@@ -1,13 +1,6 @@
 // Metacircular evaluator from SICP (Sections 4.1.1–4.1.4) rewritten using the Go-like Gisp syntax.
 
 // List helpers
-func mapList(proc, lst) {
-    if nullp(lst) {
-        return []
-    }
-    return cons(proc(car(lst)), mapList(proc, cdr(lst)))
-}
-
 func cadr(x) {
     return car(cdr(x))
 }
@@ -487,15 +480,15 @@ var primitiveProcedures = [
 [`'number?, numberp],
 [`'symbol?, symbolp],
 [`'boolean?, booleanp],
-[`'map, mapList]
+[`'map, map]
 ]
 
 func primitiveProcedureNames() {
-    return mapList(car, primitiveProcedures)
+    return map(car, primitiveProcedures)
 }
 
 func primitiveProcedureObjects() {
-    return mapList(func(proc) {
+    return map(func(proc) {
         return [`'primitive, cadr(proc)]
     }, primitiveProcedures)
 }

@@ -62,6 +62,7 @@ All of the following expect exactly one argument and return `#t` or `#f`. Predic
 ## Higher-Order Utilities
 
 - `apply` — Applies a procedure to arguments. Takes the procedure, followed by zero or more direct arguments, ending with a list whose elements are appended to the call.
+- `map` — Applies a procedure to each element of a list, returning a newly allocated list of results. Accepts two arguments: a procedure and a list. When the list is empty, the result is the empty list.
 - `gensym` — Generates a fresh symbol of the form `gN`. Takes no arguments.
 
 ## String and Symbol Operations

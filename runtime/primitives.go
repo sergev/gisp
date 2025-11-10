@@ -79,6 +79,43 @@ func installPrimitives(ev *lang.Evaluator) {
 		},
 		env,
 	))
+
+	env.Define("map", lang.ClosureValue(
+		[]string{"proc", "lst"},
+		"",
+		[]lang.Value{
+			lang.List(
+				lang.SymbolValue("if"),
+				lang.List(
+					lang.SymbolValue("nullp"),
+					lang.SymbolValue("lst"),
+				),
+				lang.List(
+					lang.SymbolValue("quote"),
+					lang.EmptyList,
+				),
+				lang.List(
+					lang.SymbolValue("cons"),
+					lang.List(
+						lang.SymbolValue("proc"),
+						lang.List(
+							lang.SymbolValue("car"),
+							lang.SymbolValue("lst"),
+						),
+					),
+					lang.List(
+						lang.SymbolValue("map"),
+						lang.SymbolValue("proc"),
+						lang.List(
+							lang.SymbolValue("cdr"),
+							lang.SymbolValue("lst"),
+						),
+					),
+				),
+			),
+		},
+		env,
+	))
 }
 
 func primAdd(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
