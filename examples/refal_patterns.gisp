@@ -1,0 +1,492 @@
+#!/usr/bin/env gisp
+
+// Refal-style pattern matching engine implemented in pure Gisp.
+// Demonstrates s-, t-, w-, and e-variables with backtracking and
+// ordered clause evaluation similar to classic Refal functions.
+
+// ---------------------------------------------------------------------------
+// List helpers
+// ---------------------------------------------------------------------------
+
+func reverseList(lst) {
+    var acc = []
+    var cursor = lst
+    while !nullp(cursor) {
+        acc = cons(first(cursor), acc)
+        cursor = rest(cursor)
+    }
+    return acc
+}
+
+func listLength(lst) {
+    var count = 0
+    var cursor = lst
+    while !nullp(cursor) {
+        count = count + 1
+        cursor = rest(cursor)
+    }
+    return count
+}
+
+func takeList(lst, count) {
+    var acc = []
+    var cursor = lst
+    var taken = 0
+    while taken < count && !nullp(cursor) {
+        acc = cons(first(cursor), acc)
+        cursor = rest(cursor)
+        taken = taken + 1
+    }
+    return reverseList(acc)
+}
+
+func dropList(lst, count) {
+    var cursor = lst
+    var dropped = 0
+    while dropped < count && !nullp(cursor) {
+        cursor = rest(cursor)
+        dropped = dropped + 1
+    }
+    return cursor
+}
+
+func prependAll(acc, items) {
+    var revItems = reverseList(items)
+    var cursor = revItems
+    var result = acc
+    while !nullp(cursor) {
+        result = cons(first(cursor), result)
+        cursor = rest(cursor)
+    }
+    return result
+}
+
+// ---------------------------------------------------------------------------
+// Pattern representation
+// ---------------------------------------------------------------------------
+
+func isVarPattern(node) {
+    return pairp(node) && eq(first(node), `'var)
+}
+
+func varType(node) {
+    return first(rest(node))
+}
+
+func varName(node) {
+    return first(rest(rest(node)))
+}
+
+func isBracketPattern(node) {
+    return pairp(node) && eq(first(node), `'br)
+}
+
+func bracketBody(node) {
+    return first(rest(node))
+}
+
+func Var(typeName, name) {
+    return [`'var, typeName, name]
+}
+
+func S(name) {
+    return Var(`'s, name)
+}
+
+func T(name) {
+    return Var(`'t, name)
+}
+
+func W(name) {
+    return Var(`'w, name)
+}
+
+func E(name) {
+    return Var(`'e, name)
+}
+
+func Br(parts) {
+    return [`'br, parts]
+}
+
+// ---------------------------------------------------------------------------
+// Binding environment helpers
+// ---------------------------------------------------------------------------
+
+func findBinding(env, typeName, name) {
+    var cursor = env
+    while !nullp(cursor) {
+        var binding = first(cursor)
+        if eq(first(binding), typeName) && eq(first(rest(binding)), name) {
+            return binding
+        }
+        cursor = rest(cursor)
+    }
+    return false
+}
+
+func bindingValue(binding) {
+    return first(rest(rest(binding)))
+}
+
+func bindValue(env, typeName, name, value) {
+    var existing = findBinding(env, typeName, name)
+    if equal(existing, false) {
+        return cons([typeName, name, value], env)
+    }
+    if equal(bindingValue(existing), value) {
+        return env
+    }
+    return false
+}
+
+func lookupBinding(env, typeName, name) {
+    var binding = findBinding(env, typeName, name)
+    if equal(binding, false) {
+        return false
+    }
+    return bindingValue(binding)
+}
+
+// ---------------------------------------------------------------------------
+// Matching primitives
+// ---------------------------------------------------------------------------
+
+func isSymbolTerm(term) {
+    return !pairp(term)
+}
+
+func countWordPrefix(subject) {
+    var count = 0
+    var cursor = subject
+    while !nullp(cursor) {
+        var term = first(cursor)
+        if pairp(term) {
+            return count
+        }
+        count = count + 1
+        cursor = rest(cursor)
+    }
+    return count
+}
+
+func matchVariable(patternVar, subject, restPattern, env) {
+    var typeName = varType(patternVar)
+    var name = varName(patternVar)
+
+    if eq(typeName, `'s) {
+        if nullp(subject) {
+            return []
+        }
+        var term = first(subject)
+        if pairp(term) {
+            return []
+        }
+        var nextEnv = bindValue(env, `'s, name, term)
+        if equal(nextEnv, false) {
+            return []
+        }
+        return matchSequence(rest(subject), restPattern, nextEnv)
+    }
+
+    if eq(typeName, `'t) {
+        if nullp(subject) {
+            return []
+        }
+        var term = first(subject)
+        var nextEnv = bindValue(env, `'t, name, term)
+        if equal(nextEnv, false) {
+            return []
+        }
+        return matchSequence(rest(subject), restPattern, nextEnv)
+    }
+
+    if eq(typeName, `'w) {
+        var max = countWordPrefix(subject)
+        if max == 0 {
+            return []
+        }
+        var acc = []
+        var count = max
+        while count >= 1 {
+            var fragment = takeList(subject, count)
+            var remainder = dropList(subject, count)
+            var nextEnv = bindValue(env, `'w, name, fragment)
+            if !equal(nextEnv, false) {
+                var tailMatches = matchSequence(remainder, restPattern, nextEnv)
+                acc = prependAll(acc, tailMatches)
+            }
+            count = count - 1
+        }
+        return reverseList(acc)
+    }
+
+    // e-variable
+    var total = listLength(subject)
+    var acc = []
+    var count = total
+    while count >= 0 {
+        var fragment = takeList(subject, count)
+        var remainder = dropList(subject, count)
+        var nextEnv = bindValue(env, `'e, name, fragment)
+        if !equal(nextEnv, false) {
+            var tailMatches = matchSequence(remainder, restPattern, nextEnv)
+            acc = prependAll(acc, tailMatches)
+        }
+        count = count - 1
+    }
+    return reverseList(acc)
+}
+
+func matchSequence(subject, pattern, env) {
+    if nullp(pattern) {
+        if nullp(subject) {
+            return [env]
+        }
+        return []
+    }
+
+    var head = first(pattern)
+    var tail = rest(pattern)
+
+    if isVarPattern(head) {
+        return matchVariable(head, subject, tail, env)
+    }
+
+    if isBracketPattern(head) {
+        if nullp(subject) {
+            return []
+        }
+        var term = first(subject)
+        if !pairp(term) {
+            return []
+        }
+        var innerMatches = matchSequence(term, bracketBody(head), env)
+        var acc = []
+        var cursor = innerMatches
+        while !nullp(cursor) {
+            var innerEnv = first(cursor)
+            var tailMatches = matchSequence(rest(subject), tail, innerEnv)
+            acc = prependAll(acc, tailMatches)
+            cursor = rest(cursor)
+        }
+        return reverseList(acc)
+    }
+
+    if nullp(subject) {
+        return []
+    }
+    if equal(first(subject), head) {
+        return matchSequence(rest(subject), tail, env)
+    }
+    return []
+}
+
+func refalMatchAll(pattern, subject) {
+    return matchSequence(subject, pattern, [])
+}
+
+func refalMatchFirst(pattern, subject) {
+    var matches = refalMatchAll(pattern, subject)
+    if nullp(matches) {
+        return false
+    }
+    return first(matches)
+}
+
+// ---------------------------------------------------------------------------
+// Display helpers
+// ---------------------------------------------------------------------------
+
+func displayEnv(env) {
+    var bindings = reverseList(env)
+    if nullp(bindings) {
+        display("  (no bindings)\n")
+        return
+    }
+    var cursor = bindings
+    while !nullp(cursor) {
+        var binding = first(cursor)
+        var typeName = symbolToString(first(binding))
+        var nameSym = symbolToString(first(rest(binding)))
+        display("  ")
+        display(typeName)
+        display(".")
+        display(nameSym)
+        display(" = ")
+        display(bindingValue(binding))
+        newline()
+        cursor = rest(cursor)
+    }
+}
+
+func displayMatches(title, patternDesc, subject, pattern) {
+    display("== ")
+    display(title)
+    display(" ==\n")
+    display("Subject: ")
+    display(subject)
+    newline()
+    display("Pattern description: ")
+    display(patternDesc)
+    newline()
+    display("Pattern data: ")
+    display(pattern)
+    newline()
+    var matches = refalMatchAll(pattern, subject)
+    if nullp(matches) {
+        display("Matches: none\n\n")
+        return
+    }
+    display("Matches: ")
+    display(listLength(matches))
+    newline()
+    var cursor = matches
+    var index = 1
+    while !nullp(cursor) {
+        display("  #")
+        display(index)
+        newline()
+        displayEnv(first(cursor))
+        cursor = rest(cursor)
+        index = index + 1
+    }
+    newline()
+}
+
+// ---------------------------------------------------------------------------
+// Clause evaluation helper (Refal-style ordered rules)
+// ---------------------------------------------------------------------------
+
+func applyClauses(subject, clauses) {
+    var cursor = clauses
+    while !nullp(cursor) {
+        var clause = first(cursor)
+        var pattern = first(clause)
+        var handler = first(rest(clause))
+        var match = refalMatchFirst(pattern, subject)
+        if !equal(match, false) {
+            return handler(match)
+        }
+        cursor = rest(cursor)
+    }
+    return `'no-match
+}
+
+// ---------------------------------------------------------------------------
+// Demos
+// ---------------------------------------------------------------------------
+
+//
+// Shows how an s-variable grabs one symbol while a w-variable consumes the
+// remaining word prefix, keeping literal suffixes (the final `'world`) fixed.
+//
+func demoWordSplit() {
+    var subject = [`'greetings, `'from, `'gisp, `'world]
+    var pattern = [S(`'first), W(`'middle), `'world]
+    displayMatches(
+        "Word split with s/w variables",
+        "[s.first w.middle 'world]",
+        subject,
+        pattern
+    )
+}
+
+//
+// Demonstrates matching nested brackets with `Br(...)` while s- and e-
+// variables capture inner fields and any trailing tail of the outer list.
+//
+func demoBracketMatch() {
+    var subject = [`'sum, [`'x, `'plus, `'y], `'done]
+    var bracketPattern = Br([S(`'lhs), `'plus, S(`'rhs)])
+    var pattern = [`'sum, bracketPattern, E(`'rest)]
+    displayMatches(
+        "Bracket structure with s/e variables",
+        "['sum (s.lhs 'plus s.rhs) e.rest]",
+        subject,
+        pattern
+    )
+}
+
+//
+// Illustrates that repeating the same s-variable name forces equality and
+// that mismatched subjects fall through with no bindings established.
+//
+func demoRepeatedVariable() {
+    var subject = [`'dup, `'x, `'x]
+    var pattern = [`'dup, S(`'sym), S(`'sym)]
+    displayMatches(
+        "Repeated s-variable enforces equality",
+        "['dup s.sym s.sym]",
+        subject,
+        pattern
+    )
+
+    var failingSubject = [`'dup, `'x, `'y]
+    var failingMatch = refalMatchFirst(pattern, failingSubject)
+    display("== Repeated variable mismatch ==\n")
+    display("Subject: ")
+    display(failingSubject)
+    newline()
+    if equal(failingMatch, false) {
+        display("Result: no match (as expected)\n\n")
+    } else {
+        display("Unexpected match: ")
+        display(failingMatch)
+        newline()
+    }
+}
+
+//
+// Highlights backtracking over e-variables: the matcher tries the longest
+// prefix first and then shortens it to enumerate additional solutions.
+//
+func demoBacktracking() {
+    var subject = [`'a, `'middle, `'middle, `'b]
+    var pattern = [E(`'head), `'middle, E(`'tail)]
+    displayMatches(
+        "Backtracking across e-variables",
+        "[e.head 'middle e.tail]",
+        subject,
+        pattern
+    )
+}
+
+//
+// Emulates Refal-style ordered clauses: the first matching pattern fires
+// and rewrites the subject expression into a new result (factorial steps).
+//
+func demoClauseEvaluation() {
+    display("== Clause evaluation (factorial skeleton) ==\n")
+    var clauses = [
+        [[0], func(env) {
+            // fact(0) = 1
+            return [1]
+        }],
+        [[S(`'n)], func(env) {
+            var n = lookupBinding(env, `'s, `'n)
+            return [`'*, n, [`'fact, n - 1]]
+        }],
+    ]
+
+    var baseResult = applyClauses([0], clauses)
+    display("fact(0) => ")
+    display(baseResult)
+    newline()
+
+    var stepResult = applyClauses([3], clauses)
+    display("fact(3) => ")
+    display(stepResult)
+    newline()
+    newline()
+}
+
+// ---------------------------------------------------------------------------
+// Run demos
+// ---------------------------------------------------------------------------
+
+demoWordSplit()
+demoBracketMatch()
+demoRepeatedVariable()
+demoBacktracking()
+demoClauseEvaluation()
