@@ -1,0 +1,198 @@
+#!/usr/bin/env gisp
+
+const blankTile = " "
+var startPosition = [
+    1, 2, 3, 4,
+    5, 6, 7, 8,
+    9, 10, 11, 12,
+    13, 14, 15, blankTile
+]
+
+func copyList(lst) {
+    if nullp(lst) {
+        return []
+    }
+    return cons(car(lst), copyList(cdr(lst)))
+}
+
+func listRef(lst, index) {
+    var current = lst
+    var remaining = index
+    while remaining > 0 {
+        current = cdr(current)
+        remaining = remaining - 1
+    }
+    return car(current)
+}
+
+func nthPair(lst, index) {
+    var current = lst
+    var remaining = index
+    while remaining > 0 {
+        current = cdr(current)
+        remaining = remaining - 1
+    }
+    return current
+}
+
+func swapPositions(board, firstIndex, secondIndex) {
+    var firstCell = nthPair(board, firstIndex)
+    var secondCell = nthPair(board, secondIndex)
+    var temp = car(firstCell)
+    setCar(firstCell, car(secondCell))
+    setCar(secondCell, temp)
+}
+
+func findSpace(board) {
+    var index = 0
+    var current = board
+    while !nullp(current) {
+        if equal(car(current), blankTile) {
+            return index
+        }
+        index = index + 1
+        current = cdr(current)
+    }
+    return -1
+}
+
+func indexToRowCol(index) {
+    var row = 0
+    var col = index
+    while col >= 4 {
+        col = col - 4
+        row = row + 1
+    }
+    return [row, col]
+}
+
+func findMoves(board) {
+    var space = findSpace(board)
+    var components = indexToRowCol(space)
+    var row = car(components)
+    var col = car(cdr(components))
+    var moves = []
+
+    if row > 0 {
+        moves = append(moves, list(`'up))
+    }
+    if row < 3 {
+        moves = append(moves, list(`'down))
+    }
+    if col > 0 {
+        moves = append(moves, list(`'left))
+    }
+    if col < 3 {
+        moves = append(moves, list(`'right))
+    }
+
+    return moves
+}
+
+func makeMove(board, move) {
+    var space = findSpace(board)
+    if eq(move, `'left) {
+        swapPositions(board, space, space - 1)
+        return
+    }
+    if eq(move, `'right) {
+        swapPositions(board, space, space + 1)
+        return
+    }
+    if eq(move, `'up) {
+        swapPositions(board, space, space - 4)
+        return
+    }
+    if eq(move, `'down) {
+        swapPositions(board, space, space + 4)
+        return
+    }
+}
+
+func finished(board) {
+    return equal(board, startPosition)
+}
+
+func modulo(n, m) {
+    var remainder = n
+    while remainder >= m {
+        remainder = remainder - m
+    }
+    return remainder
+}
+
+func displayBoard(board) {
+    newline()
+    var index = 0
+    var current = board
+    while !nullp(current) {
+        if modulo(index, 4) == 0 {
+            newline()
+        }
+        var tile = car(current)
+        display(tile)
+        if numberp(tile) && tile > 9 {
+            display(" ")
+        } else {
+            display("  ")
+        }
+        index = index + 1
+        current = cdr(current)
+    }
+    newline()
+}
+
+func moveAllowed(moves, move) {
+    var current = moves
+    while !nullp(current) {
+        if eq(car(current), move) {
+            return true
+        }
+        current = cdr(current)
+    }
+    return false
+}
+
+func createStartPosition() {
+    var board = copyList(startPosition)
+    var steps = 0
+    while true {
+        var moves = findMoves(board)
+        var options = length(moves)
+        var choice = randomInteger(options)
+        var move = listRef(moves, choice)
+        makeMove(board, move)
+        steps = steps + 1
+        if steps >= 100 && !finished(board) {
+            return board
+        }
+    }
+}
+
+func playGame() {
+    var board = createStartPosition()
+    var movesTaken = 0
+    while true {
+        if finished(board) {
+            newline()
+            display("COMPLETED PUZZLE in ")
+            display(movesTaken)
+            display(" moves\n")
+            return
+        }
+        displayBoard(board)
+        var moves = findMoves(board)
+        display("Enter a move: ")
+        display(moves)
+        newline()
+        var move = read()
+        if moveAllowed(moves, move) {
+            makeMove(board, move)
+            movesTaken = movesTaken + 1
+        } else {
+            display("Invalid move - try again\n")
+        }
+    }
+}
+
+playGame()

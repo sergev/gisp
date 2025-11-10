@@ -3,12 +3,20 @@ package runtime
 import (
 	"errors"
 	"fmt"
+	"math/rand"
 	"os"
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/sergev/gisp/lang"
+)
+
+var (
+	randomMu   sync.Mutex
+	randomRand = rand.New(rand.NewSource(time.Now().UnixNano()))
 )
 
 func installPrimitives(ev *lang.Evaluator) {
@@ -60,6 +68,8 @@ func installPrimitives(ev *lang.Evaluator) {
 
 	define("apply", primApply)
 	define("gensym", primGensym)
+	define("randomInteger", primRandomInteger)
+	define("randomSeed", primRandomSeed)
 	define("stringLength", primStringLength)
 	define("makeString", primMakeString)
 	define("stringAppend", primStringAppend)
@@ -369,6 +379,38 @@ func primNot(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 		return lang.Value{}, fmt.Errorf("not expects 1 argument, got %d", len(args))
 	}
 	return lang.BoolValue(!lang.IsTruthy(args[0])), nil
+}
+
+func primRandomInteger(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	if len(args) != 1 {
+		return lang.Value{}, fmt.Errorf("randomInteger expects 1 argument, got %d", len(args))
+	}
+	limitVal := args[0]
+	if limitVal.Type != lang.TypeInt {
+		return lang.Value{}, typeError("randomInteger", "integer", limitVal)
+	}
+	limit := limitVal.Int()
+	if limit <= 0 {
+		return lang.Value{}, fmt.Errorf("randomInteger limit must be positive, got %d", limit)
+	}
+	randomMu.Lock()
+	result := randomRand.Int63n(limit)
+	randomMu.Unlock()
+	return lang.IntValue(result), nil
+}
+
+func primRandomSeed(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	if len(args) != 1 {
+		return lang.Value{}, fmt.Errorf("randomSeed expects 1 argument, got %d", len(args))
+	}
+	seedVal := args[0]
+	if seedVal.Type != lang.TypeInt {
+		return lang.Value{}, typeError("randomSeed", "integer", seedVal)
+	}
+	randomMu.Lock()
+	randomRand.Seed(seedVal.Int())
+	randomMu.Unlock()
+	return lang.EmptyList, nil
 }
 
 func primIsNumber(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {

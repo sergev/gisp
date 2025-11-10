@@ -65,6 +65,8 @@ All of the following expect exactly one argument and return `#t` or `#f`. Predic
 - `map` — Applies a procedure to each element of a list, returning a newly allocated list of results. Accepts two arguments: a procedure and a list. When the list is empty, the result is the empty list.
 - `filter` — Retains the elements of a list for which the predicate returns a truthy value. Accepts a predicate procedure and a list, recursing through the list like `map` and returning a newly allocated list of matches. Empty inputs or all-false predicates yield the empty list.
 - `gensym` — Generates a fresh symbol of the form `gN`. Takes no arguments.
+- `randomInteger` — Returns a uniformly distributed integer in the half-open range `[0, limit)`. Requires a single positive integer argument.
+- `randomSeed` — Resets the generator used by `randomInteger`. Takes a single integer seed and returns the empty list.
 
 ## String and Symbol Operations
 

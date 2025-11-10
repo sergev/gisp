@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"math/rand"
 	"strings"
 	"testing"
 
@@ -35,6 +36,61 @@ func TestPrimSubAndDivEdgeCases(t *testing.T) {
 
 		if _, err := primDiv(ev, []lang.Value{lang.IntValue(4), lang.IntValue(0)}); err == nil || !strings.Contains(err.Error(), "division by zero") {
 			t.Fatalf("expected division by zero error, got %v", err)
+		}
+	})
+}
+
+func TestPrimRandomIntegerAndSeed(t *testing.T) {
+	ev := NewEvaluator()
+
+	t.Run("arity and type validation", func(t *testing.T) {
+		if _, err := primRandomInteger(ev, nil); err == nil || !strings.Contains(err.Error(), "expects 1 argument") {
+			t.Fatalf("expected arity error from randomInteger, got %v", err)
+		}
+		if _, err := primRandomInteger(ev, []lang.Value{lang.RealValue(3.14)}); err == nil || !strings.Contains(err.Error(), "integer") {
+			t.Fatalf("expected type error from randomInteger, got %v", err)
+		}
+		if _, err := primRandomInteger(ev, []lang.Value{lang.IntValue(0)}); err == nil || !strings.Contains(err.Error(), "positive") {
+			t.Fatalf("expected positive limit error, got %v", err)
+		}
+		if _, err := primRandomSeed(ev, nil); err == nil || !strings.Contains(err.Error(), "expects 1 argument") {
+			t.Fatalf("expected arity error from randomSeed, got %v", err)
+		}
+		if _, err := primRandomSeed(ev, []lang.Value{lang.RealValue(2)}); err == nil || !strings.Contains(err.Error(), "integer") {
+			t.Fatalf("expected type error from randomSeed, got %v", err)
+		}
+	})
+
+	t.Run("deterministic sequence with seeding", func(t *testing.T) {
+		const limit = int64(16)
+		if _, err := primRandomSeed(ev, []lang.Value{lang.IntValue(123)}); err != nil {
+			t.Fatalf("randomSeed failed: %v", err)
+		}
+		expectGen := rand.New(rand.NewSource(123))
+		expect := expectGen.Int63n(limit)
+
+		val, err := primRandomInteger(ev, []lang.Value{lang.IntValue(limit)})
+		if err != nil {
+			t.Fatalf("randomInteger failed: %v", err)
+		}
+		if val.Type != lang.TypeInt {
+			t.Fatalf("expected integer result, got %v", val)
+		}
+		if val.Int() != expect {
+			t.Fatalf("expected %d, got %d", expect, val.Int())
+		}
+
+		if _, err := primRandomSeed(ev, []lang.Value{lang.IntValue(123)}); err != nil {
+			t.Fatalf("randomSeed reseed failed: %v", err)
+		}
+		expectGen = rand.New(rand.NewSource(123))
+		expect = expectGen.Int63n(limit)
+		val, err = primRandomInteger(ev, []lang.Value{lang.IntValue(limit)})
+		if err != nil {
+			t.Fatalf("randomInteger after reseed failed: %v", err)
+		}
+		if val.Int() != expect {
+			t.Fatalf("expected %d after reseed, got %d", expect, val.Int())
 		}
 	})
 }

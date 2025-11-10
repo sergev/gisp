@@ -82,6 +82,7 @@ Sample programs live in `examples/`:
 - `continuation.gs` – demonstrates capturing and invoking continuations with `call/cc`
 - `fact.gisp` – factorials using the Go-like syntax
 - `tutorial_*.gisp` – end-to-end walkthrough files referenced by the tutorial
+- `puzzle15.gisp` – interactive 15 puzzle; enter moves as symbols (`up`, `down`, `left`, `right`)
 
 Run any of them with the interpreter:
 
