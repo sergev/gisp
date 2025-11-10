@@ -1,0 +1,363 @@
+#!/usr/bin/env gisp
+
+// Maze generator in pure Gisp.
+// Builds a grid of walls and empty cells, then uses randomized depth-first
+// search with backtracking to carve passages before rendering as ASCII.
+// For details see: https://en.wikipedia.org/wiki/Maze_generation_algorithm
+
+const cellWall = "wall"
+const cellEmpty = "empty"
+const cellGlyphs = [
+    "  ", "  ", "  ", "  ", "· ", "╵ ", "╴ ", "┘ ",
+    "  ", "  ", "  ", "  ", "╶─", "└─", "──", "┴─",
+    "  ", "  ", "  ", "  ", "╷ ", "│ ", "┐ ", "┤ ",
+    "  ", "  ", "  ", "  ", "┌─", "├─", "┬─", "┼─"
+]
+
+func reverseList(lst) {
+    var acc = []
+    var cursor = lst
+    while !nullp(cursor) {
+        acc = cons(first(cursor), acc)
+        cursor = rest(cursor)
+    }
+    return acc
+}
+
+func listRef(lst, index) {
+    var current = lst
+    var remaining = index
+    while remaining > 0 {
+        current = rest(current)
+        remaining = remaining - 1
+    }
+    return first(current)
+}
+
+func nthPair(lst, index) {
+    var current = lst
+    var remaining = index
+    while remaining > 0 {
+        current = rest(current)
+        remaining = remaining - 1
+    }
+    return current
+}
+
+func setListRef(lst, index, value) {
+    var cell = nthPair(lst, index)
+    setFirst(cell, value)
+}
+
+func makeSolidRow(width) {
+    var acc = []
+    var count = 0
+    while count < width {
+        acc = cons(cellWall, acc)
+        count = count + 1
+    }
+    return reverseList(acc)
+}
+
+func makeAlternatingRow(width) {
+    var acc = []
+    var count = 0
+    var useWall = true
+    while count < width {
+        if useWall {
+            acc = cons(cellWall, acc)
+            useWall = false
+        } else {
+            acc = cons(cellEmpty, acc)
+            useWall = true
+        }
+        count = count + 1
+    }
+    return reverseList(acc)
+}
+
+func createEmptyMaze(width, height) {
+    var fullWidth = (width * 2) + 1
+    var fullHeight = (height * 2) + 1
+    var acc = []
+    var count = 0
+    var useWallRow = true
+    while count < fullHeight {
+        if useWallRow {
+            acc = cons(makeSolidRow(fullWidth), acc)
+            useWallRow = false
+        } else {
+            acc = cons(makeAlternatingRow(fullWidth), acc)
+            useWallRow = true
+        }
+        count = count + 1
+    }
+    return reverseList(acc)
+}
+
+func coordY(coord) {
+    return first(coord)
+}
+
+func coordX(coord) {
+    return first(rest(coord))
+}
+
+func mazeSet(maze, coord, value) {
+    var rowCell = nthPair(maze, coordY(coord))
+    var row = first(rowCell)
+    var cell = nthPair(row, coordX(coord))
+    setFirst(cell, value)
+}
+
+func collectEmptyCells(maze) {
+    var coords = []
+    var rows = maze
+    var y = 0
+    while !nullp(rows) {
+        var row = first(rows)
+        var cells = row
+        var x = 0
+        while !nullp(cells) {
+            var cell = first(cells)
+            if equal(cell, cellEmpty) {
+                coords = cons([y, x], coords)
+            }
+            cells = rest(cells)
+            x = x + 1
+        }
+        rows = rest(rows)
+        y = y + 1
+    }
+    return reverseList(coords)
+}
+
+func containsCoord(coords, target) {
+    var cursor = coords
+    while !nullp(cursor) {
+        if equal(first(cursor), target) {
+            return true
+        }
+        cursor = rest(cursor)
+    }
+    return false
+}
+
+func removeCoord(coords, target) {
+    var acc = []
+    var cursor = coords
+    while !nullp(cursor) {
+        var current = first(cursor)
+        if !equal(current, target) {
+            acc = cons(current, acc)
+        }
+        cursor = rest(cursor)
+    }
+    return reverseList(acc)
+}
+
+func neighborhood(coord, distance) {
+    var y = coordY(coord)
+    var x = coordX(coord)
+    var acc = []
+    acc = cons([y + distance, x], acc)
+    acc = cons([y - distance, x], acc)
+    acc = cons([y, x - distance], acc)
+    acc = cons([y, x + distance], acc)
+    return reverseList(acc)
+}
+
+func intersectCoords(candidates, pool) {
+    var acc = []
+    var cursor = candidates
+    while !nullp(cursor) {
+        var candidate = first(cursor)
+        if containsCoord(pool, candidate) {
+            acc = cons(candidate, acc)
+        }
+        cursor = rest(cursor)
+    }
+    return reverseList(acc)
+}
+
+func randomChoice(options) {
+    var size = length(options)
+    var index = randomInteger(size)
+    return listRef(options, index)
+}
+
+func coordLess(firstCoord, secondCoord) {
+    var y1 = coordY(firstCoord)
+    var y2 = coordY(secondCoord)
+    if y1 < y2 {
+        return true
+    }
+    if y1 > y2 {
+        return false
+    }
+    var x1 = coordX(firstCoord)
+    var x2 = coordX(secondCoord)
+    return x1 < x2
+}
+
+func insertCoord(sorted, coord) {
+    if nullp(sorted) {
+        return cons(coord, [])
+    }
+    if coordLess(coord, first(sorted)) {
+        return cons(coord, sorted)
+    }
+    return cons(first(sorted), insertCoord(rest(sorted), coord))
+}
+
+func sortCoords(coords) {
+    var result = []
+    var cursor = coords
+    while !nullp(cursor) {
+        result = insertCoord(result, first(cursor))
+        cursor = rest(cursor)
+    }
+    return result
+}
+
+func bitValue(index) {
+    var result = 1
+    var i = 0
+    while i < index {
+        result = result * 2
+        i = i + 1
+    }
+    return result
+}
+
+func mazeHeight(maze) {
+    return length(maze)
+}
+
+func cellIsWall(maze, coord) {
+    var y = coordY(coord)
+    var x = coordX(coord)
+    if y < 0 {
+        return false
+    }
+    var height = mazeHeight(maze)
+    if y >= height {
+        return false
+    }
+    if x < 0 {
+        return false
+    }
+    var row = listRef(maze, y)
+    var width = length(row)
+    if x >= width {
+        return false
+    }
+    return equal(listRef(row, x), cellWall)
+}
+
+func cellCode(maze, coord) {
+    var neighbors = neighborhood(coord, 1)
+    neighbors = cons(coord, neighbors)
+    neighbors = sortCoords(neighbors)
+    var mask = 0
+    var index = 0
+    var cursor = neighbors
+    while !nullp(cursor) {
+        if cellIsWall(maze, first(cursor)) {
+            mask = mask + bitValue(index)
+        }
+        cursor = rest(cursor)
+        index = index + 1
+    }
+    return mask
+}
+
+func betweenCells(firstCoord, secondCoord) {
+    var y1 = coordY(firstCoord)
+    var x1 = coordX(firstCoord)
+    var y2 = coordY(secondCoord)
+    var x2 = coordX(secondCoord)
+    if y1 == y2 {
+        if x2 > x1 {
+            return [y1, x1 + 1]
+        }
+        return [y1, x1 - 1]
+    }
+    if y2 > y1 {
+        return [y1 + 1, x1]
+    }
+    return [y1 - 1, x1]
+}
+
+func carvePassage(maze, fromCoord, toCoord) {
+    var between = betweenCells(fromCoord, toCoord)
+    mazeSet(maze, between, cellEmpty)
+}
+
+func randomMaze(width, height) {
+    var maze = createEmptyMaze(width, height)
+    var nonvisited = collectEmptyCells(maze)
+    if nullp(nonvisited) {
+        return maze
+    }
+
+    var stack = []
+    var current = randomChoice(nonvisited)
+    nonvisited = removeCoord(nonvisited, current)
+
+    while true {
+        if nullp(nonvisited) {
+            return maze
+        }
+
+        var neighbors = intersectCoords(neighborhood(current, 2), nonvisited)
+        if !nullp(neighbors) {
+            var next = randomChoice(neighbors)
+            carvePassage(maze, current, next)
+            stack = cons(current, stack)
+            current = next
+            nonvisited = removeCoord(nonvisited, current)
+        } else {
+            if nullp(stack) {
+                return maze
+            }
+            current = first(stack)
+            stack = rest(stack)
+        }
+    }
+}
+
+func cellString(maze, coord) {
+    var code = cellCode(maze, coord)
+    return listRef(cellGlyphs, code)
+}
+
+func mazeString(maze) {
+    var rows = maze
+    var output = ""
+    var y = 0
+    while !nullp(rows) {
+        var row = first(rows)
+        var cells = row
+        var line = ""
+        var x = 0
+        while !nullp(cells) {
+            line = stringAppend(line, cellString(maze, [y, x]))
+            cells = rest(cells)
+            x = x + 1
+        }
+        output = stringAppend(output, line)
+        rows = rest(rows)
+        if !nullp(rows) {
+            output = stringAppend(output, "\n")
+        }
+        y = y + 1
+    }
+    return output
+}
+
+const defaultWidth = 10
+const defaultHeight = 10
+
+display(mazeString(randomMaze(defaultWidth, defaultHeight)))
+newline()
