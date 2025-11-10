@@ -492,15 +492,24 @@ func displayMatch(label, match) {
     }
     display(label)
     display(":\n")
-    display("  prefix: ")
-    display(matchField(match, `'prefix))
-    newline()
-    display("  matched: ")
-    display(matchField(match, `'matched))
-    newline()
-    display("  suffix: ")
-    display(matchField(match, `'suffix))
-    newline()
+    var prefix = matchField(match, `'prefix)
+    if !equal(prefix, "") {
+        display("  prefix: ")
+        display(prefix)
+        newline()
+    }
+    var matched = matchField(match, `'matched)
+    if !equal(matched, "") {
+        display("  matched: ")
+        display(matched)
+        newline()
+    }
+    var suffix = matchField(match, `'suffix)
+    if !equal(suffix, "") {
+        display("  suffix: ")
+        display(suffix)
+        newline()
+    }
     var captures = capturesFromMatch(match)
     if nullp(captures) {
         display("  captures: []\n")

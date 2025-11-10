@@ -145,7 +145,11 @@ func TestTutorial15CallccFindFirst(t *testing.T) {
 }
 
 func TestTutorial16ZscorePipeline(t *testing.T) {
-	runTutorialExample(t, "tutorial_16_zscore_pipeline.gisp", "")
+	runTutorialExample(t, "tutorial_16_zscore_pipeline.gisp", `Analyzing values: (10 10.5 10.2 11 26 10.1)
+Mean: 12.966666666666667
+Variance: 34.08222222222222
+Standard deviation: 5.837998134825175
+Z-scores: (-0.5081650590070815 -0.4225192625452138 -0.47390674042233455 -0.3368734660833462 2.232500427772684 -0.49103589971470807)`)
 }
 
 func TestTutorial17Classify(t *testing.T) {
@@ -170,9 +174,7 @@ func TestSnobolPatternMatcherExample(t *testing.T) {
 		"snobol_patterns.gisp",
 		`== Snobol-style syllable split ==
 syllable:
-  prefix: 
   matched: strand
-  suffix: 
   captures:
     onset => str
     nucleus => a
@@ -180,9 +182,7 @@ syllable:
 
 == Configuration pairs with ARBNO/BREAK ==
 pairs:
-  prefix: 
   matched: name = Alice; age=34; city=Rlyeh;
-  suffix: 
   captures:
     key => name
     value => Alice
@@ -197,9 +197,7 @@ pairs:
 
 == Log line with LEN/POS/RPOS ==
 log:
-  prefix: 
   matched: ERROR 2025-11-10 parser: unexpected token ';'
-  suffix: 
   captures:
     level => ERROR
     year => 2025

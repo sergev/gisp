@@ -82,7 +82,40 @@ func zScores(xs) {
 }
 
 func alertOnOutlier(xs, threshold) {
-    var scores = zScores(xs)
+    display("Analyzing values: ")
+    display(xs)
+    newline()
+
+    var avg = mean(xs)
+    display("Mean: ")
+    display(avg)
+    newline()
+
+    var varianceValue = variance(xs, avg)
+    display("Variance: ")
+    display(varianceValue)
+    newline()
+
+    var std = sqrtNewton(varianceValue)
+    display("Standard deviation: ")
+    display(std)
+    newline()
+
+    if std == 0 {
+        display("All values are identical; z-scores are undefined.")
+        newline()
+        return
+    }
+
+    var scores = map(func(x) {
+        return (x - avg) / std
+    }, xs)
+
+    display("Z-scores: ")
+    display(scores)
+    newline()
+    newline()
+
     var cursor = scores
     var index = 0
 
