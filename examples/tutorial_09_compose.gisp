@@ -1,7 +1,10 @@
 #!/usr/bin/env gisp
 
-var compose = `(lambda (f g)
-(lambda (x) (f (g x))))
+func compose(f, g) {
+    return func(x) {
+        return f(g(x))
+    }
+}
 
 var increment = func(n) { return n + 1; }
 var double = func(n) { return n * 2; }

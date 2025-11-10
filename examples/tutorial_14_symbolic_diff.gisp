@@ -48,27 +48,27 @@ func makeExponent(base, exponent) {
 }
 
 func sumAddend(expr) {
-    return `(car (cdr expr))
+    return car(cdr(expr))
 }
 
 func sumAugend(expr) {
-    return `(car (cdr (cdr expr)))
+    return car(cdr(cdr(expr)))
 }
 
 func productMultiplier(expr) {
-    return `(car (cdr expr))
+    return car(cdr(expr))
 }
 
 func productMultiplicand(expr) {
-    return `(car (cdr (cdr expr)))
+    return car(cdr(cdr(expr)))
 }
 
 func exponentBase(expr) {
-    return `(car (cdr expr))
+    return car(cdr(expr))
 }
 
 func exponentPower(expr) {
-    return `(car (cdr (cdr expr)))
+    return car(cdr(cdr(expr)))
 }
 
 func deriv(expr, variable) {

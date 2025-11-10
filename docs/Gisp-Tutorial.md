@@ -207,6 +207,29 @@ display(iterate(double, 1, 5))  // 32
 newline()
 ```
 
+You can also build functions from functions:
+
+```gisp
+func compose(f, g) {
+    return func(x) {
+        return f(g(x))
+    }
+}
+
+var increment = func(n) { return n + 1; }
+var double = func(n) { return n * 2; }
+
+display(compose(increment, double)(10)) // 21
+newline()
+```
+
+This snippet shows function composition — building a new function that chains two functions together.
+
+- `compose()` takes two functions `f` and `g` and returns a new function.
+- That returned function takes an argument `x`, first applies `g` to it, then passes the result into `f`.
+- `increment()` adds 1; `double()` multiplies by 2.
+- Calling `compose(increment, double)(10)` runs `double(10)` → 20, then `increment(20)` → 21, which `display()` prints.
+
 ---
 
 ## 4. Lists, Data, and Runtime Primitives
@@ -281,19 +304,6 @@ func demo(value) {
 
 demo(false)
 demo(true)
-```
-
-You can also splice in existing Scheme libraries:
-
-```gisp
-var compose = `(lambda (f g)
-    (lambda (x) (f (g x))))
-
-var increment = func(n) { return n + 1; }
-var double = func(n) { return n * 2; }
-
-display(compose(increment, double)(10)) // 21
-newline()
 ```
 
 ---
@@ -567,21 +577,27 @@ The emphasis is on reusing Scheme's list selectors (`cadr`, `caddr`) via inline 
 One of Scheme's signature features is `call/cc`. We can reproduce the classic "search for a solution and exit early" example in Gisp:
 
 ```gisp
-var findFirst = `(lambda (pred xs)
-    (call/cc (lambda (exit)
-        (let loop ((items xs))
-            (if (nullp items)
-                '#f
-                (if (pred (car items))
-                    (exit (car items))
-                    (loop (cdr items))))))))
+func findFirst(pred, xs) {
+    return callcc(func(exit) {
+        var items = xs
+        while !nullp(items) {
+            var value = car(items)
+            if pred(value) {
+                exit(value)
+            }
+            items = cdr(items)
+        }
+        return false
+    })
+}
 
-var firstLarge = findFirst(func(n) { return n > 10; }, [1, 3, 5, 8, 13, 21])
+var firstLarge = findFirst(func(n) { return n > 10; },
+                           [1, 3, 5, 8, 13, 21])
 display(firstLarge)
 newline()
 ```
 
-Here we embed a short Scheme loop that uses `call/cc` to escape. The predicate itself is a Gisp closure, showing how values move freely between the two syntaxes. This pattern is particularly useful when porting Scheme code that already relies on continuations.
+Here we embed a short loop that uses `callcc` to escape.
 
 ### 7.5 Continuations in Gisp
 
