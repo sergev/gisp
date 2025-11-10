@@ -6,8 +6,8 @@ func compose(f, g) {
     }
 }
 
-var increment = func(n) { return n + 1; }
-var double = func(n) { return n * 2; }
+func increment(n) { return n + 1; }
+func double(n) { return n * 2; }
 
 display(compose(increment, double)(10))
 newline()

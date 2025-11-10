@@ -1,6 +1,3 @@
 #!/usr/bin/env gisp
 
-(begin
-  (display "Hello, world")
-  (newline))
-
+(display "Hello, world\n")

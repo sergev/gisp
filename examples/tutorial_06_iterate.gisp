@@ -11,6 +11,7 @@ func iterate(fn, value, count) {
     return result
 }
 
-var double = func(x) { return x * 2; }
+func double(x) { return x * 2; }
+
 display(iterate(double, 1, 5))
 newline()

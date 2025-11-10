@@ -83,36 +83,36 @@ func deriv(expr, variable) {
     }
     if isTagged(expr, `'+) {
         return makeSum(
-        deriv(sumAddend(expr), variable),
-        deriv(sumAugend(expr), variable)
+            deriv(sumAddend(expr), variable),
+            deriv(sumAugend(expr), variable)
         )
     }
     if isTagged(expr, `'*) {
         return makeSum(
-        makeProduct(
-        deriv(productMultiplier(expr), variable),
-        productMultiplicand(expr)
-        ),
-        makeProduct(
-        productMultiplier(expr),
-        deriv(productMultiplicand(expr), variable)
-        )
+            makeProduct(
+                deriv(productMultiplier(expr), variable),
+                productMultiplicand(expr)
+            ),
+            makeProduct(
+                productMultiplier(expr),
+                deriv(productMultiplicand(expr), variable)
+            )
         )
     }
     if isTagged(expr, `'pow) {
         var base = exponentBase(expr)
         var power = exponentPower(expr)
         return makeProduct(
-        makeProduct(power, deriv(base, variable)),
-        makeExponent(base, makeSum(power, -1))
+            makeProduct(power, deriv(base, variable)),
+            makeExponent(base, makeSum(power, -1))
         )
     }
     return cons(`'unknown-derivative, [expr])
 }
 
 var expression = cons(`'*, [
-makeSum(`'x, 1),
-makeExponent(`'x, 3),
+    makeSum(`'x, 1),
+    makeExponent(`'x, 3),
 ])
 
 display(deriv(expression, `'x))

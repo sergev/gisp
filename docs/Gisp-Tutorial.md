@@ -202,7 +202,8 @@ func iterate(fn, value, count) {
     return result
 }
 
-var double = func(x) { return x * 2; }
+func double(x) { return x * 2; }
+
 display(iterate(double, 1, 5))  // 32
 newline()
 ```
@@ -216,8 +217,8 @@ func compose(f, g) {
     }
 }
 
-var increment = func(n) { return n + 1; }
-var double = func(n) { return n * 2; }
+func increment(n) { return n + 1; }
+func double(n) { return n * 2; }
 
 display(compose(increment, double)(10)) // 21
 newline()
