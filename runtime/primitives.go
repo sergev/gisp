@@ -116,6 +116,62 @@ func installPrimitives(ev *lang.Evaluator) {
 		},
 		env,
 	))
+
+	env.Define("filter", lang.ClosureValue(
+		[]string{"pred", "lst"},
+		"",
+		[]lang.Value{
+			lang.List(
+				lang.SymbolValue("cond"),
+				lang.List(
+					lang.List(
+						lang.SymbolValue("nullp"),
+						lang.SymbolValue("lst"),
+					),
+					lang.List(
+						lang.SymbolValue("quote"),
+						lang.EmptyList,
+					),
+				),
+				lang.List(
+					lang.List(
+						lang.SymbolValue("pred"),
+						lang.List(
+							lang.SymbolValue("car"),
+							lang.SymbolValue("lst"),
+						),
+					),
+					lang.List(
+						lang.SymbolValue("cons"),
+						lang.List(
+							lang.SymbolValue("car"),
+							lang.SymbolValue("lst"),
+						),
+						lang.List(
+							lang.SymbolValue("filter"),
+							lang.SymbolValue("pred"),
+							lang.List(
+								lang.SymbolValue("cdr"),
+								lang.SymbolValue("lst"),
+							),
+						),
+					),
+				),
+				lang.List(
+					lang.SymbolValue("else"),
+					lang.List(
+						lang.SymbolValue("filter"),
+						lang.SymbolValue("pred"),
+						lang.List(
+							lang.SymbolValue("cdr"),
+							lang.SymbolValue("lst"),
+						),
+					),
+				),
+			),
+		},
+		env,
+	))
 }
 
 func primAdd(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {

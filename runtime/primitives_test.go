@@ -270,3 +270,104 @@ func TestPrimMap(t *testing.T) {
 		}
 	})
 }
+
+func TestPrimFilter(t *testing.T) {
+	ev := NewEvaluator()
+
+	filterVal, err := ev.Global.Get("filter")
+	if err != nil {
+		t.Fatalf("failed to get filter primitive: %v", err)
+	}
+
+	buildList := func(vals ...int64) lang.Value {
+		items := make([]lang.Value, len(vals))
+		for i, v := range vals {
+			items[i] = lang.IntValue(v)
+		}
+		return lang.List(items...)
+	}
+
+	positiveProc := lang.ClosureValue(
+		[]string{"x"},
+		"",
+		[]lang.Value{
+			lang.List(
+				lang.SymbolValue("if"),
+				lang.List(
+					lang.SymbolValue(">"),
+					lang.SymbolValue("x"),
+					lang.IntValue(0),
+				),
+				lang.BoolValue(true),
+				lang.BoolValue(false),
+			),
+		},
+		ev.Global,
+	)
+
+	alwaysTrueProc := lang.ClosureValue(
+		[]string{"_"},
+		"",
+		[]lang.Value{
+			lang.BoolValue(true),
+		},
+		ev.Global,
+	)
+
+	tests := []struct {
+		name      string
+		predicate lang.Value
+		input     lang.Value
+		expected  []int64
+	}{
+		{
+			name:      "filters positive integers",
+			predicate: positiveProc,
+			input:     buildList(-2, 0, 3, 5, -1),
+			expected:  []int64{3, 5},
+		},
+		{
+			name:      "returns empty when no elements match",
+			predicate: positiveProc,
+			input:     buildList(-5, -1),
+			expected:  []int64{},
+		},
+		{
+			name:      "handles empty list input",
+			predicate: positiveProc,
+			input:     lang.EmptyList,
+			expected:  []int64{},
+		},
+		{
+			name:      "keeps all elements when predicate always true",
+			predicate: alwaysTrueProc,
+			input:     buildList(1, 2, 3),
+			expected:  []int64{1, 2, 3},
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := ev.Apply(filterVal, []lang.Value{tc.predicate, tc.input})
+			if err != nil {
+				t.Fatalf("filter application failed: %v", err)
+			}
+			items, err := lang.ToSlice(result)
+			if err != nil {
+				t.Fatalf("filter result not a list: %v", err)
+			}
+			if len(items) != len(tc.expected) {
+				t.Fatalf("expected %d items, got %d", len(tc.expected), len(items))
+			}
+			for i, exp := range tc.expected {
+				if items[i].Type != lang.TypeInt || items[i].Int() != exp {
+					t.Fatalf("item %d: expected %d, got %v", i, exp, items[i])
+				}
+			}
+			if len(tc.expected) == 0 && result.Type != lang.TypeEmpty {
+				t.Fatalf("expected empty list result, got %v", result)
+			}
+		})
+	}
+}
