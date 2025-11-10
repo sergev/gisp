@@ -3,6 +3,7 @@ package runtime
 import (
 	"errors"
 	"fmt"
+	"io"
 	"math/rand"
 	"os"
 	"reflect"
@@ -12,11 +13,15 @@ import (
 	"time"
 
 	"github.com/sergev/gisp/lang"
+	"github.com/sergev/gisp/sexpr"
 )
 
 var (
 	randomMu   sync.Mutex
 	randomRand = rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	readMu     sync.Mutex
+	readStream = sexpr.NewReader(os.Stdin)
 )
 
 func installPrimitives(ev *lang.Evaluator) {
@@ -63,6 +68,7 @@ func installPrimitives(ev *lang.Evaluator) {
 
 	define("display", primDisplay)
 	define("newline", primNewline)
+	define("read", primRead)
 	define("exit", primExit)
 	define("error", primError)
 
@@ -599,6 +605,25 @@ func primNewline(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 	return lang.EmptyList, nil
 }
 
+func primRead(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	if len(args) != 0 {
+		return lang.Value{}, fmt.Errorf("read expects no arguments")
+	}
+	readMu.Lock()
+	defer readMu.Unlock()
+	if readStream == nil {
+		readStream = sexpr.NewReader(os.Stdin)
+	}
+	val, err := readStream.Read()
+	if err != nil {
+		if errors.Is(err, io.EOF) {
+			return lang.EOFObject, nil
+		}
+		return lang.Value{}, err
+	}
+	return val, nil
+}
+
 func primExit(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 	code := 0
 	if len(args) > 0 {
@@ -810,6 +835,8 @@ func typeName(v lang.Value) string {
 		return "continuation"
 	case lang.TypeMacro:
 		return "macro"
+	case lang.TypeEOF:
+		return "eof-object"
 	default:
 		return "unknown"
 	}
@@ -853,6 +880,8 @@ func eqValues(a, b lang.Value) bool {
 		return a.Continuation() == b.Continuation()
 	case lang.TypeMacro:
 		return a.Macro() == b.Macro()
+	case lang.TypeEOF:
+		return true
 	default:
 		return false
 	}
@@ -896,9 +925,21 @@ func equalValues(a, b lang.Value) bool {
 		return a.Continuation() == b.Continuation()
 	case lang.TypeMacro:
 		return a.Macro() == b.Macro()
+	case lang.TypeEOF:
+		return true
 	default:
 		return false
 	}
+}
+
+func setReadInput(r io.Reader) {
+	readMu.Lock()
+	defer readMu.Unlock()
+	if r == nil {
+		readStream = sexpr.NewReader(os.Stdin)
+		return
+	}
+	readStream = sexpr.NewReader(r)
 }
 
 func primitivePointer(p lang.Primitive) uintptr {

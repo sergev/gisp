@@ -57,6 +57,7 @@ All of the following expect exactly one argument and return `#t` or `#f`. Predic
 
 - `display` — Prints the argument to standard output. Strings are printed raw; other values use their external representation. Returns the empty list.
 - `newline` — Outputs a newline to standard output. Takes no arguments.
+- `read` — Reads the next datum from standard input, returning parsed numbers, lists, symbols, etc. When the stream is exhausted it returns the EOF object.
 - `exit` — Terminates the process. Optional single argument may be an integer exit code or boolean (`#t` → `0`, `#f` → `1`). More than one argument raises an error.
 
 ## Higher-Order Utilities

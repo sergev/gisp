@@ -95,6 +95,65 @@ func TestPrimRandomIntegerAndSeed(t *testing.T) {
 	})
 }
 
+func TestPrimRead(t *testing.T) {
+	ev := NewEvaluator()
+
+	t.Run("arity validation", func(t *testing.T) {
+		if _, err := primRead(ev, []lang.Value{lang.IntValue(1)}); err == nil || !strings.Contains(err.Error(), "no arguments") {
+			t.Fatalf("expected arity error from read, got %v", err)
+		}
+	})
+
+	t.Run("reads successive datums and EOF", func(t *testing.T) {
+		setReadInput(strings.NewReader("(+ 1 2) 42 #t"))
+		t.Cleanup(func() { setReadInput(nil) })
+
+		expr, err := primRead(ev, nil)
+		if err != nil {
+			t.Fatalf("primRead failed: %v", err)
+		}
+		items, err := lang.ToSlice(expr)
+		if err != nil {
+			t.Fatalf("expected list from first datum, got error: %v", err)
+		}
+		if len(items) != 3 || items[0].Type != lang.TypeSymbol || items[0].Sym() != "+" {
+			t.Fatalf("unexpected first datum: %v", expr)
+		}
+
+		val, err := primRead(ev, nil)
+		if err != nil {
+			t.Fatalf("primRead second datum failed: %v", err)
+		}
+		if val.Type != lang.TypeInt || val.Int() != 42 {
+			t.Fatalf("expected 42, got %v", val)
+		}
+
+		boolVal, err := primRead(ev, nil)
+		if err != nil {
+			t.Fatalf("primRead third datum failed: %v", err)
+		}
+		if boolVal.Type != lang.TypeBool || !boolVal.Bool() {
+			t.Fatalf("expected #t, got %v", boolVal)
+		}
+
+		eofVal, err := primRead(ev, nil)
+		if err != nil {
+			t.Fatalf("primRead EOF failed: %v", err)
+		}
+		if eofVal.Type != lang.TypeEOF {
+			t.Fatalf("expected EOF object, got %v", eofVal)
+		}
+
+		again, err := primRead(ev, nil)
+		if err != nil {
+			t.Fatalf("primRead repeated EOF failed: %v", err)
+		}
+		if again.Type != lang.TypeEOF {
+			t.Fatalf("expected EOF object on subsequent read, got %v", again)
+		}
+	})
+}
+
 func TestPrimComparisonAndNot(t *testing.T) {
 	ev := NewEvaluator()
 

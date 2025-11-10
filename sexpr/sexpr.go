@@ -357,6 +357,43 @@ func ReadString(src string) ([]lang.Value, error) {
 	return ParseAll(strings.NewReader(src))
 }
 
+// Reader incrementally reads s-expressions from an input stream.
+type Reader struct {
+	sc *scanner
+}
+
+// NewReader constructs a Reader over r.
+func NewReader(r io.Reader) *Reader {
+	return &Reader{
+		sc: newScanner(newReaderSource(r), func(err error) bool { return errors.Is(err, io.EOF) }, true),
+	}
+}
+
+// Read parses and returns the next s-expression from the stream.
+// It returns io.EOF when no more expressions are available.
+func (rd *Reader) Read() (lang.Value, error) {
+	if rd == nil || rd.sc == nil {
+		return lang.Value{}, io.EOF
+	}
+	if err := rd.sc.skipWhitespace(); err != nil {
+		if rd.sc.isEOF(err) {
+			return lang.Value{}, io.EOF
+		}
+		return lang.Value{}, err
+	}
+	if rd.sc.peekEOF() {
+		return lang.Value{}, io.EOF
+	}
+	val, err := readExpr(rd.sc)
+	if err != nil {
+		if rd.sc.isEOF(err) {
+			return lang.Value{}, io.EOF
+		}
+		return lang.Value{}, err
+	}
+	return val, nil
+}
+
 // ParseLiteral parses a single s-expression literal from the source string starting at the given byte offset.
 // It returns the parsed value and the index immediately following the expression.
 func ParseLiteral(src string, start int) (lang.Value, int, error) {

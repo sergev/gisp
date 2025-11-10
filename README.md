@@ -91,6 +91,16 @@ Run any of them with the interpreter:
 ./gisp examples/fact.gisp
 ```
 
+Use the `read` primitive when you need to accept raw Scheme data at runtime:
+
+```gisp
+display("Enter a datum: ")
+var datum = read()
+display("You typed: ")
+display(datum)
+newline()
+```
+
 The regression test suite keeps these examples in sync with the runtime.
 
 ## Testing

@@ -20,6 +20,7 @@ const (
 	TypeClosure
 	TypeContinuation
 	TypeMacro
+	TypeEOF
 )
 
 // Value represents any runtime object in the interpreter.
@@ -62,6 +63,9 @@ type Continuation struct {
 
 // EmptyList is the singleton empty list value.
 var EmptyList = Value{Type: TypeEmpty}
+
+// EOFObject represents the end-of-file marker returned by read operations.
+var EOFObject = Value{Type: TypeEOF}
 
 // BoolValue returns the boolean Value equivalent.
 func BoolValue(b bool) Value {
@@ -256,6 +260,8 @@ func (v Value) String() string {
 		return "<continuation>"
 	case TypeMacro:
 		return "<macro>"
+	case TypeEOF:
+		return "#<eof>"
 	default:
 		return "<unknown>"
 	}
