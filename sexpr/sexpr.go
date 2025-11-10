@@ -216,7 +216,7 @@ func readList(sc *scanner) (lang.Value, error) {
 			if err := sc.skipWhitespace(); err != nil {
 				return lang.Value{}, err
 			}
-			cdr, err := readExpr(sc)
+			restVal, err := readExpr(sc)
 			if err != nil {
 				return lang.Value{}, err
 			}
@@ -230,7 +230,7 @@ func readList(sc *scanner) (lang.Value, error) {
 				}
 				return lang.Value{}, err
 			}
-			return buildDottedList(elems, cdr), nil
+			return buildDottedList(elems, restVal), nil
 		}
 		elem, err := readExpr(sc)
 		if err != nil {

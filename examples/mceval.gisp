@@ -2,31 +2,31 @@
 
 // List helpers
 func cadr(x) {
-    return car(cdr(x))
+    return first(rest(x))
 }
 
 func caddr(x) {
-    return car(cdr(cdr(x)))
+    return first(rest(rest(x)))
 }
 
 func cadddr(x) {
-    return car(cdr(cdr(cdr(x))))
+    return first(rest(rest(rest(x))))
 }
 
 func cdadr(x) {
-    return cdr(car(cdr(x)))
+    return rest(first(rest(x)))
 }
 
 func caadr(x) {
-    return car(car(cdr(x)))
+    return first(first(rest(x)))
 }
 
 func cddr(x) {
-    return cdr(cdr(x))
+    return rest(rest(x))
 }
 
 func cdddr(x) {
-    return cdr(cdr(cdr(x)))
+    return rest(rest(rest(x)))
 }
 
 // Preserve access to host apply
@@ -125,7 +125,7 @@ func textOfQuotation(exp) {
 
 func isTaggedList(exp, tag) {
     if pairp(exp) {
-        return eq(car(exp), tag)
+        return eq(first(exp), tag)
     }
     return false
 }
@@ -208,19 +208,19 @@ func isBegin(exp) {
 }
 
 func beginActions(exp) {
-    return cdr(exp)
+    return rest(exp)
 }
 
 func isLastExp(seq) {
-    return nullp(cdr(seq))
+    return nullp(rest(seq))
 }
 
 func firstExp(seq) {
-    return car(seq)
+    return first(seq)
 }
 
 func restExps(seq) {
-    return cdr(seq)
+    return rest(seq)
 }
 
 func sequenceToExp(seq) {
@@ -240,11 +240,11 @@ func isApplication(exp) {
 }
 
 func operator(exp) {
-    return car(exp)
+    return first(exp)
 }
 
 func operands(exp) {
-    return cdr(exp)
+    return rest(exp)
 }
 
 func noOperands(ops) {
@@ -252,11 +252,11 @@ func noOperands(ops) {
 }
 
 func firstOperand(ops) {
-    return car(ops)
+    return first(ops)
 }
 
 func restOperands(ops) {
-    return cdr(ops)
+    return rest(ops)
 }
 
 func isCond(exp) {
@@ -264,7 +264,7 @@ func isCond(exp) {
 }
 
 func condClauses(exp) {
-    return cdr(exp)
+    return rest(exp)
 }
 
 func isCondElseClause(clause) {
@@ -272,11 +272,11 @@ func isCondElseClause(clause) {
 }
 
 func condPredicate(clause) {
-    return car(clause)
+    return first(clause)
 }
 
 func condActions(clause) {
-    return cdr(clause)
+    return rest(clause)
 }
 
 func condToIf(exp) {
@@ -288,8 +288,8 @@ func expandClauses(clauses) {
         return false
     }
 
-    var first = car(clauses)
-    var rest = cdr(clauses)
+    var first = first(clauses)
+    var rest = rest(clauses)
 
     if isCondElseClause(first) {
         if nullp(rest) {
@@ -336,11 +336,11 @@ func procedureEnvironment(p) {
 }
 
 func enclosingEnvironment(env) {
-    return cdr(env)
+    return rest(env)
 }
 
 func firstFrame(env) {
-    return car(env)
+    return first(env)
 }
 
 var theEmptyEnvironment = []
@@ -350,16 +350,16 @@ func makeFrame(variables, values) {
 }
 
 func frameVariables(frame) {
-    return car(frame)
+    return first(frame)
 }
 
 func frameValues(frame) {
-    return cdr(frame)
+    return rest(frame)
 }
 
 func addBindingToFrame(variable, value, frame) {
-    setCar(frame, cons(variable, car(frame)))
-    setCdr(frame, cons(value, cdr(frame)))
+    setFirst(frame, cons(variable, first(frame)))
+    setRest(frame, cons(value, rest(frame)))
 }
 
 func extendEnvironment(vars, vals, baseEnv) {
@@ -384,11 +384,11 @@ func lookupVariableValue(variable, env) {
         var vals = frameValues(frame)
 
         while not(nullp(vars)) {
-            if eq(variable, car(vars)) {
-                return car(vals)
+            if eq(variable, first(vars)) {
+                return first(vals)
             }
-            vars = cdr(vars)
-            vals = cdr(vals)
+            vars = rest(vars)
+            vals = rest(vals)
         }
 
         currentEnv = enclosingEnvironment(currentEnv)
@@ -407,12 +407,12 @@ func setVariableValue(variable, value, env) {
         var vals = frameValues(frame)
 
         while not(nullp(vars)) {
-            if eq(variable, car(vars)) {
-                setCar(vals, value)
+            if eq(variable, first(vars)) {
+                setFirst(vals, value)
                 return
             }
-            vars = cdr(vars)
-            vals = cdr(vals)
+            vars = rest(vars)
+            vals = rest(vals)
         }
 
         currentEnv = enclosingEnvironment(currentEnv)
@@ -425,12 +425,12 @@ func defineVariable(variable, value, env) {
     var vals = frameValues(frame)
 
     while not(nullp(vars)) {
-        if eq(variable, car(vars)) {
-            setCar(vals, value)
+        if eq(variable, first(vars)) {
+            setFirst(vals, value)
             return
         }
-        vars = cdr(vars)
-        vals = cdr(vals)
+        vars = rest(vars)
+        vals = rest(vals)
     }
 
     addBindingToFrame(variable, value, frame)
@@ -460,8 +460,8 @@ func primitiveImplementation(proc) {
 }
 
 var primitiveProcedures = [
-[`'car, car],
-[`'cdr, cdr],
+[`'first, first],
+[`'rest, rest],
 [`'cons, cons],
 [`'null?, nullp],
 [`'pair?, pairp],
@@ -484,7 +484,7 @@ var primitiveProcedures = [
 ]
 
 func primitiveProcedureNames() {
-    return map(car, primitiveProcedures)
+    return map(first, primitiveProcedures)
 }
 
 func primitiveProcedureObjects() {

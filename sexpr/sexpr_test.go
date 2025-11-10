@@ -272,7 +272,7 @@ func valuesEqual(a, b lang.Value) bool {
 		if ap == nil || bp == nil {
 			return ap == nil && bp == nil
 		}
-		return valuesEqual(ap.Car, bp.Car) && valuesEqual(ap.Cdr, bp.Cdr)
+		return valuesEqual(ap.First, bp.First) && valuesEqual(ap.Rest, bp.Rest)
 	default:
 		return false
 	}

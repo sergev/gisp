@@ -196,19 +196,19 @@ func TestPrimListAndPairMutation(t *testing.T) {
 		}
 	})
 
-	t.Run("set-car!/set-cdr! mutate pair", func(t *testing.T) {
+	t.Run("set-first!/set-rest! mutate pair", func(t *testing.T) {
 		pair := lang.PairValue(lang.IntValue(1), lang.IntValue(2))
-		if _, err := primSetCar(ev, []lang.Value{pair, lang.IntValue(10)}); err != nil {
-			t.Fatalf("primSetCar error: %v", err)
+		if _, err := primSetFirst(ev, []lang.Value{pair, lang.IntValue(10)}); err != nil {
+			t.Fatalf("primSetFirst error: %v", err)
 		}
-		if pair.Pair().Car.Int() != 10 {
-			t.Fatalf("expected updated car=10, got %v", pair.Pair().Car)
+		if pair.Pair().First.Int() != 10 {
+			t.Fatalf("expected updated first=10, got %v", pair.Pair().First)
 		}
-		if _, err := primSetCdr(ev, []lang.Value{pair, lang.IntValue(99)}); err != nil {
-			t.Fatalf("primSetCdr error: %v", err)
+		if _, err := primSetRest(ev, []lang.Value{pair, lang.IntValue(99)}); err != nil {
+			t.Fatalf("primSetRest error: %v", err)
 		}
-		if pair.Pair().Cdr.Int() != 99 {
-			t.Fatalf("expected updated cdr=99, got %v", pair.Pair().Cdr)
+		if pair.Pair().Rest.Int() != 99 {
+			t.Fatalf("expected updated rest=99, got %v", pair.Pair().Rest)
 		}
 	})
 

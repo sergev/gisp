@@ -1,9 +1,9 @@
 #!/usr/bin/env gisp
 
 var numbers = [1, 2, 3, 4]
-display(car(numbers))
+display(first(numbers))
 newline()
-display(cdr(numbers))
+display(rest(numbers))
 newline()
 
 func isEmpty(xs) {
@@ -11,11 +11,11 @@ func isEmpty(xs) {
 }
 
 func head(xs) {
-    return car(xs)
+    return first(xs)
 }
 
 func tail(xs) {
-    return cdr(xs)
+    return rest(xs)
 }
 
 func map(fn, xs) {

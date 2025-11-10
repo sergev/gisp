@@ -4,11 +4,11 @@ func findFirst(pred, xs) {
     return callcc(func(exit) {
         var items = xs
         while !nullp(items) {
-            var value = car(items)
+            var value = first(items)
             if pred(value) {
                 exit(value)
             }
-            items = cdr(items)
+            items = rest(items)
         }
         return false
     })

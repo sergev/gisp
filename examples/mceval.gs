@@ -4,15 +4,15 @@
 (define (map proc lst)
   (if (nullp lst)
       '()
-      (cons (proc (car lst)) (map proc (cdr lst)))))
+      (cons (proc (first lst)) (map proc (rest lst)))))
 
-(define (cadr x) (car (cdr x)))
-(define (caddr x) (car (cdr (cdr x))))
-(define (cadddr x) (car (cdr (cdr (cdr x)))))
-(define (cdadr x) (cdr (car (cdr x))))
-(define (caadr x) (car (car (cdr x))))
-(define (cddr x) (cdr (cdr x)))
-(define (cdddr x) (cdr (cdr (cdr x))))
+(define (cadr x) (first (rest x)))
+(define (caddr x) (first (rest (rest x))))
+(define (cadddr x) (first (rest (rest (rest x)))))
+(define (cdadr x) (rest (first (rest x))))
+(define (caadr x) (first (first (rest x))))
+(define (cddr x) (rest (rest x)))
+(define (cdddr x) (rest (rest (rest x))))
 
 ;; Preserve access to host apply
 (define apply-in-underlying-scheme apply)
@@ -94,7 +94,7 @@
 
 (define (tagged-list? exp tag)
   (if (pairp exp)
-      (eq (car exp) tag)
+      (eq (first exp) tag)
       #f))
 
 (define (variable? exp) (symbolp exp))
@@ -144,11 +144,11 @@
 
 (define (begin? exp) (tagged-list? exp 'begin))
 
-(define (begin-actions exp) (cdr exp))
+(define (begin-actions exp) (rest exp))
 
-(define (last-exp? seq) (nullp (cdr seq)))
-(define (first-exp seq) (car seq))
-(define (rest-exps seq) (cdr seq))
+(define (last-exp? seq) (nullp (rest seq)))
+(define (first-exp seq) (first seq))
+(define (rest-exps seq) (rest seq))
 
 (define (sequence->exp seq)
   (cond ((nullp seq) seq)
@@ -158,23 +158,23 @@
 (define (make-begin seq) (cons 'begin seq))
 
 (define (application? exp) (pairp exp))
-(define (operator exp) (car exp))
-(define (operands exp) (cdr exp))
+(define (operator exp) (first exp))
+(define (operands exp) (rest exp))
 
 (define (no-operands? ops) (nullp ops))
-(define (first-operand ops) (car ops))
-(define (rest-operands ops) (cdr ops))
+(define (first-operand ops) (first ops))
+(define (rest-operands ops) (rest ops))
 
 (define (cond? exp) (tagged-list? exp 'cond))
 
-(define (cond-clauses exp) (cdr exp))
+(define (cond-clauses exp) (rest exp))
 
 (define (cond-else-clause? clause)
   (eq (cond-predicate clause) 'else))
 
-(define (cond-predicate clause) (car clause))
+(define (cond-predicate clause) (first clause))
 
-(define (cond-actions clause) (cdr clause))
+(define (cond-actions clause) (rest clause))
 
 (define (cond->if exp)
   (expand-clauses (cond-clauses exp)))
@@ -182,8 +182,8 @@
 (define (expand-clauses clauses)
   (if (nullp clauses)
       #f                          ; no else clause
-      (let ((first (car clauses))
-            (rest (cdr clauses)))
+      (let ((first (first clauses))
+            (rest (rest clauses)))
         (if (cond-else-clause? first)
             (if (nullp rest)
                 (sequence->exp (cond-actions first))
@@ -211,21 +211,21 @@
 (define (procedure-body p) (caddr p))
 (define (procedure-environment p) (cadddr p))
 
-(define (enclosing-environment env) (cdr env))
+(define (enclosing-environment env) (rest env))
 
-(define (first-frame env) (car env))
+(define (first-frame env) (first env))
 
 (define the-empty-environment '())
 
 (define (make-frame variables values)
   (cons variables values))
 
-(define (frame-variables frame) (car frame))
-(define (frame-values frame) (cdr frame))
+(define (frame-variables frame) (first frame))
+(define (frame-values frame) (rest frame))
 
 (define (add-binding-to-frame! var val frame)
-  (setCar frame (cons var (car frame)))
-  (setCdr frame (cons val (cdr frame))))
+  (setFirst frame (cons var (first frame)))
+  (setRest frame (cons val (rest frame))))
 
 (define (extend-environment vars vals base-env)
   (if (= (length vars) (length vals))
@@ -239,9 +239,9 @@
     (define (scan vars vals)
       (cond ((nullp vars)
              (env-loop (enclosing-environment env)))
-            ((eq var (car vars))
-             (car vals))
-            (else (scan (cdr vars) (cdr vals)))))
+            ((eq var (first vars))
+             (first vals))
+            (else (scan (rest vars) (rest vals)))))
     (if (eq env the-empty-environment)
         (error "Unbound variable" var)
         (let ((frame (first-frame env)))
@@ -254,9 +254,9 @@
     (define (scan vars vals)
       (cond ((nullp vars)
              (env-loop (enclosing-environment env)))
-            ((eq var (car vars))
-             (setCar vals val))
-            (else (scan (cdr vars) (cdr vals)))))
+            ((eq var (first vars))
+             (setFirst vals val))
+            (else (scan (rest vars) (rest vals)))))
     (if (eq env the-empty-environment)
         (error "Unbound variable -- SET!" var)
         (let ((frame (first-frame env)))
@@ -269,9 +269,9 @@
     (define (scan vars vals)
       (cond ((nullp vars)
              (add-binding-to-frame! var val frame))
-            ((eq var (car vars))
-             (setCar vals val))
-            (else (scan (cdr vars) (cdr vals)))))
+            ((eq var (first vars))
+             (setFirst vals val))
+            (else (scan (rest vars) (rest vals)))))
     (scan (frame-variables frame)
           (frame-values frame))))
 
@@ -292,8 +292,8 @@
 (define (primitive-implementation proc) (cadr proc))
 
 (define primitive-procedures
-  (list (list 'car car)
-        (list 'cdr cdr)
+  (list (list 'first first)
+        (list 'rest rest)
         (list 'cons cons)
         (list 'null? nullp)
         (list 'pair? pairp)
@@ -315,7 +315,7 @@
         (list 'map map)))
 
 (define (primitive-procedure-names)
-  (map car
+  (map first
        primitive-procedures))
 
 (define (primitive-procedure-objects)

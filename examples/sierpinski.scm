@@ -3,7 +3,7 @@
   (if (= n 0)
       '("*")
       (let* ((prev (make-sierpinski (- n 1)))
-             (space (make-string (string-length (car prev)) #\space)))
+             (space (make-string (string-length (first prev)) #\space)))
         (append
          (map (lambda (line) (string-append space line space)) prev)
          (map (lambda (line) (string-append line " " line)) prev)))))

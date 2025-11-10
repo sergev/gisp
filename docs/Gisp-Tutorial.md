@@ -239,9 +239,9 @@ List literals (`[a, b, c]`) are syntactic sugar for `list` in Scheme. You can in
 
 ```gisp
 var numbers = [1, 2, 3, 4]
-display(car(numbers))   // 1
+display(first(numbers)) // 1
 newline()
-display(cdr(numbers))   // (2 3 4)
+display(rest(numbers))  // (2 3 4)
 newline()
 ```
 
@@ -253,11 +253,11 @@ func isEmpty(xs) {
 }
 
 func head(xs) {
-    return car(xs)
+    return first(xs)
 }
 
 func tail(xs) {
-    return cdr(xs)
+    return rest(xs)
 }
 ```
 
@@ -335,11 +335,11 @@ func isEmpty(xs) {
 }
 
 func head(xs) {
-    return car(xs)
+    return first(xs)
 }
 
 func tail(xs) {
-    return cdr(xs)
+    return rest(xs)
 }
 
 func runningAverage(samples) {
@@ -469,7 +469,7 @@ func isPair(expr) {
 }
 
 func isTagged(expr, tag) {
-    return isPair(expr) && eq(car(expr), tag)
+    return isPair(expr) && eq(first(expr), tag)
 }
 
 func makeSum(a, b) {
@@ -500,27 +500,27 @@ func makeExponent(base, exponent) {
 }
 
 func sumAddend(expr) {
-    return `(car (cdr expr))
+    return `(first (rest expr))
 }
 
 func sumAugend(expr) {
-    return `(car (cdr (cdr expr)))
+    return `(first (rest (rest expr)))
 }
 
 func productMultiplier(expr) {
-    return `(car (cdr expr))
+    return `(first (rest expr))
 }
 
 func productMultiplicand(expr) {
-    return `(car (cdr (cdr expr)))
+    return `(first (rest (rest expr)))
 }
 
 func exponentBase(expr) {
-    return `(car (cdr expr))
+    return `(first (rest expr))
 }
 
 func exponentPower(expr) {
-    return `(car (cdr (cdr expr)))
+    return `(first (rest (rest expr)))
 }
 
 func deriv(expr, variable) {
@@ -582,11 +582,11 @@ func findFirst(pred, xs) {
     return callcc(func(exit) {
         var items = xs
         while !nullp(items) {
-            var value = car(items)
+            var value = first(items)
             if pred(value) {
                 exit(value)
             }
-            items = cdr(items)
+            items = rest(items)
         }
         return false
     })
@@ -693,9 +693,9 @@ func mean(xs) {
     var cursor = xs
 
     while !nullp(cursor) {
-        total = total + car(cursor)
+        total = total + first(cursor)
         count = count + 1
-        cursor = cdr(cursor)
+        cursor = rest(cursor)
     }
     return total / count
 }
@@ -705,9 +705,9 @@ func variance(xs, avg) {
     var cursor = xs
 
     while !nullp(cursor) {
-        var diff = car(cursor) - avg
+        var diff = first(cursor) - avg
         total = total + diff * diff
-        cursor = cdr(cursor)
+        cursor = rest(cursor)
     }
     return total / length(xs)
 }
@@ -718,7 +718,7 @@ func length(xs) {
 
     while !nullp(cursor) {
         count = count + 1
-        cursor = cdr(cursor)
+        cursor = rest(cursor)
     }
     return count
 }
@@ -738,7 +738,7 @@ func alertOnOutlier(xs, threshold) {
     var index = 0
 
     while !nullp(cursor) {
-        var score = car(cursor)
+        var score = first(cursor)
         if abs(score) > threshold {
             display("Outlier at index ")
             display(index)
@@ -747,7 +747,7 @@ func alertOnOutlier(xs, threshold) {
             newline()
         }
         index = index + 1
-        cursor = cdr(cursor)
+        cursor = rest(cursor)
     }
 }
 

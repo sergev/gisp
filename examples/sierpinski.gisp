@@ -8,7 +8,7 @@ func makeSierpinski(n) {
     }
 
     var prev = makeSierpinski(n - 1)
-    var lineWidth = stringLength(car(prev))
+    var lineWidth = stringLength(first(prev))
     var space = makeString(lineWidth, " ")
 
     var top = map(func(line) {
@@ -26,9 +26,9 @@ func printSierpinski(n) {
     var lines = makeSierpinski(n)
     var cursor = lines
     while !nullp(cursor) {
-        display(car(cursor))
+        display(first(cursor))
         newline()
-        cursor = cdr(cursor)
+        cursor = rest(cursor)
     }
 }
 

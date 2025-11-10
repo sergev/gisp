@@ -7,10 +7,10 @@ func runningAverage(samples) {
     var cursor = samples
 
     while !nullp(cursor) {
-        sum = sum + car(cursor)
+        sum = sum + first(cursor)
         count = count + 1
         totals = append(totals, [sum / count])
-        cursor = cdr(cursor)
+        cursor = rest(cursor)
     }
     return totals
 }

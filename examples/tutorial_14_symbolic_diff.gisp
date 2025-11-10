@@ -17,7 +17,7 @@ func isPair(expr) {
 }
 
 func isTagged(expr, tag) {
-    return isPair(expr) && eq(car(expr), tag)
+    return isPair(expr) && eq(first(expr), tag)
 }
 
 func makeSum(a, b) {
@@ -48,27 +48,27 @@ func makeExponent(base, exponent) {
 }
 
 func sumAddend(expr) {
-    return car(cdr(expr))
+    return first(rest(expr))
 }
 
 func sumAugend(expr) {
-    return car(cdr(cdr(expr)))
+    return first(rest(rest(expr)))
 }
 
 func productMultiplier(expr) {
-    return car(cdr(expr))
+    return first(rest(expr))
 }
 
 func productMultiplicand(expr) {
-    return car(cdr(cdr(expr)))
+    return first(rest(rest(expr)))
 }
 
 func exponentBase(expr) {
-    return car(cdr(expr))
+    return first(rest(expr))
 }
 
 func exponentPower(expr) {
-    return car(cdr(cdr(expr)))
+    return first(rest(rest(expr)))
 }
 
 func deriv(expr, variable) {

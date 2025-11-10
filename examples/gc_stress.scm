@@ -28,7 +28,7 @@
   (let loop ((cursor lst) (count 0) (acc '()))
     (if (or (null? cursor) (>= count limit))
         (reverse acc)
-        (loop (cdr cursor) (+ count 1) (cons (car cursor) acc)))))
+        (loop (rest cursor) (+ count 1) (cons (first cursor) acc)))))
 
 (define (churn-short-lived iterations size)
   (let loop ((i 0) (checksum 0))
@@ -62,7 +62,7 @@
   (let loop ((cursor lst) (total 0))
     (if (null? cursor)
         total
-        (loop (cdr cursor) (+ total (car cursor))))))
+        (loop (rest cursor) (+ total (first cursor))))))
 
 (define (churn-closures iterations env-size keep-interval)
   (let loop ((i 0)

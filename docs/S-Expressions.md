@@ -35,7 +35,7 @@ list-contents
 ```
 
 - Proper lists yield nested pairs ending in the empty list.
-- Dotted lists allow the final cdr to be any expression. Only a single dot is permitted, and it must be followed by exactly one expression before the closing `)`.
+- Dotted lists allow the final rest to be any expression. Only a single dot is permitted, and it must be followed by exactly one expression before the closing `)`.
 
 ### Quoting Forms
 

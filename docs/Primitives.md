@@ -36,10 +36,10 @@ All of the following expect exactly one argument and return `#t` or `#f`. Predic
 ## List Construction and Access
 
 - `cons` — Constructs a pair from two arguments.
-- `car` — Returns the first element of a pair. Errors if the argument is not a pair.
-- `cdr` — Returns the tail of a pair. Errors if the argument is not a pair.
-- `setCar` / `set-car!` — Mutates the first element of a pair. Takes the target pair and the new value, returning the updated pair. Errors if the first argument is not a pair.
-- `setCdr` / `set-cdr!` — Mutates the tail of a pair. Takes the target pair and the new value, returning the updated pair. Errors if the first argument is not a pair.
+- `first` — Returns the first element of a pair. Errors if the argument is not a pair.
+- `rest` — Returns the tail of a pair. Errors if the argument is not a pair.
+- `setFirst` / `set-first!` — Mutates the first element of a pair. Takes the target pair and the new value, returning the updated pair. Errors if the first argument is not a pair.
+- `setRest` / `set-rest!` — Mutates the tail of a pair. Takes the target pair and the new value, returning the updated pair. Errors if the first argument is not a pair.
 - `list` — Builds a proper list from any number of arguments.
 - `append` — Appends zero or more lists, with the last argument allowed to be any value. The final argument is returned as-is when earlier lists are exhausted. Non-list arguments before the final one raise an error.
 - `length` — Returns the integer length of a proper list; errors on non-lists.

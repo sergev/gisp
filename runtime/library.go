@@ -5,21 +5,21 @@ var preludeForms = []string{
 (define-macro (and . args)
   (if (nullp args)
       #t
-      (if (nullp (cdr args))
-          (car args)
-          (list 'if (car args)
-                (cons 'and (cdr args))
+      (if (nullp (rest args))
+          (first args)
+          (list 'if (first args)
+                (cons 'and (rest args))
                 '#f))))
 `,
 	`
 (define-macro (or . args)
   (if (nullp args)
       #f
-      (let ((rest (cdr args)))
-        (if (nullp rest)
-            (car args)
+      (let ((rst (rest args)))
+        (if (nullp rst)
+            (first args)
             (let ((sym (gensym)))
-              (list 'let (list (list sym (car args)))
-                    (list 'if sym sym (cons 'or rest))))))))
+              (list 'let (list (list sym (first args)))
+                    (list 'if sym sym (cons 'or rst))))))))
 `,
 }

@@ -31,8 +31,8 @@ type Value struct {
 
 // Pair represents a cons cell.
 type Pair struct {
-	Car Value
-	Cdr Value
+	First Value
+	Rest  Value
 }
 
 // Primitive represents a built-in Go function exposed to the interpreter.
@@ -96,10 +96,10 @@ func SymbolValue(s string) Value {
 }
 
 // PairValue constructs a pair Value.
-func PairValue(car, cdr Value) Value {
+func PairValue(first, rest Value) Value {
 	return Value{
 		Type:    TypePair,
-		payload: &Pair{Car: car, Cdr: cdr},
+		payload: &Pair{First: first, Rest: rest},
 	}
 }
 
@@ -121,8 +121,8 @@ func ToSlice(list Value) ([]Value, error) {
 		if cur.Type != TypePair || p == nil {
 			return nil, fmt.Errorf("expected proper list")
 		}
-		out = append(out, p.Car)
-		cur = p.Cdr
+		out = append(out, p.First)
+		cur = p.Rest
 	}
 	return out, nil
 }
@@ -280,13 +280,13 @@ func pairToString(v Value) string {
 		if !first {
 			out += " "
 		}
-		out += p.Car.String()
-		cdr := p.Cdr
-		if cdr.Type == TypeEmpty {
+		out += p.First.String()
+		rest := p.Rest
+		if rest.Type == TypeEmpty {
 			out += ")"
 			break
 		}
-		cur = cdr
+		cur = rest
 		first = false
 	}
 	return out

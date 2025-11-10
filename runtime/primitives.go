@@ -55,10 +55,10 @@ func installPrimitives(ev *lang.Evaluator) {
 	define("procedurep", primIsProcedure)
 
 	define("cons", primCons)
-	define("car", primCar)
-	define("cdr", primCdr)
-	define("setCar", primSetCar)
-	define("setCdr", primSetCdr)
+	define("first", primFirst)
+	define("rest", primRest)
+	define("setFirst", primSetFirst)
+	define("setRest", primSetRest)
 	define("list", primList)
 	define("append", primAppend)
 	define("length", primLength)
@@ -115,7 +115,7 @@ func installPrimitives(ev *lang.Evaluator) {
 					lang.List(
 						lang.SymbolValue("proc"),
 						lang.List(
-							lang.SymbolValue("car"),
+							lang.SymbolValue("first"),
 							lang.SymbolValue("lst"),
 						),
 					),
@@ -123,7 +123,7 @@ func installPrimitives(ev *lang.Evaluator) {
 						lang.SymbolValue("map"),
 						lang.SymbolValue("proc"),
 						lang.List(
-							lang.SymbolValue("cdr"),
+							lang.SymbolValue("rest"),
 							lang.SymbolValue("lst"),
 						),
 					),
@@ -153,21 +153,21 @@ func installPrimitives(ev *lang.Evaluator) {
 					lang.List(
 						lang.SymbolValue("pred"),
 						lang.List(
-							lang.SymbolValue("car"),
+							lang.SymbolValue("first"),
 							lang.SymbolValue("lst"),
 						),
 					),
 					lang.List(
 						lang.SymbolValue("cons"),
 						lang.List(
-							lang.SymbolValue("car"),
+							lang.SymbolValue("first"),
 							lang.SymbolValue("lst"),
 						),
 						lang.List(
 							lang.SymbolValue("filter"),
 							lang.SymbolValue("pred"),
 							lang.List(
-								lang.SymbolValue("cdr"),
+								lang.SymbolValue("rest"),
 								lang.SymbolValue("lst"),
 							),
 						),
@@ -179,7 +179,7 @@ func installPrimitives(ev *lang.Evaluator) {
 						lang.SymbolValue("filter"),
 						lang.SymbolValue("pred"),
 						lang.List(
-							lang.SymbolValue("cdr"),
+							lang.SymbolValue("rest"),
 							lang.SymbolValue("lst"),
 						),
 					),
@@ -487,53 +487,53 @@ func primCons(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 	return lang.PairValue(args[0], args[1]), nil
 }
 
-func primCar(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+func primFirst(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 	if len(args) != 1 {
-		return lang.Value{}, fmt.Errorf("car expects 1 argument, got %d", len(args))
+		return lang.Value{}, fmt.Errorf("first expects 1 argument, got %d", len(args))
 	}
 	v := args[0]
 	p := v.Pair()
 	if v.Type != lang.TypePair || p == nil {
-		return lang.Value{}, fmt.Errorf("car expects a pair")
+		return lang.Value{}, fmt.Errorf("first expects a pair")
 	}
-	return p.Car, nil
+	return p.First, nil
 }
 
-func primCdr(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+func primRest(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 	if len(args) != 1 {
-		return lang.Value{}, fmt.Errorf("cdr expects 1 argument, got %d", len(args))
+		return lang.Value{}, fmt.Errorf("rest expects 1 argument, got %d", len(args))
 	}
 	v := args[0]
 	p := v.Pair()
 	if v.Type != lang.TypePair || p == nil {
-		return lang.Value{}, fmt.Errorf("cdr expects a pair")
+		return lang.Value{}, fmt.Errorf("rest expects a pair")
 	}
-	return p.Cdr, nil
+	return p.Rest, nil
 }
 
-func primSetCar(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+func primSetFirst(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 	if len(args) != 2 {
-		return lang.Value{}, fmt.Errorf("set-car! expects 2 arguments, got %d", len(args))
+		return lang.Value{}, fmt.Errorf("set-first! expects 2 arguments, got %d", len(args))
 	}
 	pair := args[0]
 	p := pair.Pair()
 	if pair.Type != lang.TypePair || p == nil {
-		return lang.Value{}, fmt.Errorf("set-car! expects a pair")
+		return lang.Value{}, fmt.Errorf("set-first! expects a pair")
 	}
-	p.Car = args[1]
+	p.First = args[1]
 	return pair, nil
 }
 
-func primSetCdr(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+func primSetRest(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 	if len(args) != 2 {
-		return lang.Value{}, fmt.Errorf("set-cdr! expects 2 arguments, got %d", len(args))
+		return lang.Value{}, fmt.Errorf("set-rest! expects 2 arguments, got %d", len(args))
 	}
 	pair := args[0]
 	p := pair.Pair()
 	if pair.Type != lang.TypePair || p == nil {
-		return lang.Value{}, fmt.Errorf("set-cdr! expects a pair")
+		return lang.Value{}, fmt.Errorf("set-rest! expects a pair")
 	}
-	p.Cdr = args[1]
+	p.Rest = args[1]
 	return pair, nil
 }
 
@@ -916,7 +916,7 @@ func equalValues(a, b lang.Value) bool {
 		if ap == nil || bp == nil {
 			return ap == bp
 		}
-		return equalValues(ap.Car, bp.Car) && equalValues(ap.Cdr, bp.Cdr)
+		return equalValues(ap.First, bp.First) && equalValues(ap.Rest, bp.Rest)
 	case lang.TypePrimitive:
 		return primitivePointer(a.Primitive()) == primitivePointer(b.Primitive())
 	case lang.TypeClosure:

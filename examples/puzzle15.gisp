@@ -12,24 +12,24 @@ func copyList(lst) {
     if nullp(lst) {
         return []
     }
-    return cons(car(lst), copyList(cdr(lst)))
+    return cons(first(lst), copyList(rest(lst)))
 }
 
 func listRef(lst, index) {
     var current = lst
     var remaining = index
     while remaining > 0 {
-        current = cdr(current)
+        current = rest(current)
         remaining = remaining - 1
     }
-    return car(current)
+    return first(current)
 }
 
 func nthPair(lst, index) {
     var current = lst
     var remaining = index
     while remaining > 0 {
-        current = cdr(current)
+        current = rest(current)
         remaining = remaining - 1
     }
     return current
@@ -38,20 +38,20 @@ func nthPair(lst, index) {
 func swapPositions(board, firstIndex, secondIndex) {
     var firstCell = nthPair(board, firstIndex)
     var secondCell = nthPair(board, secondIndex)
-    var temp = car(firstCell)
-    setCar(firstCell, car(secondCell))
-    setCar(secondCell, temp)
+    var temp = first(firstCell)
+    setFirst(firstCell, first(secondCell))
+    setFirst(secondCell, temp)
 }
 
 func findSpace(board) {
     var index = 0
     var current = board
     while !nullp(current) {
-        if equal(car(current), blankTile) {
+        if equal(first(current), blankTile) {
             return index
         }
         index = index + 1
-        current = cdr(current)
+        current = rest(current)
     }
     return -1
 }
@@ -69,8 +69,8 @@ func indexToRowCol(index) {
 func findMoves(board) {
     var space = findSpace(board)
     var components = indexToRowCol(space)
-    var row = car(components)
-    var col = car(cdr(components))
+    var row = first(components)
+    var col = first(rest(components))
     var moves = []
 
     if row > 0 {
@@ -129,7 +129,7 @@ func displayBoard(board) {
         if modulo(index, 4) == 0 {
             newline()
         }
-        var tile = car(current)
+        var tile = first(current)
         display(tile)
         if numberp(tile) && tile > 9 {
             display(" ")
@@ -137,7 +137,7 @@ func displayBoard(board) {
             display("  ")
         }
         index = index + 1
-        current = cdr(current)
+        current = rest(current)
     }
     newline()
 }
@@ -145,10 +145,10 @@ func displayBoard(board) {
 func moveAllowed(moves, move) {
     var current = moves
     while !nullp(current) {
-        if eq(car(current), move) {
+        if eq(first(current), move) {
             return true
         }
-        current = cdr(current)
+        current = rest(current)
     }
     return false
 }

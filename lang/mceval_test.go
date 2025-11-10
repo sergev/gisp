@@ -28,13 +28,13 @@ func TestMetacircularEvaluatorGisp(t *testing.T) {
   (define (expand remaining)
     (if (null? remaining)
         false
-        (let ((first (car remaining))
-              (rest (cdr remaining)))
-          (if (eq? (car first) 'else)
-              (cons 'begin (cdr first))
-              (list 'if (car first)
-                    (cons 'begin (cdr first))
-                    (expand rest))))))
+        (let ((first-clause (first remaining))
+              (rest-clauses (rest remaining)))
+          (if (eq? (first first-clause) 'else)
+              (cons 'begin (rest first-clause))
+              (list 'if (first first-clause)
+                    (cons 'begin (rest first-clause))
+                    (expand rest-clauses))))))
   (expand clauses))
 `
 	if _, err := runtime.EvaluateReader(ev, strings.NewReader(condMacro)); err != nil {

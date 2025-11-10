@@ -687,7 +687,7 @@ func valuesEqual(a, b Value) bool {
 		if ap == nil || bp == nil {
 			return ap == bp
 		}
-		return valuesEqual(ap.Car, bp.Car) && valuesEqual(ap.Cdr, bp.Cdr)
+		return valuesEqual(ap.First, bp.First) && valuesEqual(ap.Rest, bp.Rest)
 	case TypePrimitive:
 		ap := a.Primitive()
 		bp := b.Primitive()

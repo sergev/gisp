@@ -41,8 +41,8 @@ func reverseList(lst) {
     var acc = []
     var cursor = lst
     while !nullp(cursor) {
-        acc = cons(car(cursor), acc)
-        cursor = cdr(cursor)
+        acc = cons(first(cursor), acc)
+        cursor = rest(cursor)
     }
     return acc
 }
@@ -55,8 +55,8 @@ func trimList(lst, limit) {
     var count = 0
     var cursor = lst
     while count < limit && !nullp(cursor) {
-        acc = cons(car(cursor), acc)
-        cursor = cdr(cursor)
+        acc = cons(first(cursor), acc)
+        cursor = rest(cursor)
         count = count + 1
     }
     return reverseList(acc)
@@ -109,8 +109,8 @@ func churnClosures(iterations, envSize, keepInterval) {
             var local = payload
             var total = 0
             while !nullp(local) {
-                total = total + car(local)
-                local = cdr(local)
+                total = total + first(local)
+                local = rest(local)
             }
             return total + x
         }

@@ -42,7 +42,7 @@ func length(xs) {
 
     while !nullp(cursor) {
         count = count + 1
-        cursor = cdr(cursor)
+        cursor = rest(cursor)
     }
     return count
 }
@@ -53,9 +53,9 @@ func mean(xs) {
     var cursor = xs
 
     while !nullp(cursor) {
-        total = total + car(cursor)
+        total = total + first(cursor)
         count = count + 1
-        cursor = cdr(cursor)
+        cursor = rest(cursor)
     }
     return total / count
 }
@@ -65,9 +65,9 @@ func variance(xs, avg) {
     var cursor = xs
 
     while !nullp(cursor) {
-        var diff = car(cursor) - avg
+        var diff = first(cursor) - avg
         total = total + diff * diff
-        cursor = cdr(cursor)
+        cursor = rest(cursor)
     }
     return total / length(xs)
 }
@@ -87,7 +87,7 @@ func alertOnOutlier(xs, threshold) {
     var index = 0
 
     while !nullp(cursor) {
-        var score = car(cursor)
+        var score = first(cursor)
         if abs(score) > threshold {
             display("Outlier at index ")
             display(index)
@@ -96,7 +96,7 @@ func alertOnOutlier(xs, threshold) {
             newline()
         }
         index = index + 1
-        cursor = cdr(cursor)
+        cursor = rest(cursor)
     }
 }
 
