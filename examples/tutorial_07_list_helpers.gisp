@@ -2,6 +2,7 @@
 
 var numbers = [1, 2, 3, 4]
 display(car(numbers))
+newline()
 display(cdr(numbers))
 newline()
 

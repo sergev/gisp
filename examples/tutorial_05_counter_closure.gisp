@@ -10,5 +10,6 @@ func counter(start) {
 
 var c = counter(10)
 display(c(1))
+newline()
 display(c(5))
 newline()

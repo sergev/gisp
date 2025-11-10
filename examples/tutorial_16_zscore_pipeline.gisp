@@ -1,7 +1,7 @@
 #!/usr/bin/env gisp
 
 `(define-macro (when condition . body)
-(list 'if condition (cons 'begin body) '#f))
+    (list 'if condition (cons 'begin body) '#f))
 
 func abs(x) {
     if x < 0 {

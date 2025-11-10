@@ -11,11 +11,9 @@ func classify(n) {
     return "positive"
 }
 
-func main() {
-    display(classify(-3))
-    display(classify(0))
-    display(classify(8))
-    newline()
-}
-
-main()
+display(classify(-3))
+newline()
+display(classify(0))
+newline()
+display(classify(8))
+newline()

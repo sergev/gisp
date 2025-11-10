@@ -1,8 +1,3 @@
 #!/usr/bin/env gisp
 
-func main() {
-    display("Hello from Gisp!")
-    newline()
-}
-
-main()
+display("Hello from Gisp!\n")

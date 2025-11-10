@@ -1,8 +1,7 @@
 #!/usr/bin/env gisp
 
 func demo() {
-    display("Demonstrating call/cc")
-    newline()
+    display("Demonstrating call/cc\n")
 
     var saved = false
     var result = callcc(func(k) {
@@ -15,8 +14,7 @@ func demo() {
     newline()
 
     if stringp(result) {
-        display("Invoking continuation with 42")
-        newline()
+        display("Invoking continuation with 42\n")
         saved(42)
     }
 

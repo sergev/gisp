@@ -150,9 +150,7 @@ func runPhase(name, thunk) {
 }
 
 func main() {
-    display("Gisp GC stress benchmark starting.")
-    newline()
-    newline()
+    display("Gisp GC stress benchmark starting.\n\n")
 
     runPhase("Short-lived list churn", func() {
         return churnShortLived(shortLivedIterations, shortLivedSize)
@@ -179,8 +177,7 @@ func main() {
         return internSymbolBurst(symbolBurstCount, symbolPrefix)
     })
 
-    display("Benchmark run complete. Use external tooling for timing/GC stats.")
-    newline()
+    display("Benchmark run complete. Use external tooling for timing/GC stats.\n")
 }
 
 main()

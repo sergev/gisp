@@ -101,7 +101,7 @@ func TestTutorial04StringsBooleans(t *testing.T) {
 }
 
 func TestTutorial05CounterClosure(t *testing.T) {
-	runTutorialExample(t, "tutorial_05_counter_closure.gisp", "1116")
+	runTutorialExample(t, "tutorial_05_counter_closure.gisp", "11\n16")
 }
 
 func TestTutorial06Iterate(t *testing.T) {
@@ -109,7 +109,7 @@ func TestTutorial06Iterate(t *testing.T) {
 }
 
 func TestTutorial07ListHelpers(t *testing.T) {
-	runTutorialExample(t, "tutorial_07_list_helpers.gisp", "1(2 3 4)\n(1 4 9 16)")
+	runTutorialExample(t, "tutorial_07_list_helpers.gisp", "1\n(2 3 4)\n(1 4 9 16)")
 }
 
 func TestTutorial08UnlessMacro(t *testing.T) {
@@ -121,7 +121,7 @@ func TestTutorial09Compose(t *testing.T) {
 }
 
 func TestTutorial10Abs(t *testing.T) {
-	runTutorialExample(t, "tutorial_10_abs.gisp", "3.52")
+	runTutorialExample(t, "tutorial_10_abs.gisp", "3.5\n2")
 }
 
 func TestTutorial11RunningAverage(t *testing.T) {
@@ -149,7 +149,7 @@ func TestTutorial16ZscorePipeline(t *testing.T) {
 }
 
 func TestTutorial17Classify(t *testing.T) {
-	runTutorialExample(t, "tutorial_17_classify.gisp", "negativezeropositive")
+	runTutorialExample(t, "tutorial_17_classify.gisp", "negative\nzero\npositive")
 }
 
 func TestTutorial18AccumulateUntil(t *testing.T) {

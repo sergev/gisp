@@ -8,5 +8,6 @@ func abs(x) {
 }
 
 display(abs(-3.5))
+newline()
 display(abs(2))
 newline()

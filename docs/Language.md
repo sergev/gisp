@@ -138,20 +138,20 @@ SExpression    = parsed by the Scheme reader (See `reader`).
 
 ```gisp
 func fact(n) {
-	if n == 0 {
-		return 1
-	}
-	return n * fact(n - 1)
+    if n == 0 {
+        return 1
+    }
+    return n * fact(n - 1)
 }
 
 func fact_tr(n, acc) {
-	if n == 0 {
-		return acc;
-	}
-	return fact_tr(n - 1, acc * n);
+    if n == 0 {
+        return acc
+    }
+    return fact_tr(n - 1, acc * n)
 }
 
-var expr = `(map (lambda (x) (+ x 1)) '(1 2 3));
+var expr = `(map (lambda (x) (+ x 1)) '(1 2 3))
 ```
 
 ## Runtime Integration
@@ -174,4 +174,3 @@ For direct access to continuations from the Go-style surface syntax, the runtime
 exposes a `callcc` primitive, equivalent to ``(lambda (f) (call/cc f))``.
 This lets you invoke `callcc(func(k) { ... })` without dropping into inline
 s-expressions.
-

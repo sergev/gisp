@@ -1,18 +1,14 @@
 #!/usr/bin/env gisp
 
 var findFirst = `(lambda (pred xs)
-(call/cc (lambda (exit)
-(let loop ((items xs))
-(if (nullp items)
-'#f
-(if (pred (car items))
-(exit (car items))
-(loop (cdr items))))))))
+    (call/cc (lambda (exit)
+        (let loop ((items xs))
+            (if (nullp items)
+                '#f
+                (if (pred (car items))
+                    (exit (car items))
+                    (loop (cdr items))))))))
 
-func main() {
-    var firstLarge = findFirst(func(n) { return n > 10; }, [1, 3, 5, 8, 13, 21])
-    display(firstLarge)
-    newline()
-}
-
-main()
+var firstLarge = findFirst(func(n) { return n > 10; }, [1, 3, 5, 8, 13, 21])
+display(firstLarge)
+newline()
