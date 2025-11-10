@@ -163,3 +163,53 @@ func TestContinuationExample(t *testing.T) {
 		"Demonstrating call/cc\nFirst result: initial return\nInvoking continuation with 42\nFirst result: 42\nContinuation produced: 42",
 	)
 }
+
+func TestSnobolPatternMatcherExample(t *testing.T) {
+	runTutorialExample(
+		t,
+		"snobol_patterns.gisp",
+		`== Snobol-style syllable split ==
+syllable:
+  prefix: 
+  matched: strand
+  suffix: 
+  captures:
+    onset => str
+    nucleus => a
+    coda => nd
+
+== Configuration pairs with ARBNO/BREAK ==
+pairs:
+  prefix: 
+  matched: name = Alice; age=34; city=Rlyeh;
+  suffix: 
+  captures:
+    key => name
+    value => Alice
+    key => age
+    value => 34
+    key => city
+    value => Rlyeh
+  pairs:
+    name => Alice
+    age => 34
+    city => Rlyeh
+
+== Log line with LEN/POS/RPOS ==
+log:
+  prefix: 
+  matched: ERROR 2025-11-10 parser: unexpected token ';'
+  suffix: 
+  captures:
+    level => ERROR
+    year => 2025
+    month => 11
+    day => 10
+    date => 2025-11-10
+    module => parser
+    message => unexpected token ';'
+  decoded date: 2025-11-10
+  module: parser
+  message: unexpected token ';'`,
+	)
+}

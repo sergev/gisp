@@ -79,6 +79,7 @@ func installPrimitives(ev *lang.Evaluator) {
 	define("stringLength", primStringLength)
 	define("makeString", primMakeString)
 	define("stringAppend", primStringAppend)
+	define("stringSlice", primStringSlice)
 	define("symbolToString", primSymbolToString)
 	define("stringToSymbol", primStringToSymbol)
 	define("numberToString", primNumberToString)
@@ -700,6 +701,41 @@ func primStringAppend(ev *lang.Evaluator, args []lang.Value) (lang.Value, error)
 		builder.WriteString(arg.Str())
 	}
 	return lang.StringValue(builder.String()), nil
+}
+
+func primStringSlice(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	if len(args) < 2 || len(args) > 3 {
+		return lang.Value{}, fmt.Errorf("stringSlice expects 2 or 3 arguments, got %d", len(args))
+	}
+	source := args[0]
+	if source.Type != lang.TypeString {
+		return lang.Value{}, typeError("stringSlice", "string", source)
+	}
+	startVal := args[1]
+	if startVal.Type != lang.TypeInt {
+		return lang.Value{}, typeError("stringSlice", "integer", startVal)
+	}
+	start := startVal.Int()
+	str := source.Str()
+	length := int64(len(str))
+	if start < 0 || start > length {
+		return lang.Value{}, fmt.Errorf("stringSlice start index %d out of range 0..%d", start, length)
+	}
+	end := length
+	if len(args) == 3 {
+		endVal := args[2]
+		if endVal.Type != lang.TypeInt {
+			return lang.Value{}, typeError("stringSlice", "integer", endVal)
+		}
+		end = endVal.Int()
+		if end < 0 || end > length {
+			return lang.Value{}, fmt.Errorf("stringSlice end index %d out of range 0..%d", end, length)
+		}
+	}
+	if end < start {
+		return lang.Value{}, fmt.Errorf("stringSlice end index %d precedes start %d", end, start)
+	}
+	return lang.StringValue(str[start:end]), nil
 }
 
 func primStringLength(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {

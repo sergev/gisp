@@ -1,0 +1,659 @@
+#!/usr/bin/env gisp
+
+// Snobol-style backtracking pattern matcher implemented in pure Gisp.
+// Patterns are first-class procedures that drive a nondeterministic search
+// across the subject string, mimicking Snobol4 primitives such as ANY, SPAN,
+// BREAK, ARB, ARBNO, POS, RPOS, LEN, and REM. The implementation showcases how
+// closures, higher-order functions, and list manipulation compose in Gisp.
+
+// ---------------------------------------------------------------------------
+// List helpers
+// ---------------------------------------------------------------------------
+
+func reverseList(lst) {
+    var acc = []
+    var cursor = lst
+    while !nullp(cursor) {
+        acc = cons(first(cursor), acc)
+        cursor = rest(cursor)
+    }
+    return acc
+}
+
+func forEachList(lst, fn) {
+    var cursor = lst
+    while !nullp(cursor) {
+        fn(first(cursor))
+        cursor = rest(cursor)
+    }
+}
+
+func mapList(lst, fn) {
+    var acc = []
+    var cursor = lst
+    while !nullp(cursor) {
+        acc = cons(fn(first(cursor)), acc)
+        cursor = rest(cursor)
+    }
+    return reverseList(acc)
+}
+
+// ---------------------------------------------------------------------------
+// Match state helpers
+// ---------------------------------------------------------------------------
+
+func makeState(pos, captures) {
+    return [pos, captures]
+}
+
+func statePos(state) {
+    return first(state)
+}
+
+func stateCaptures(state) {
+    return first(rest(state))
+}
+
+func addCapture(state, name, value) {
+    return makeState(statePos(state), cons([name, value], stateCaptures(state)))
+}
+
+func captureCount(state) {
+    var captures = stateCaptures(state)
+    var count = 0
+    var cursor = captures
+    while !nullp(cursor) {
+        count = count + 1
+        cursor = rest(cursor)
+    }
+    return count
+}
+
+// ---------------------------------------------------------------------------
+// String utilities
+// ---------------------------------------------------------------------------
+
+func subjectLength(subject) {
+    return stringLength(subject)
+}
+
+func slice(subject, start, end) {
+    return stringSlice(subject, start, end)
+}
+
+func charAt(subject, index) {
+    return stringSlice(subject, index, index + 1)
+}
+
+func charInSet(char, charset) {
+    var idx = 0
+    var limit = stringLength(charset)
+    while idx < limit {
+        if equal(stringSlice(charset, idx, idx + 1), char) {
+            return true
+        }
+        idx = idx + 1
+    }
+    return false
+}
+
+func allCharsInSet(str, charset) {
+    var length = stringLength(str)
+    var idx = 0
+    while idx < length {
+        var ch = stringSlice(str, idx, idx + 1)
+        if !charInSet(ch, charset) {
+            return false
+        }
+        idx = idx + 1
+    }
+    return true
+}
+
+// ---------------------------------------------------------------------------
+// Pattern constructors
+// Each pattern returns a list of states (pos, captures) for potential matches.
+// ---------------------------------------------------------------------------
+
+func lit(text) {
+    var size = stringLength(text)
+    return func(subject, pos, captures) {
+        var end = pos + size
+        if end > subjectLength(subject) {
+            return []
+        }
+        if equal(slice(subject, pos, end), text) {
+            return [makeState(end, captures)]
+        }
+        return []
+    }
+}
+
+func any(charset) {
+    return func(subject, pos, captures) {
+        if pos >= subjectLength(subject) {
+            return []
+        }
+        var ch = charAt(subject, pos)
+        if charInSet(ch, charset) {
+            return [makeState(pos + 1, captures)]
+        }
+        return []
+    }
+}
+
+func notAny(charset) {
+    return func(subject, pos, captures) {
+        if pos >= subjectLength(subject) {
+            return []
+        }
+        var ch = charAt(subject, pos)
+        if charInSet(ch, charset) {
+            return []
+        }
+        return [makeState(pos + 1, captures)]
+    }
+}
+
+func span(charset) {
+    return func(subject, pos, captures) {
+        var end = pos
+        var limit = subjectLength(subject)
+        while end < limit && charInSet(charAt(subject, end), charset) {
+            end = end + 1
+        }
+        if end == pos {
+            return []
+        }
+        return [makeState(end, captures)]
+    }
+}
+
+func breakSet(charset) {
+    return func(subject, pos, captures) {
+        var end = pos
+        var limit = subjectLength(subject)
+        while end < limit && !charInSet(charAt(subject, end), charset) {
+            end = end + 1
+        }
+        if end == pos {
+            return []
+        }
+        return [makeState(end, captures)]
+    }
+}
+
+func len(count) {
+    return func(subject, pos, captures) {
+        if count < 0 {
+            return []
+        }
+        var end = pos + count
+        if end > subjectLength(subject) {
+            return []
+        }
+        return [makeState(end, captures)]
+    }
+}
+
+func arb() {
+    return func(subject, pos, captures) {
+        var limit = subjectLength(subject)
+        var cursor = pos
+        var acc = []
+        while cursor <= limit {
+            acc = cons(makeState(cursor, captures), acc)
+            cursor = cursor + 1
+        }
+        return reverseList(acc)
+    }
+}
+
+func rem() {
+    return func(subject, pos, captures) {
+        return [makeState(subjectLength(subject), captures)]
+    }
+}
+
+func pos(expected) {
+    return func(subject, pos, captures) {
+        if pos == expected {
+            return [makeState(pos, captures)]
+        }
+        return []
+    }
+}
+
+func rpos(expected) {
+    return func(subject, pos, captures) {
+        var remaining = subjectLength(subject) - pos
+        if remaining == expected {
+            return [makeState(pos, captures)]
+        }
+        return []
+    }
+}
+
+func opt(pattern) {
+    return func(subject, pos, captures) {
+        var acc = [makeState(pos, captures)]
+        var matches = pattern(subject, pos, captures)
+        var cursor = matches
+        while !nullp(cursor) {
+            acc = cons(first(cursor), acc)
+            cursor = rest(cursor)
+        }
+        return reverseList(acc)
+    }
+}
+
+func alt(patterns) {
+    return func(subject, pos, captures) {
+        var acc = []
+        var cursor = patterns
+        while !nullp(cursor) {
+            var pattern = first(cursor)
+            var matches = pattern(subject, pos, captures)
+            var matchCursor = matches
+            while !nullp(matchCursor) {
+                acc = cons(first(matchCursor), acc)
+                matchCursor = rest(matchCursor)
+            }
+            cursor = rest(cursor)
+        }
+        return reverseList(acc)
+    }
+}
+
+func seq(patterns) {
+    return func(subject, pos, captures) {
+        var states = [makeState(pos, captures)]
+        var cursor = patterns
+        while !nullp(cursor) {
+            var pattern = first(cursor)
+            var nextStates = []
+            var stateCursor = states
+            while !nullp(stateCursor) {
+                var state = first(stateCursor)
+                var matches = pattern(subject, statePos(state), stateCaptures(state))
+                var matchCursor = matches
+                while !nullp(matchCursor) {
+                    nextStates = cons(first(matchCursor), nextStates)
+                    matchCursor = rest(matchCursor)
+                }
+                stateCursor = rest(stateCursor)
+            }
+            nextStates = reverseList(nextStates)
+            if nullp(nextStates) {
+                return []
+            }
+            states = nextStates
+            cursor = rest(cursor)
+        }
+        return states
+    }
+}
+
+func arbno(pattern) {
+    return func(subject, pos, captures) {
+        var results = []
+        var queue = [makeState(pos, captures)]
+        while !nullp(queue) {
+            var current = first(queue)
+            queue = rest(queue)
+            results = cons(current, results)
+            var nextStates = pattern(subject, statePos(current), stateCaptures(current))
+            var nextCursor = nextStates
+            while !nullp(nextCursor) {
+                var candidate = first(nextCursor)
+                if statePos(candidate) > statePos(current) {
+                    queue = cons(candidate, queue)
+                }
+                nextCursor = rest(nextCursor)
+            }
+        }
+        return reverseList(results)
+    }
+}
+
+func capture(name, pattern) {
+    return func(subject, pos, captures) {
+        var acc = []
+        var matches = pattern(subject, pos, captures)
+        var cursor = matches
+        while !nullp(cursor) {
+            var state = first(cursor)
+            var fragment = slice(subject, pos, statePos(state))
+            acc = cons(addCapture(state, name, fragment), acc)
+            cursor = rest(cursor)
+        }
+        return reverseList(acc)
+    }
+}
+
+func guard(pattern, predicate) {
+    return func(subject, pos, captures) {
+        var acc = []
+        var matches = pattern(subject, pos, captures)
+        var cursor = matches
+        while !nullp(cursor) {
+            var state = first(cursor)
+            var fragment = slice(subject, pos, statePos(state))
+            if predicate(fragment) {
+                acc = cons(state, acc)
+            }
+            cursor = rest(cursor)
+        }
+        return reverseList(acc)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Matching engine
+// ---------------------------------------------------------------------------
+
+func makeMatch(subject, start, state) {
+    var end = statePos(state)
+    var captures = reverseList(stateCaptures(state))
+    var total = subjectLength(subject)
+    return [
+        [`'start, start],
+        [`'end, end],
+        [`'prefix, slice(subject, 0, start)],
+        [`'matched, slice(subject, start, end)],
+        [`'suffix, slice(subject, end, total)],
+        [`'captures, captures],
+    ]
+}
+
+func matchField(match, key) {
+    var cursor = match
+    while !nullp(cursor) {
+        var entry = first(cursor)
+        if equal(first(entry), key) {
+            return first(rest(entry))
+        }
+        cursor = rest(cursor)
+    }
+    return false
+}
+
+func capturesFromMatch(match) {
+    return matchField(match, `'captures)
+}
+
+func captureValue(captures, name) {
+    var cursor = captures
+    while !nullp(cursor) {
+        var entry = first(cursor)
+        if equal(first(entry), name) {
+            return first(rest(entry))
+        }
+        cursor = rest(cursor)
+    }
+    return false
+}
+
+func captureValues(captures, name) {
+    var acc = []
+    var cursor = captures
+    while !nullp(cursor) {
+        var entry = first(cursor)
+        if equal(first(entry), name) {
+            acc = cons(first(rest(entry)), acc)
+        }
+        cursor = rest(cursor)
+    }
+    return reverseList(acc)
+}
+
+func capturesToPairs(captures) {
+    var acc = []
+    var cursor = captures
+    while !nullp(cursor) {
+        var entry = first(cursor)
+        if equal(first(entry), `'key) {
+            var keyValue = first(rest(entry))
+            cursor = rest(cursor)
+            if nullp(cursor) {
+                return reverseList(acc)
+            }
+            var valueEntry = first(cursor)
+            var value = first(rest(valueEntry))
+            acc = cons([keyValue, value], acc)
+        } else {
+            cursor = rest(cursor)
+        }
+    }
+    return reverseList(acc)
+}
+
+func matchFirst(pattern, subject) {
+    var limit = subjectLength(subject)
+    var start = 0
+    while start <= limit {
+        var states = pattern(subject, start, [])
+        var cursor = states
+        var bestState = []
+        var found = false
+        while !nullp(cursor) {
+            var candidate = first(cursor)
+            if !found {
+                found = true
+                bestState = candidate
+            } else {
+                var candidatePos = statePos(candidate)
+                var bestPos = statePos(bestState)
+                if candidatePos > bestPos {
+                    bestState = candidate
+                } else {
+                    if candidatePos == bestPos {
+                        if captureCount(candidate) > captureCount(bestState) {
+                            bestState = candidate
+                        }
+                    }
+                }
+            }
+            cursor = rest(cursor)
+        }
+        if found {
+            return makeMatch(subject, start, bestState)
+        }
+        start = start + 1
+    }
+    return false
+}
+
+func matchAll(pattern, subject) {
+    var acc = []
+    var limit = subjectLength(subject)
+    var start = 0
+    while start <= limit {
+        var states = pattern(subject, start, [])
+        var cursor = states
+        while !nullp(cursor) {
+            acc = cons(makeMatch(subject, start, first(cursor)), acc)
+            cursor = rest(cursor)
+        }
+        start = start + 1
+    }
+    return reverseList(acc)
+}
+
+// ---------------------------------------------------------------------------
+// Demo helpers
+// ---------------------------------------------------------------------------
+
+func displayMatch(label, match) {
+    if equal(match, false) {
+        display(label)
+        display(": no match\n")
+        return
+    }
+    display(label)
+    display(":\n")
+    display("  prefix: ")
+    display(matchField(match, `'prefix))
+    newline()
+    display("  matched: ")
+    display(matchField(match, `'matched))
+    newline()
+    display("  suffix: ")
+    display(matchField(match, `'suffix))
+    newline()
+    var captures = capturesFromMatch(match)
+    if nullp(captures) {
+        display("  captures: []\n")
+    } else {
+        display("  captures:\n")
+        forEachList(captures, func(entry) {
+            display("    ")
+            display(symbolToString(first(entry)))
+            display(" => ")
+            display(first(rest(entry)))
+            newline()
+        })
+    }
+}
+
+func displayKeyValueResult(label, match) {
+    displayMatch(label, match)
+    if equal(match, false) {
+        return
+    }
+    var pairs = capturesToPairs(capturesFromMatch(match))
+    if nullp(pairs) {
+        display("  pairs: []\n")
+        return
+    }
+    display("  pairs:\n")
+    forEachList(pairs, func(pair) {
+        display("    ")
+        display(first(pair))
+        display(" => ")
+        display(first(rest(pair)))
+        newline()
+    })
+}
+
+// ---------------------------------------------------------------------------
+// Demos
+// ---------------------------------------------------------------------------
+
+//
+// demoSyllableSplit shows how literal, SPAN, ANY, and REM combinators cooperate
+// to pull apart a single syllable into onset/nucleus/coda captures.
+//
+func demoSyllableSplit() {
+    display("== Snobol-style syllable split ==\n")
+    var vowels = "aeiouyAEIOUY"
+    var consonants = "bcdfghjklmnpqrstvwxyzBCDFGHJKLMNPQRSTVWXYZ"
+    var pattern = seq([
+        capture(`'onset, span(consonants)),
+        capture(`'nucleus, any(vowels)),
+        capture(`'coda, rem()),
+    ])
+    var subject = "strand"
+    var match = matchFirst(pattern, subject)
+    displayMatch("syllable", match)
+    newline()
+}
+
+//
+// demoKeyValuePairs illustrates Snobol-style BREAK, optional whitespace, and
+// ARBNO repetition to scan a configuration string into repeated key/value
+// captures that are reshaped into a list of pairs.
+//
+func demoKeyValuePairs() {
+    display("== Configuration pairs with ARBNO/BREAK ==\n")
+    var lettersLower = "abcdefghijklmnopqrstuvwxyz"
+    var lettersUpper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    var digits = "0123456789"
+    var identChars = stringAppend(stringAppend(lettersLower, lettersUpper), digits)
+    identChars = stringAppend(identChars, "_-")
+    var whitespace = " \t"
+
+    var pairPattern = seq([
+        opt(span(whitespace)),
+        capture(`'key, span(identChars)),
+        opt(span(whitespace)),
+        lit("="),
+        opt(span(whitespace)),
+        capture(`'value, breakSet(";\n")),
+        lit(";"),
+    ])
+
+    var allPairs = seq([
+        pos(0),
+        arbno(pairPattern),
+        opt(span(whitespace)),
+        rem(),
+    ])
+
+    var config = "name = Alice; age=34; city=Rlyeh;"
+    var match = matchFirst(allPairs, config)
+    displayKeyValueResult("pairs", match)
+    newline()
+}
+
+//
+// demoLogParsing demonstrates positional anchors (POS), fixed-length LEN
+// guards, and rest-of-string REM to parse a structured log entry while
+// validating date fields.
+//
+func demoLogParsing() {
+    display("== Log line with LEN/POS/RPOS ==\n")
+    var letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    var digits = "0123456789"
+    var isoDateCore = seq([
+        capture(`'year, guard(len(4), func(fragment) {
+            return allCharsInSet(fragment, digits)
+        })),
+        lit("-"),
+        capture(`'month, guard(len(2), func(fragment) {
+            return allCharsInSet(fragment, digits)
+        })),
+        lit("-"),
+        capture(`'day, guard(len(2), func(fragment) {
+            return allCharsInSet(fragment, digits)
+        })),
+    ])
+    var isoDate = capture(`'date, isoDateCore)
+
+    var logPattern = seq([
+        pos(0),
+        capture(`'level, span(letters)),
+        span(" "),
+        isoDate,
+        span(" "),
+        capture(`'module, breakSet(":")),
+        lit(": "),
+        capture(`'message, rem()),
+    ])
+
+    var line = "ERROR 2025-11-10 parser: unexpected token ';'"
+    var match = matchFirst(logPattern, line)
+    displayMatch("log", match)
+    if !equal(match, false) {
+        var captures = capturesFromMatch(match)
+        display("  decoded date: ")
+        display(captureValue(captures, `'year))
+        display("-")
+        display(captureValue(captures, `'month))
+        display("-")
+        display(captureValue(captures, `'day))
+        newline()
+        display("  module: ")
+        display(captureValue(captures, `'module))
+        newline()
+        display("  message: ")
+        display(captureValue(captures, `'message))
+        newline()
+    }
+    newline()
+}
+
+// Run demos
+demoSyllableSplit()
+demoKeyValuePairs()
+demoLogParsing()

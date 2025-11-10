@@ -93,3 +93,83 @@ func TestPrimMakeStringErrors(t *testing.T) {
 		t.Fatalf("expected type error for non-string fill argument")
 	}
 }
+
+func TestPrimStringSliceBasic(t *testing.T) {
+	ev := NewEvaluator()
+
+	val, err := primStringSlice(ev, []lang.Value{
+		lang.StringValue("pattern"),
+		lang.IntValue(1),
+		lang.IntValue(4),
+	})
+	if err != nil {
+		t.Fatalf("primStringSlice returned error: %v", err)
+	}
+	if val.Type != lang.TypeString {
+		t.Fatalf("expected string result, got %v", val)
+	}
+	if val.Str() != "att" {
+		t.Fatalf("expected \"att\", got %q", val.Str())
+	}
+}
+
+func TestPrimStringSliceOptionalEnd(t *testing.T) {
+	ev := NewEvaluator()
+
+	val, err := primStringSlice(ev, []lang.Value{
+		lang.StringValue("pattern"),
+		lang.IntValue(4),
+	})
+	if err != nil {
+		t.Fatalf("primStringSlice returned error: %v", err)
+	}
+	if val.Str() != "ern" {
+		t.Fatalf("expected \"ern\", got %q", val.Str())
+	}
+}
+
+func TestPrimStringSliceErrors(t *testing.T) {
+	ev := NewEvaluator()
+
+	_, err := primStringSlice(ev, []lang.Value{
+		lang.IntValue(1),
+		lang.IntValue(0),
+	})
+	if err == nil {
+		t.Fatalf("expected type error for non-string source")
+	}
+
+	_, err = primStringSlice(ev, []lang.Value{
+		lang.StringValue("data"),
+		lang.StringValue("oops"),
+	})
+	if err == nil {
+		t.Fatalf("expected type error for non-integer start")
+	}
+
+	_, err = primStringSlice(ev, []lang.Value{
+		lang.StringValue("data"),
+		lang.IntValue(5),
+	})
+	if err == nil {
+		t.Fatalf("expected error for start out of range")
+	}
+
+	_, err = primStringSlice(ev, []lang.Value{
+		lang.StringValue("data"),
+		lang.IntValue(1),
+		lang.IntValue(0),
+	})
+	if err == nil {
+		t.Fatalf("expected error for end before start")
+	}
+
+	_, err = primStringSlice(ev, []lang.Value{
+		lang.StringValue("data"),
+		lang.IntValue(1),
+		lang.IntValue(10),
+	})
+	if err == nil {
+		t.Fatalf("expected error for end out of range")
+	}
+}
