@@ -44,8 +44,6 @@ func installPrimitives(ev *lang.Evaluator) {
 	define("cons", primCons)
 	define("car", primCar)
 	define("cdr", primCdr)
-	define("set-car!", primSetCar)
-	define("set-cdr!", primSetCdr)
 	define("setCar", primSetCar)
 	define("setCdr", primSetCdr)
 	define("list", primList)
