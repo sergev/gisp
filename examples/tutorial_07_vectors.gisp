@@ -1,3 +1,5 @@
+#!/usr/bin/env gisp
+
 func sievePrimes(limit) {
     var flags = makeVector(limit + 1, true)
     flags[0] = false
