@@ -1,0 +1,997 @@
+#!/usr/bin/env gisp
+
+// Unix-style regular expression engine implemented in pure Gisp.
+// Supports literals, ., character classes with ranges and negation,
+// escaped metacharacters, anchors (^, $), grouping, alternation, and
+// quantifiers (*, +, ?, {m,n}). The implementation mirrors the style
+// of the other pattern-matching demos in this directory.
+
+// ---------------------------------------------------------------------------
+// List helpers
+// ---------------------------------------------------------------------------
+
+func reverseList(lst) {
+    var acc = []
+    var cursor = lst
+    while !nullp(cursor) {
+        acc = cons(first(cursor), acc)
+        cursor = rest(cursor)
+    }
+    return acc
+}
+
+func concatLists(a, b) {
+    if nullp(a) {
+        return b
+    }
+    var rev = []
+    var cursor = a
+    while !nullp(cursor) {
+        rev = cons(first(cursor), rev)
+        cursor = rest(cursor)
+    }
+    var result = b
+    cursor = rev
+    while !nullp(cursor) {
+        result = cons(first(cursor), result)
+        cursor = rest(cursor)
+    }
+    return result
+}
+
+func mapList(lst, fn) {
+    var acc = []
+    var cursor = lst
+    while !nullp(cursor) {
+        acc = cons(fn(first(cursor)), acc)
+        cursor = rest(cursor)
+    }
+    return reverseList(acc)
+}
+
+func forEachList(lst, fn) {
+    var cursor = lst
+    while !nullp(cursor) {
+        fn(first(cursor))
+        cursor = rest(cursor)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Character utilities
+// ---------------------------------------------------------------------------
+
+func asciiTableString() {
+    return " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
+}
+
+func charCode(ch) {
+    var table = asciiTableString()
+    var idx = 0
+    var limit = stringLength(table)
+    while idx < limit {
+        if equal(stringSlice(table, idx, idx + 1), ch) {
+            return idx
+        }
+        idx++
+    }
+    return -1
+}
+
+func isDigitChar(ch) {
+    var code = charCode(ch)
+    return code >= charCode("0") && code <= charCode("9")
+}
+
+// ---------------------------------------------------------------------------
+// Match state helpers
+// ---------------------------------------------------------------------------
+
+func makeState(pos, captures) {
+    return [pos, captures]
+}
+
+func statePos(state) {
+    return first(state)
+}
+
+func stateCaptures(state) {
+    return first(rest(state))
+}
+
+func emptyCaptures() {
+    return []
+}
+
+func setCapture(captures, index, start, end) {
+    return cons([index, start, end], captures)
+}
+
+func findCapture(captures, index) {
+    var cursor = captures
+    while !nullp(cursor) {
+        var entry = first(cursor)
+        if first(entry) == index {
+            return entry
+        }
+        cursor = rest(cursor)
+    }
+    return #f
+}
+
+// ---------------------------------------------------------------------------
+// AST helpers
+// ---------------------------------------------------------------------------
+
+func makeLiteral(text) {
+    return [`'literal, text]
+}
+
+func literalText(node) {
+    return first(rest(node))
+}
+
+func makeDot() {
+    return [`'dot]
+}
+
+func makeEmpty() {
+    return [`'empty]
+}
+
+func makeStartAnchor() {
+    return [`'start]
+}
+
+func makeEndAnchor() {
+    return [`'end]
+}
+
+func makeSequence(parts) {
+    if nullp(parts) {
+        return makeEmpty()
+    }
+    if nullp(rest(parts)) {
+        return first(parts)
+    }
+    return [`'seq, compactSequence(parts)]
+}
+
+func compactSequence(parts) {
+    var acc = []
+    var pending = ""
+    var cursor = parts
+    while !nullp(cursor) {
+        var node = first(cursor)
+        if eq(first(node), `'literal) {
+            pending = stringAppend(pending, literalText(node))
+        } else {
+            if stringLength(pending) > 0 {
+                acc = cons(makeLiteral(pending), acc)
+                pending = ""
+            }
+            acc = cons(node, acc)
+        }
+        cursor = rest(cursor)
+    }
+    if stringLength(pending) > 0 {
+        acc = cons(makeLiteral(pending), acc)
+    }
+    return reverseList(acc)
+}
+
+func makeAlternation(branches) {
+    if nullp(branches) {
+        return makeEmpty()
+    }
+    if nullp(rest(branches)) {
+        return first(branches)
+    }
+    return [`'alt, branches]
+}
+
+func makeRepeat(node, min, max) {
+    return [`'repeat, node, min, max]
+}
+
+func repeatNode(node) {
+    return first(rest(node))
+}
+
+func repeatMin(node) {
+    return first(rest(rest(node)))
+}
+
+func repeatMax(node) {
+    return first(rest(rest(rest(node))))
+}
+
+func makeGroup(index, body) {
+    return [`'group, index, body]
+}
+
+func groupIndex(node) {
+    return first(rest(node))
+}
+
+func groupBody(node) {
+    return first(rest(rest(node)))
+}
+
+func makeCharClass(items, negated) {
+    return [`'class, items, negated]
+}
+
+func classItems(node) {
+    return first(rest(node))
+}
+
+func classNegated(node) {
+    return first(rest(rest(node)))
+}
+
+func makeClassChar(ch) {
+    return [`'char, ch]
+}
+
+func classCharValue(item) {
+    return first(rest(item))
+}
+
+func makeClassRange(start, end) {
+    var startCode = charCode(start)
+    var endCode = charCode(end)
+    if startCode == -1 || endCode == -1 {
+        error("Character class range uses unsupported character")
+    }
+    if endCode < startCode {
+        error("Character class range end precedes start")
+    }
+    return [`'range, start, end]
+}
+
+func classRangeStart(item) {
+    return first(rest(item))
+}
+
+func classRangeEnd(item) {
+    return first(rest(rest(item)))
+}
+
+// ---------------------------------------------------------------------------
+// Parser context helpers
+// ---------------------------------------------------------------------------
+
+func makeParseContext(pattern) {
+    return vector(pattern, 0, stringLength(pattern), 0)
+}
+
+func ctxPattern(ctx) {
+    return ctx[0]
+}
+
+func ctxPos(ctx) {
+    return ctx[1]
+}
+
+func ctxSetPos(ctx, value) {
+    ctx[1] = value
+}
+
+func ctxLength(ctx) {
+    return ctx[2]
+}
+
+func ctxGroupTotal(ctx) {
+    return ctx[3]
+}
+
+func ctxNextGroup(ctx) {
+    var next = ctx[3] + 1
+    ctx[3] = next
+    return next
+}
+
+func ctxAtEnd(ctx) {
+    return ctxPos(ctx) >= ctxLength(ctx)
+}
+
+func peekChar(ctx) {
+    if ctxAtEnd(ctx) {
+        return #f
+    }
+    var pos = ctxPos(ctx)
+    return stringSlice(ctxPattern(ctx), pos, pos + 1)
+}
+
+func peekAhead(ctx, offset) {
+    var target = ctxPos(ctx) + offset
+    if target >= ctxLength(ctx) {
+        return #f
+    }
+    return stringSlice(ctxPattern(ctx), target, target + 1)
+}
+
+func advance(ctx, amount) {
+    ctxSetPos(ctx, ctxPos(ctx) + amount)
+}
+
+func consumeChar(ctx) {
+    var ch = peekChar(ctx)
+    if ch == #f {
+        error("Unexpected end of pattern")
+    }
+    advance(ctx, 1)
+    return ch
+}
+
+func consumeIf(ctx, ch) {
+    var peeked = peekChar(ctx)
+    if peeked != #f && equal(peeked, ch) {
+        advance(ctx, 1)
+        return true
+    }
+    return false
+}
+
+func expectChar(ctx, ch) {
+    if !consumeIf(ctx, ch) {
+        error(stringAppend("Expected '", ch, "' at position ", numberToString(ctxPos(ctx))))
+    }
+}
+
+func parseError(ctx, message) {
+    error(stringAppend(message, " at position ", numberToString(ctxPos(ctx))))
+}
+
+func parseNumber(ctx) {
+    var digits = ""
+    while true {
+        var ch = peekChar(ctx)
+        if ch == #f || !isDigitChar(ch) {
+            break
+        }
+        digits = stringAppend(digits, ch)
+        advance(ctx, 1)
+    }
+    if stringLength(digits) == 0 {
+        return #f
+    }
+    var parsed = stringToNumber(digits)
+    if parsed == #f || !integerp(parsed) || parsed < 0 {
+        parseError(ctx, "Invalid number in quantifier")
+    }
+    return parsed
+}
+
+func parseCharClass(ctx) {
+    consumeChar(ctx) // '['
+    var negated = false
+    if equal(peekChar(ctx), "^") {
+        negated = true
+        advance(ctx, 1)
+    }
+    var items = []
+    var firstItem = true
+    while true {
+        var ch = peekChar(ctx)
+        if ch == #f {
+            parseError(ctx, "Unterminated character class")
+        }
+        if equal(ch, "]") && !firstItem {
+            advance(ctx, 1)
+            break
+        }
+        var startChar = parseClassChar(ctx)
+        var next = peekChar(ctx)
+        if next != #f && equal(next, "-") {
+            var after = peekAhead(ctx, 1)
+            if after != #f && !equal(after, "]") {
+                advance(ctx, 1) // consume '-'
+                var endChar = parseClassChar(ctx)
+                items = cons(makeClassRange(startChar, endChar), items)
+                firstItem = false
+                continue
+            }
+        }
+        items = cons(makeClassChar(startChar), items)
+        firstItem = false
+    }
+    return makeCharClass(reverseList(items), negated)
+}
+
+func parseClassChar(ctx) {
+    var ch = consumeChar(ctx)
+    if equal(ch, "\\") {
+        var escaped = peekChar(ctx)
+        if escaped == #f {
+            parseError(ctx, "Unterminated escape in character class")
+        }
+        advance(ctx, 1)
+        return escaped
+    }
+    return ch
+}
+
+func parseAtom(ctx) {
+    var ch = peekChar(ctx)
+    if ch == #f {
+        return makeEmpty()
+    }
+    if equal(ch, "(") {
+        advance(ctx, 1)
+        var index = ctxNextGroup(ctx)
+        var expr = parseExpression(ctx)
+        expectChar(ctx, ")")
+        return makeGroup(index, expr)
+    }
+    if equal(ch, "[") {
+        return parseCharClass(ctx)
+    }
+    if equal(ch, ".") {
+        advance(ctx, 1)
+        return makeDot()
+    }
+    if equal(ch, "^") {
+        advance(ctx, 1)
+        return makeStartAnchor()
+    }
+    if equal(ch, "$") {
+        advance(ctx, 1)
+        return makeEndAnchor()
+    }
+    if equal(ch, "\\") {
+        advance(ctx, 1)
+        var next = peekChar(ctx)
+        if next == #f {
+            parseError(ctx, "Dangling escape at end of pattern")
+        }
+        advance(ctx, 1)
+        return makeLiteral(next)
+    }
+    if equal(ch, ")") || equal(ch, "|") {
+        return makeEmpty()
+    }
+    advance(ctx, 1)
+    return makeLiteral(ch)
+}
+
+func parseFactor(ctx) {
+    var atom = parseAtom(ctx)
+    while true {
+        var ch = peekChar(ctx)
+        if ch == #f {
+            break
+        }
+        if equal(ch, "*") {
+            advance(ctx, 1)
+            atom = makeRepeat(atom, 0, -1)
+            continue
+        }
+        if equal(ch, "+") {
+            advance(ctx, 1)
+            atom = makeRepeat(atom, 1, -1)
+            continue
+        }
+        if equal(ch, "?") {
+            advance(ctx, 1)
+            atom = makeRepeat(atom, 0, 1)
+            continue
+        }
+        if equal(ch, "{") {
+            var minmax = parseQuantifier(ctx)
+            atom = makeRepeat(atom, first(minmax), first(rest(minmax)))
+            continue
+        }
+        break
+    }
+    return atom
+}
+
+func parseQuantifier(ctx) {
+    advance(ctx, 1) // consume '{'
+    var min = parseNumber(ctx)
+    if min == #f {
+        parseError(ctx, "Expected number after '{'")
+    }
+    var max = min
+    if equal(peekChar(ctx), ",") {
+        advance(ctx, 1)
+        if equal(peekChar(ctx), "}") {
+            max = -1
+        } else {
+            var upper = parseNumber(ctx)
+            if upper == #f {
+                parseError(ctx, "Expected upper bound in quantifier")
+            }
+            max = upper
+        }
+    }
+    expectChar(ctx, "}")
+    if max != -1 && max < min {
+        parseError(ctx, "Quantifier upper bound less than lower bound")
+    }
+    return [min, max]
+}
+
+func parseTerm(ctx) {
+    var parts = []
+    while true {
+        var ch = peekChar(ctx)
+        if ch == #f || equal(ch, ")") || equal(ch, "|") {
+            break
+        }
+        var factor = parseFactor(ctx)
+        parts = cons(factor, parts)
+    }
+    return makeSequence(reverseList(parts))
+}
+
+func parseExpression(ctx) {
+    var branches = []
+    var firstBranch = parseTerm(ctx)
+    branches = cons(firstBranch, branches)
+    while equal(peekChar(ctx), "|") {
+        advance(ctx, 1)
+        branches = cons(parseTerm(ctx), branches)
+    }
+    return makeAlternation(reverseList(branches))
+}
+
+func parseRegex(pattern) {
+    var ctx = makeParseContext(pattern)
+    var ast = parseExpression(ctx)
+    if !ctxAtEnd(ctx) {
+        parseError(ctx, "Unexpected trailing input")
+    }
+    return [ast, ctxGroupTotal(ctx)]
+}
+
+// ---------------------------------------------------------------------------
+// Matcher
+// ---------------------------------------------------------------------------
+
+func matchLiteral(node, subject, pos, captures) {
+    var text = literalText(node)
+    var size = stringLength(text)
+    var end = pos + size
+    if end > stringLength(subject) {
+        return []
+    }
+    if equal(stringSlice(subject, pos, end), text) {
+        return list(makeState(end, captures))
+    }
+    return []
+}
+
+func matchDot(subject, pos, captures) {
+    if pos >= stringLength(subject) {
+        return []
+    }
+    return list(makeState(pos + 1, captures))
+}
+
+func matchEmpty(pos, captures) {
+    return list(makeState(pos, captures))
+}
+
+func matchStartAnchor(pos, captures) {
+    if pos == 0 {
+        return list(makeState(pos, captures))
+    }
+    return []
+}
+
+func matchEndAnchor(subject, pos, captures) {
+    if pos == stringLength(subject) {
+        return list(makeState(pos, captures))
+    }
+    return []
+}
+
+func charInClass(items, negated, ch) {
+    var matched = false
+    var cursor = items
+    while !nullp(cursor) {
+        var item = first(cursor)
+        if eq(first(item), `'char) {
+            if equal(classCharValue(item), ch) {
+                matched = true
+                break
+            }
+        } else {
+            var start = charCode(classRangeStart(item))
+            var end = charCode(classRangeEnd(item))
+            var code = charCode(ch)
+            if code >= start && code <= end {
+                matched = true
+                break
+            }
+        }
+        cursor = rest(cursor)
+    }
+    if negated {
+        return !matched
+    }
+    return matched
+}
+
+func matchClass(node, subject, pos, captures) {
+    if pos >= stringLength(subject) {
+        return []
+    }
+    var ch = stringSlice(subject, pos, pos + 1)
+    if charInClass(classItems(node), classNegated(node), ch) {
+        return list(makeState(pos + 1, captures))
+    }
+    return []
+}
+
+func matchGroupNode(node, subject, pos, captures) {
+    var states = matchNode(groupBody(node), subject, pos, captures)
+    var acc = []
+    var cursor = states
+    while !nullp(cursor) {
+        var state = first(cursor)
+        var newCaptures = setCapture(stateCaptures(state), groupIndex(node), pos, statePos(state))
+        acc = cons(makeState(statePos(state), newCaptures), acc)
+        cursor = rest(cursor)
+    }
+    return reverseList(acc)
+}
+
+func matchRepeatNode(node, subject, pos, captures) {
+    var body = repeatNode(node)
+    var min = repeatMin(node)
+    var max = repeatMax(node)
+
+    var extend = func(count, currentPos, currentCaptures) {
+        var results = []
+        var canGrow = true
+        if max != -1 && count == max {
+            canGrow = false
+        }
+        if canGrow {
+            var nextStates = matchNode(body, subject, currentPos, currentCaptures)
+            var cursor = nextStates
+            while !nullp(cursor) {
+                var state = first(cursor)
+                var nextPos = statePos(state)
+                var nextCaptures = stateCaptures(state)
+                if nextPos == currentPos {
+                    if max == -1 || count + 1 <= max {
+                        if count + 1 >= min {
+                            results = concatLists(results, list(makeState(nextPos, nextCaptures)))
+                        }
+                    }
+                } else {
+                    results = concatLists(results, extend(count + 1, nextPos, nextCaptures))
+                }
+                cursor = rest(cursor)
+            }
+        }
+        if count >= min {
+            results = concatLists(results, list(makeState(currentPos, currentCaptures)))
+        }
+        return results
+    }
+
+    return extend(0, pos, captures)
+}
+
+func matchSequence(nodes, subject, pos, captures) {
+    var states = list(makeState(pos, captures))
+    var cursor = nodes
+    while !nullp(cursor) {
+        var node = first(cursor)
+        var nextStates = []
+        var stateCursor = states
+        while !nullp(stateCursor) {
+            var state = first(stateCursor)
+            var advanced = matchNode(node, subject, statePos(state), stateCaptures(state))
+            nextStates = concatLists(nextStates, advanced)
+            stateCursor = rest(stateCursor)
+        }
+        if nullp(nextStates) {
+            return []
+        }
+        states = nextStates
+        cursor = rest(cursor)
+    }
+    return states
+}
+
+func matchAlternation(nodes, subject, pos, captures) {
+    var results = []
+    var cursor = nodes
+    while !nullp(cursor) {
+        var node = first(cursor)
+        results = concatLists(results, matchNode(node, subject, pos, captures))
+        cursor = rest(cursor)
+    }
+    return results
+}
+
+func matchNode(node, subject, pos, captures) {
+    var tag = first(node)
+    if eq(tag, `'literal) {
+        return matchLiteral(node, subject, pos, captures)
+    }
+    if eq(tag, `'dot) {
+        return matchDot(subject, pos, captures)
+    }
+    if eq(tag, `'empty) {
+        return matchEmpty(pos, captures)
+    }
+    if eq(tag, `'start) {
+        return matchStartAnchor(pos, captures)
+    }
+    if eq(tag, `'end) {
+        return matchEndAnchor(subject, pos, captures)
+    }
+    if eq(tag, `'class) {
+        return matchClass(node, subject, pos, captures)
+    }
+    if eq(tag, `'group) {
+        return matchGroupNode(node, subject, pos, captures)
+    }
+    if eq(tag, `'repeat) {
+        return matchRepeatNode(node, subject, pos, captures)
+    }
+    if eq(tag, `'seq) {
+        return matchSequence(first(rest(node)), subject, pos, captures)
+    }
+    if eq(tag, `'alt) {
+        return matchAlternation(first(rest(node)), subject, pos, captures)
+    }
+    error("Unknown AST node type")
+}
+
+// ---------------------------------------------------------------------------
+// Compiled regex representation
+// ---------------------------------------------------------------------------
+
+func makeCompiledRegex(pattern, ast, groupCount) {
+    return [`'regex, pattern, ast, groupCount]
+}
+
+func compiledPattern(compiled) {
+    return first(rest(compiled))
+}
+
+func compiledAst(compiled) {
+    return first(rest(rest(compiled)))
+}
+
+func compiledGroupCount(compiled) {
+    return first(rest(rest(rest(compiled))))
+}
+
+func compileRegex(pattern) {
+    var parsed = parseRegex(pattern)
+    var ast = first(parsed)
+    var groups = first(rest(parsed))
+    return makeCompiledRegex(pattern, ast, groups)
+}
+
+// ---------------------------------------------------------------------------
+// Execution helpers
+// ---------------------------------------------------------------------------
+
+func buildCaptureValues(captures, groupCount, subject) {
+    var idx = 0
+    var acc = []
+    while idx <= groupCount {
+        var entry = findCapture(captures, idx)
+        var value = #f
+        if entry != #f {
+            var start = first(rest(entry))
+            var end = first(rest(rest(entry)))
+            value = stringSlice(subject, start, end)
+        }
+        acc = cons(value, acc)
+        idx++
+    }
+    return reverseList(acc)
+}
+
+func makeMatch(start, end, captures) {
+    return [`'match, start, end, captures]
+}
+
+func matchStart(match) {
+    return first(rest(match))
+}
+
+func matchEnd(match) {
+    return first(rest(rest(match)))
+}
+
+func matchCaptures(match) {
+    return first(rest(rest(rest(match))))
+}
+
+func matchText(match, subject) {
+    return stringSlice(subject, matchStart(match), matchEnd(match))
+}
+
+func regexExecFrom(compiled, subject, startPos) {
+    var ast = compiledAst(compiled)
+    var groupCount = compiledGroupCount(compiled)
+    var length = stringLength(subject)
+    var start = startPos
+    while start <= length {
+        var states = matchNode(ast, subject, start, emptyCaptures())
+        if !nullp(states) {
+            var best = first(states)
+            var endPos = statePos(best)
+            var captures = setCapture(stateCaptures(best), 0, start, endPos)
+            var captureValues = buildCaptureValues(captures, groupCount, subject)
+            return makeMatch(start, endPos, captureValues)
+        }
+        if start == length {
+            break
+        }
+        start++
+    }
+    return #f
+}
+
+func matchRegex(compiled, subject) {
+    var match = regexExecFrom(compiled, subject, 0)
+    if match == #f {
+        return #f
+    }
+    if matchStart(match) == 0 && matchEnd(match) == stringLength(subject) {
+        return match
+    }
+    return #f
+}
+
+func regexSearch(compiled, subject) {
+    return regexExecFrom(compiled, subject, 0)
+}
+
+func regexFindAll(compiled, subject) {
+    var results = []
+    var length = stringLength(subject)
+    var start = 0
+    while start <= length {
+        var match = regexExecFrom(compiled, subject, start)
+        if match == #f {
+            break
+        }
+        results = cons(match, results)
+        var nextStart = matchEnd(match)
+        if nextStart == start {
+            nextStart++
+        }
+        start = nextStart
+    }
+    return reverseList(results)
+}
+
+// ---------------------------------------------------------------------------
+// Demo utilities
+// ---------------------------------------------------------------------------
+
+func displayHeading(title) {
+    display("== ")
+    display(title)
+    display(" ==\n")
+}
+
+func displayMatch(pattern, subject, match) {
+    if match == #f {
+        display("Pattern /")
+        display(pattern)
+        display("/ did not match \"")
+        display(subject)
+        display("\".\n")
+        return
+    }
+    display("Pattern /")
+    display(pattern)
+    display("/ matched \"")
+    display(matchText(match, subject))
+    display("\" within \"")
+    display(subject)
+    display("\" from ")
+    display(numberToString(matchStart(match)))
+    display(" to ")
+    display(numberToString(matchEnd(match)))
+    display(".\n")
+    display("Captures: [")
+    var groups = matchCaptures(match)
+    var firstField = true
+    forEachList(groups, func(value) {
+        if !firstField {
+            display(", ")
+        }
+        if value == #f {
+            display("#f")
+        } else {
+            display("\"")
+            display(value)
+            display("\"")
+        }
+        firstField = false
+    })
+    display("]\n")
+}
+
+func displayAllMatches(pattern, subject, matches) {
+    display("All matches for /")
+    display(pattern)
+    display("/ in \"")
+    display(subject)
+    display("\":\n")
+    if nullp(matches) {
+        display("  (none)\n")
+        return
+    }
+    var index = 0
+    forEachList(matches, func(match) {
+        display("  #")
+        display(numberToString(index))
+        display(": \"")
+        display(matchText(match, subject))
+        display("\" @ [")
+        display(numberToString(matchStart(match)))
+        display(", ")
+        display(numberToString(matchEnd(match)))
+        display(") captures=")
+        displayCapturesList(matchCaptures(match))
+        display("\n")
+        index++
+    })
+}
+
+func displayCapturesList(captures) {
+    display("[")
+    var firstField = true
+    forEachList(captures, func(value) {
+        if !firstField {
+            display(", ")
+        }
+        if value == #f {
+            display("#f")
+        } else {
+            display("\"")
+            display(value)
+            display("\"")
+        }
+        firstField = false
+    })
+    display("]")
+}
+
+// ---------------------------------------------------------------------------
+// Demonstration cases
+// ---------------------------------------------------------------------------
+
+func runDemo() {
+    displayHeading("Regex Engine Demo")
+
+    var examples = [
+        ["Literal and dot", "te.t", "testing"],
+        ["Anchors", "^hello$", "well hello there"],
+        ["Character classes", "[a-z]+", "ABC def 123"],
+        ["Grouping and alternation", "colou?r|colour", "The colour palette"],
+        ["Quantifiers with bounds", "(ha){2,4}", "hahaha wow hahaha"],
+        ["Negated class", "[^aeiou]+", "queue rhythm"]
+    ]
+
+    forEachList(examples, func(example) {
+        var title = first(example)
+        var pattern = first(rest(example))
+        var subject = first(rest(rest(example)))
+        displayHeading(title)
+        var compiled = compileRegex(pattern)
+        displayMatch(pattern, subject, regexSearch(compiled, subject))
+        displayAllMatches(pattern, subject, regexFindAll(compiled, subject))
+        newline()
+    })
+}
+
+runDemo()
