@@ -63,7 +63,7 @@ func captureCount(state) {
     var count = 0
     var cursor = captures
     while !nullp(cursor) {
-        count += 1
+        count++
         cursor = rest(cursor)
     }
     return count
@@ -92,7 +92,7 @@ func charInSet(char, charset) {
         if equal(stringSlice(charset, idx, idx + 1), char) {
             return true
         }
-        idx += 1
+        idx++
     }
     return false
 }
@@ -105,7 +105,7 @@ func allCharsInSet(str, charset) {
         if !charInSet(ch, charset) {
             return false
         }
-        idx += 1
+        idx++
     }
     return true
 }
@@ -160,7 +160,7 @@ func span(charset) {
         var end = pos
         var limit = subjectLength(subject)
         while end < limit && charInSet(charAt(subject, end), charset) {
-            end += 1
+            end++
         }
         if end == pos {
             return []
@@ -174,7 +174,7 @@ func breakSet(charset) {
         var end = pos
         var limit = subjectLength(subject)
         while end < limit && !charInSet(charAt(subject, end), charset) {
-            end += 1
+            end++
         }
         if end == pos {
             return []
@@ -203,7 +203,7 @@ func arb() {
         var acc = []
         while cursor <= limit {
             acc = cons(makeState(cursor, captures), acc)
-            cursor += 1
+            cursor++
         }
         return reverseList(acc)
     }
@@ -459,7 +459,7 @@ func matchFirst(pattern, subject) {
         if found {
             return makeMatch(subject, start, bestState)
         }
-        start += 1
+        start++
     }
     return false
 }
@@ -475,7 +475,7 @@ func matchAll(pattern, subject) {
             acc = cons(makeMatch(subject, start, first(cursor)), acc)
             cursor = rest(cursor)
         }
-        start += 1
+        start++
     }
     return reverseList(acc)
 }

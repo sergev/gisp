@@ -29,7 +29,7 @@ func listRef(lst, index) {
     var remaining = index
     while remaining > 0 {
         current = rest(current)
-        remaining = remaining - 1
+        remaining--
     }
     return first(current)
 }
@@ -39,7 +39,7 @@ func nthPair(lst, index) {
     var remaining = index
     while remaining > 0 {
         current = rest(current)
-        remaining = remaining - 1
+        remaining--
     }
     return current
 }
@@ -54,7 +54,7 @@ func makeSolidRow(width) {
     var count = 0
     while count < width {
         acc = cons(cellWall, acc)
-        count += 1
+        count++
     }
     return reverseList(acc)
 }
@@ -71,7 +71,7 @@ func makeAlternatingRow(width) {
             acc = cons(cellEmpty, acc)
             useWall = true
         }
-        count += 1
+        count++
     }
     return reverseList(acc)
 }
@@ -90,7 +90,7 @@ func createEmptyMaze(width, height) {
             acc = cons(makeAlternatingRow(fullWidth), acc)
             useWallRow = true
         }
-        count += 1
+        count++
     }
     return reverseList(acc)
 }
@@ -124,10 +124,10 @@ func collectEmptyCells(maze) {
                 coords = cons([y, x], coords)
             }
             cells = rest(cells)
-            x += 1
+            x++
         }
         rows = rest(rows)
-        y += 1
+        y++
     }
     return reverseList(coords)
 }
@@ -225,7 +225,7 @@ func bitValue(index) {
     var i = 0
     while i < index {
         result = result * 2
-        i += 1
+        i++
     }
     return result
 }
@@ -267,7 +267,7 @@ func cellCode(maze, coord) {
             mask = mask + bitValue(index)
         }
         cursor = rest(cursor)
-        index += 1
+        index++
     }
     return mask
 }
@@ -344,14 +344,14 @@ func mazeString(maze) {
         while !nullp(cells) {
             line = stringAppend(line, cellString(maze, [y, x]))
             cells = rest(cells)
-            x += 1
+            x++
         }
         output = stringAppend(output, line)
         rows = rest(rows)
         if !nullp(rows) {
             output = stringAppend(output, "\n")
         }
-        y += 1
+        y++
     }
     return output
 }

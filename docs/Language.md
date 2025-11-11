@@ -19,8 +19,9 @@ Go developers.
 ## Syntax Summary
 
 - **Declarations:** `func`, `var`, and `const` at the top level.
-- **Statements:** variable declarations, assignment, expression statements,
-  `if`/`else`, `while`, and `return`. Semicolons are inserted automatically using
+- **Statements:** variable declarations, assignment, post-increment/decrement
+  (`x++`, `x--`), expression statements, `if`/`else`, `while`, and `return`.
+  Semicolons are inserted automatically using
   Go's rules (after identifiers, literals, `return`, `)`/`]`/`}` at newlines, and
   before a closing `}`), so you only need to spell them out when you want to
   force a statement to continue onto the next line.
@@ -31,6 +32,8 @@ Go developers.
   expects numbers; use the `eq` and `equal` primitives via backticks when you
   need identity or structural comparison of non-numeric values. Logical `&&` and
   `||` expand to short-circuiting macros installed by the runtime prelude.
+  Post-increment and post-decrement are **statements only**; they cannot appear
+  inside expressions.
 - **Special forms:** `switch` expressions select the first truthy case and
   compile down to the runtime `cond`.
 - **Conditional expressions:** `if cond { expr } else { expr }` evaluates to the
@@ -79,6 +82,7 @@ Statement      =
       VarDecl
     | ConstDecl
     | AssignStmt
+    | IncDecStmt
     | ExprStmt
     | IfStmt
     | WhileStmt
@@ -93,6 +97,7 @@ IfStmt         = "if" Expression Block [ "else" Block ] ;
 WhileStmt      = "while" Expression Block ;
 
 ReturnStmt     = "return" [ Expression ] ";" ;
+IncDecStmt     = Identifier "++" ";" | Identifier "--" ";" ;
 
 Expression     = OrExpr ;
 

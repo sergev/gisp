@@ -305,6 +305,30 @@ func TestCompileStmtCompoundAssign(t *testing.T) {
 	}
 }
 
+func TestCompileStmtIncDec(t *testing.T) {
+	b := &builder{}
+	stmt := &IncDecStmt{Name: "count", Op: tokenPlusPlus}
+	result, err := compileStmtWithRest(b, stmt, lang.SymbolValue("rest"), compileContext{})
+	if err != nil {
+		t.Fatalf("compileStmtWithRest: %v", err)
+	}
+	begin := requireListHead(t, result, "begin")
+	call, ok := begin[1].([]interface{})
+	if !ok {
+		t.Fatalf("expected call form, got %#v", begin[1])
+	}
+	if string(call[0].(datumSymbol)) != "++" {
+		t.Fatalf("expected ++ primitive, got %#v", call[0])
+	}
+	quote, ok := call[1].([]interface{})
+	if !ok || len(quote) != 2 {
+		t.Fatalf("expected quoted symbol, got %#v", call[1])
+	}
+	if string(quote[0].(datumSymbol)) != "quote" || string(quote[1].(datumSymbol)) != "count" {
+		t.Fatalf("expected quote count, got %#v", quote)
+	}
+}
+
 func TestCompileStmtExpr(t *testing.T) {
 	b := &builder{}
 	stmt := &ExprStmt{Expr: &IdentifierExpr{Name: "print"}}

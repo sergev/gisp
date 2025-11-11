@@ -35,6 +35,8 @@ func installPrimitives(ev *lang.Evaluator) {
 	define("*", primMul)
 	define("/", primDiv)
 	define("%", primMod)
+	define("++", primPostInc)
+	define("--", primPostDec)
 	define("+=", primAddAssign)
 	define("-=", primSubAssign)
 	define("*=", primMulAssign)
@@ -391,6 +393,14 @@ func primModAssign(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 	return compoundAssign(ev, "%=", args, func(current, delta lang.Value) (lang.Value, error) {
 		return primMod(ev, []lang.Value{current, delta})
 	})
+}
+
+func primPostInc(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	return incDecPrimitive(ev, "++", args, 1)
+}
+
+func primPostDec(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	return incDecPrimitive(ev, "--", args, -1)
 }
 
 func primShiftLeftAssign(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
@@ -1235,4 +1245,36 @@ func compoundAssignArgs(name string, args []lang.Value) (string, lang.Value, err
 		return "", lang.Value{}, typeError(name, "symbol", target)
 	}
 	return target.Sym(), args[1], nil
+}
+
+func incDecPrimitive(ev *lang.Evaluator, name string, args []lang.Value, delta int64) (lang.Value, error) {
+	targetName, err := incDecArgs(name, args)
+	if err != nil {
+		return lang.Value{}, err
+	}
+	env := ev.CurrentEnv()
+	if env == nil {
+		env = ev.Global
+	}
+	return env.Update(targetName, func(current lang.Value) (lang.Value, error) {
+		switch current.Type {
+		case lang.TypeInt:
+			return lang.IntValue(current.Int() + delta), nil
+		case lang.TypeReal:
+			return lang.RealValue(current.Real() + float64(delta)), nil
+		default:
+			return lang.Value{}, typeError(name, "number", current)
+		}
+	})
+}
+
+func incDecArgs(name string, args []lang.Value) (string, error) {
+	if len(args) == 0 || len(args) > 2 {
+		return "", fmt.Errorf("%s expects 1 or 2 arguments, got %d", name, len(args))
+	}
+	target := args[0]
+	if target.Type != lang.TypeSymbol {
+		return "", typeError(name, "symbol", target)
+	}
+	return target.Sym(), nil
 }

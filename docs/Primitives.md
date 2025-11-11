@@ -9,6 +9,7 @@ This document summarizes the built-in primitives that are installed into the glo
 - `*` — Multiplies numeric arguments. With no arguments the result is `1`. Mixed integer/real inputs promote to real.
 - `/` — Divides the first numeric argument by each subsequent one. Unary form returns the reciprocal. Always returns a real. Division by zero raises an error.
 - `%` — Calculates the remainder of integer division. Requires at least two integer arguments and applies left-to-right. Division by zero raises an error.
+- `++`, `--` — Post-increment and post-decrement statements. Expect a single quoted symbol naming an existing numeric binding. They add or subtract 1 from either integers or reals (promoting integers when needed), store the updated value back into the same binding, and return the new value.
 - `+=`, `-=`, `*=`, `/=`, `%=` — Compound numeric assignments. Expect two arguments: a quoted symbol naming an existing binding and a numeric delta. They read the current binding, apply the corresponding arithmetic primitive, store the result back into the same binding, and return the updated value.
 
 ## Bitwise and Shift Operators

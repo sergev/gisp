@@ -284,6 +284,59 @@ func TestCompoundAssignPrimitives(t *testing.T) {
 	}
 }
 
+func TestPostIncDecPrimitives(t *testing.T) {
+	ev := NewEvaluator()
+	env := lang.NewEnv(ev.Global)
+
+	env.Define("counter", lang.IntValue(10))
+	val, err := ev.Eval(lang.List(
+		lang.SymbolValue("++"),
+		lang.List(
+			lang.SymbolValue("quote"),
+			lang.SymbolValue("counter"),
+		),
+	), env)
+	if err != nil {
+		t.Fatalf("++ evaluation failed: %v", err)
+	}
+	if val.Type != lang.TypeInt || val.Int() != 11 {
+		t.Fatalf("++ returned unexpected value %v", val)
+	}
+	if got, err := env.Get("counter"); err != nil || got.Int() != 11 {
+		t.Fatalf("counter not incremented, got %v err %v", got, err)
+	}
+
+	env.Define("ratio", lang.RealValue(3.5))
+	val, err = ev.Eval(lang.List(
+		lang.SymbolValue("--"),
+		lang.List(
+			lang.SymbolValue("quote"),
+			lang.SymbolValue("ratio"),
+		),
+	), env)
+	if err != nil {
+		t.Fatalf("-- evaluation failed: %v", err)
+	}
+	if val.Type != lang.TypeReal || val.Real() != 2.5 {
+		t.Fatalf("-- returned unexpected value %v", val)
+	}
+	if got, err := env.Get("ratio"); err != nil || got.Real() != 2.5 {
+		t.Fatalf("ratio not decremented, got %v err %v", got, err)
+	}
+
+	env.Define("text", lang.StringValue("hello"))
+	_, err = ev.Eval(lang.List(
+		lang.SymbolValue("++"),
+		lang.List(
+			lang.SymbolValue("quote"),
+			lang.SymbolValue("text"),
+		),
+	), env)
+	if err == nil || !strings.Contains(err.Error(), "number") {
+		t.Fatalf("expected type error for ++ on string, got %v", err)
+	}
+}
+
 func compoundAssignExpr(op, name string, value lang.Value) lang.Value {
 	return lang.List(
 		lang.SymbolValue(op),

@@ -192,6 +192,21 @@ func compileStmtWithRest(b *builder, stmt Stmt, rest lang.Value, ctx compileCont
 			return b.begin([]lang.Value{call, rest}), nil
 		}
 		return lang.Value{}, fmt.Errorf("unsupported assignment operator %s", s.Op)
+	case *IncDecStmt:
+		var primName string
+		switch s.Op {
+		case tokenPlusPlus:
+			primName = "++"
+		case tokenMinusMinus:
+			primName = "--"
+		default:
+			return lang.Value{}, fmt.Errorf("unsupported inc/dec operator %s", s.Op)
+		}
+		call := b.list(
+			b.symbol(primName),
+			b.quoteSymbol(s.Name),
+		)
+		return b.begin([]lang.Value{call, rest}), nil
 	case *ExprStmt:
 		expr, err := compileExpr(b, s.Expr, ctx)
 		if err != nil {

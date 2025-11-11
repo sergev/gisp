@@ -44,6 +44,8 @@ const (
 	tokenBangEqual            // !=
 	tokenPlus                 // +
 	tokenMinus                // -
+	tokenPlusPlus             // ++
+	tokenMinusMinus           // --
 	tokenStar                 // *
 	tokenSlash                // /
 	tokenPercent              // %
@@ -144,6 +146,10 @@ func (tt TokenType) String() string {
 		return "+"
 	case tokenMinus:
 		return "-"
+	case tokenPlusPlus:
+		return "++"
+	case tokenMinusMinus:
+		return "--"
 	case tokenStar:
 		return "*"
 	case tokenSlash:

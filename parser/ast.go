@@ -230,6 +230,16 @@ type AssignStmt struct {
 func (s *AssignStmt) Pos() Position { return s.Posn }
 func (*AssignStmt) stmtNode()       {}
 
+// IncDecStmt performs a post-increment or post-decrement on an identifier.
+type IncDecStmt struct {
+	Name string
+	Op   TokenType
+	Posn Position
+}
+
+func (s *IncDecStmt) Pos() Position { return s.Posn }
+func (*IncDecStmt) stmtNode()       {}
+
 // IfStmt conditionally executes branches.
 type IfStmt struct {
 	Cond Expr

@@ -352,6 +352,27 @@ func TestLexerOperatorAndPunctuationTokens(t *testing.T) {
 	}
 }
 
+func TestLexerPostIncDec(t *testing.T) {
+	src := "x++\ny--"
+	tokens := lexAllTokens(t, src)
+	var types []TokenType
+	for _, tok := range tokens {
+		if tok.Type == tokenEOF || tok.Type == tokenSemicolon {
+			continue
+		}
+		types = append(types, tok.Type)
+	}
+	want := []TokenType{
+		tokenIdentifier,
+		tokenPlusPlus,
+		tokenIdentifier,
+		tokenMinusMinus,
+	}
+	if !reflect.DeepEqual(types, want) {
+		t.Fatalf("unexpected token sequence: got %v want %v", types, want)
+	}
+}
+
 func TestLexerBitwiseOperators(t *testing.T) {
 	src := "& | &^ << >>"
 	lx := newLexer(src)

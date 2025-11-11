@@ -6,7 +6,7 @@ func iterate(fn, value, count) {
 
     while remaining > 0 {
         result = fn(result)
-        remaining = remaining - 1
+        remaining--
     }
     return result
 }

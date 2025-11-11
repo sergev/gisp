@@ -3,7 +3,7 @@
 func main() {
     var total = 0
     while total < 5 {
-        total += 1
+        total++
     }
     display(total)
     newline()

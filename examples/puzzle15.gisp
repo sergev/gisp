@@ -20,7 +20,7 @@ func listRef(lst, index) {
     var remaining = index
     while remaining > 0 {
         current = rest(current)
-        remaining = remaining - 1
+        remaining--
     }
     return first(current)
 }
@@ -30,7 +30,7 @@ func nthPair(lst, index) {
     var remaining = index
     while remaining > 0 {
         current = rest(current)
-        remaining = remaining - 1
+        remaining--
     }
     return current
 }
@@ -50,7 +50,7 @@ func findSpace(board) {
         if equal(first(current), blankTile) {
             return index
         }
-        index += 1
+        index++
         current = rest(current)
     }
     return -1
@@ -60,8 +60,8 @@ func indexToRowCol(index) {
     var row = 0
     var col = index
     while col >= 4 {
-        col = col - 4
-        row += 1
+        col -= 4
+        row++
     }
     return [row, col]
 }
@@ -116,7 +116,7 @@ func finished(board) {
 func modulo(n, m) {
     var remainder = n
     while remainder >= m {
-        remainder = remainder - m
+        remainder -= m
     }
     return remainder
 }
@@ -136,7 +136,7 @@ func displayBoard(board) {
         } else {
             display("  ")
         }
-        index += 1
+        index++
         current = rest(current)
     }
     newline()
@@ -162,7 +162,7 @@ func createStartPosition() {
         var choice = randomInteger(options)
         var move = listRef(moves, choice)
         makeMove(board, move)
-        steps += 1
+        steps++
         if steps >= 100 && !finished(board) {
             return board
         }
@@ -188,7 +188,7 @@ func playGame() {
         var move = read()
         if moveAllowed(moves, move) {
             makeMove(board, move)
-            movesTaken += 1
+            movesTaken++
         } else {
             display("Invalid move - try again\n")
         }

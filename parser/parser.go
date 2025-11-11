@@ -265,6 +265,11 @@ func (p *parser) parseStatement() (Stmt, error) {
 		} else if ok {
 			return stmt, nil
 		}
+		if stmt, ok, err := p.tryParseIncDecStmt(); err != nil {
+			return nil, err
+		} else if ok {
+			return stmt, nil
+		}
 		fallthrough
 	default:
 		expr, err := p.parseExpression()
@@ -308,6 +313,32 @@ func (p *parser) tryParseAssignmentStmt() (Stmt, bool, error) {
 		Name: nameTok.Lexeme,
 		Expr: value,
 		Op:   assignType,
+		Posn: posFromToken(nameTok),
+	}, true, nil
+}
+
+func (p *parser) tryParseIncDecStmt() (Stmt, bool, error) {
+	nameTok := p.curr
+	peek, err := p.peek()
+	if err != nil {
+		return nil, false, err
+	}
+	if peek.Type != tokenPlusPlus && peek.Type != tokenMinusMinus {
+		return nil, false, nil
+	}
+	if _, err := p.expect(tokenIdentifier); err != nil {
+		return nil, false, err
+	}
+	opType := peek.Type
+	if _, err := p.expect(opType); err != nil {
+		return nil, false, err
+	}
+	if _, err := p.expect(tokenSemicolon); err != nil {
+		return nil, false, err
+	}
+	return &IncDecStmt{
+		Name: nameTok.Lexeme,
+		Op:   opType,
 		Posn: posFromToken(nameTok),
 	}, true, nil
 }
@@ -577,6 +608,8 @@ func (p *parser) parsePostfix() (Expr, error) {
 				Args:   args,
 				Posn:   posFromToken(callTok),
 			}
+		case tokenPlusPlus, tokenMinusMinus:
+			return nil, p.errorf(p.curr.Pos, "%s not allowed in expression context", p.curr.Type)
 		default:
 			return expr, nil
 		}

@@ -177,6 +177,44 @@ func identity(x) {
 	}
 }
 
+func TestParseIncDecStatements(t *testing.T) {
+	src := `
+func demo() {
+	x++
+	y--;
+}
+`
+	prog := parseProgramFromSource(t, src)
+	if len(prog.Decls) != 1 {
+		t.Fatalf("expected 1 declaration, got %d", len(prog.Decls))
+	}
+	fn, ok := prog.Decls[0].(*FuncDecl)
+	if !ok {
+		t.Fatalf("expected FuncDecl, got %T", prog.Decls[0])
+	}
+	if len(fn.Body.Stmts) != 2 {
+		t.Fatalf("expected 2 statements, got %d", len(fn.Body.Stmts))
+	}
+	first, ok := fn.Body.Stmts[0].(*IncDecStmt)
+	if !ok || first.Op != tokenPlusPlus || first.Name != "x" {
+		t.Fatalf("expected first stmt to be x++, got %#v", fn.Body.Stmts[0])
+	}
+	second, ok := fn.Body.Stmts[1].(*IncDecStmt)
+	if !ok || second.Op != tokenMinusMinus || second.Name != "y" {
+		t.Fatalf("expected second stmt to be y--, got %#v", fn.Body.Stmts[1])
+	}
+}
+
+func TestParseIncDecDisallowedInExpressions(t *testing.T) {
+	src := `
+var x = 1;
+var y = x++;
+`
+	if _, err := Parse(src); err == nil || !strings.Contains(err.Error(), "not allowed in expression context") {
+		t.Fatalf("expected expression context error, got %v", err)
+	}
+}
+
 func TestInlineSExprLiteral(t *testing.T) {
 	src := "var expr = `(list 1 2 3);\n"
 	prog, err := Parse(src)

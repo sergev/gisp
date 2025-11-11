@@ -41,7 +41,7 @@ func length(xs) {
     var cursor = xs
 
     while !nullp(cursor) {
-        count += 1
+        count++
         cursor = rest(cursor)
     }
     return count
@@ -54,7 +54,7 @@ func mean(xs) {
 
     while !nullp(cursor) {
         total += first(cursor)
-        count += 1
+        count++
         cursor = rest(cursor)
     }
     return total / count
@@ -128,7 +128,7 @@ func alertOnOutlier(xs, threshold) {
             display(score)
             newline()
         }
-        index += 1
+        index++
         cursor = rest(cursor)
     }
 }

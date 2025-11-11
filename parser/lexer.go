@@ -274,13 +274,17 @@ func (lx *lexer) nextToken() (Token, error) {
 	var tok Token
 	switch r {
 	case '+':
-		if lx.match('=') {
+		if lx.match('+') {
+			tok = simpleToken(tokenPlusPlus, start)
+		} else if lx.match('=') {
 			tok = simpleToken(tokenPlusAssign, start)
 		} else {
 			tok = simpleToken(tokenPlus, start)
 		}
 	case '-':
-		if lx.match('=') {
+		if lx.match('-') {
+			tok = simpleToken(tokenMinusMinus, start)
+		} else if lx.match('=') {
 			tok = simpleToken(tokenMinusAssign, start)
 		} else {
 			tok = simpleToken(tokenMinus, start)
@@ -448,6 +452,8 @@ func (lx *lexer) shouldInsertSemicolon() bool {
 		tokenFalse,
 		tokenNil,
 		tokenReturn,
+		tokenPlusPlus,
+		tokenMinusMinus,
 		tokenRParen,
 		tokenRBracket,
 		tokenRBrace:

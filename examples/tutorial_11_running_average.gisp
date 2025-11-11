@@ -8,7 +8,7 @@ func runningAverage(samples) {
 
     while !nullp(cursor) {
         sum += first(cursor)
-        count += 1
+        count++
         totals = append(totals, [sum / count])
         cursor = rest(cursor)
     }
