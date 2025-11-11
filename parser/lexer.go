@@ -408,6 +408,7 @@ func (lx *lexer) shouldInsertSemicolon() bool {
 		tokenSExpr,
 		tokenTrue,
 		tokenFalse,
+		tokenNil,
 		tokenReturn,
 		tokenRParen,
 		tokenRBracket,
@@ -642,6 +643,8 @@ func keywordToken(lexeme string) (TokenType, bool) {
 		return tokenTrue, true
 	case "false":
 		return tokenFalse, true
+	case "nil":
+		return tokenNil, true
 	default:
 		return tokenIllegal, false
 	}

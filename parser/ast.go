@@ -73,6 +73,14 @@ type BoolExpr struct {
 func (e *BoolExpr) Pos() Position { return e.Posn }
 func (*BoolExpr) exprNode()       {}
 
+// NilExpr represents the empty list literal.
+type NilExpr struct {
+	Posn Position
+}
+
+func (e *NilExpr) Pos() Position { return e.Posn }
+func (*NilExpr) exprNode()       {}
+
 // ListExpr is a literal list [a, b, ...].
 type ListExpr struct {
 	Elements []Expr

@@ -621,6 +621,14 @@ func (p *parser) parsePrimary() (Expr, error) {
 			Value: tok.Type == tokenTrue,
 			Posn:  posFromToken(tok),
 		}, nil
+	case tokenNil:
+		tok := p.curr
+		if err := p.advance(); err != nil {
+			return nil, err
+		}
+		return &NilExpr{
+			Posn: posFromToken(tok),
+		}, nil
 	case tokenSExpr:
 		tok, err := p.expect(tokenSExpr)
 		if err != nil {

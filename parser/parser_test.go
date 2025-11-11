@@ -612,6 +612,24 @@ var result = fn(1, 2);
 	}
 }
 
+func TestParseNilLiteral(t *testing.T) {
+	prog := parseProgramFromSource(t, "var empty = nil\n")
+	if len(prog.Decls) != 1 {
+		t.Fatalf("expected single declaration, got %d", len(prog.Decls))
+	}
+	varDecl, ok := prog.Decls[0].(*VarDecl)
+	if !ok {
+		t.Fatalf("expected VarDecl, got %T", prog.Decls[0])
+	}
+	nilExpr, ok := varDecl.Init.(*NilExpr)
+	if !ok {
+		t.Fatalf("expected NilExpr initializer, got %#v", varDecl.Init)
+	}
+	if nilExpr.Posn.Line == 0 {
+		t.Fatalf("expected position information on NilExpr, got %#v", nilExpr.Posn)
+	}
+}
+
 func TestParseSwitchExpr(t *testing.T) {
 	src := `
 var sign = switch {

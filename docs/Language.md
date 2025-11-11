@@ -33,8 +33,8 @@ Go developers.
   `||` expand to short-circuiting macros installed by the runtime prelude.
 - **Special forms:** `switch` expressions select the first truthy case and
   compile down to the runtime `cond`.
-- **Literals:** numbers, strings, booleans (`true`/`false`), and list literals
-  using `[a, b, ...]`.
+- **Literals:** numbers, strings, booleans (`true`/`false`), the empty list
+  literal `nil`, and list literals using `[a, b, ...]`.
 - **Anonymous functions:** `func(params) { ... }` produces a closure with the
   same semantics as Scheme lambdas (including lexical scope and recursion).
 - **Inline Scheme:** `` var quoted = `(list 1 2 3) `` inserts the exact
@@ -108,6 +108,7 @@ PrimaryExpr    = Identifier
                | Number
                | String
                | Boolean
+               | Nil
                | ListLiteral
                | LambdaExpr
                | SwitchExpr
@@ -133,6 +134,7 @@ Identifier     = letter { letter | digit | "_" } ;
 Number         = digit { digit } [ "." digit { digit } ] ;
 String         = "\"" { any_char_except_quote } "\"" ;
 Boolean        = "true" | "false" ;
+Nil            = "nil" ;
 SExpression    = parsed by the Scheme reader (See `reader`).
 ```
 

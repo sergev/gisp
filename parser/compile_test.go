@@ -603,6 +603,20 @@ func TestCompileExprUnaryUnsupported(t *testing.T) {
 	}
 }
 
+func TestCompileExprNil(t *testing.T) {
+	val, err := compileExpr(&builder{}, &NilExpr{}, compileContext{})
+	if err != nil {
+		t.Fatalf("compileExpr nil: %v", err)
+	}
+	if val.Type != lang.TypeEmpty {
+		t.Fatalf("expected lang.EmptyList, got %v", val.Type)
+	}
+	empty := valueToDatum(t, val).([]interface{})
+	if len(empty) != 0 {
+		t.Fatalf("expected empty list datum, got %#v", empty)
+	}
+}
+
 func TestCompileExprBinary(t *testing.T) {
 	b := &builder{}
 	tests := []struct {

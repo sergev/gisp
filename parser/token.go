@@ -25,6 +25,7 @@ const (
 	tokenReturn
 	tokenTrue
 	tokenFalse
+	tokenNil
 
 	// Operators and punctuation
 	tokenAssign         // =
@@ -98,6 +99,8 @@ func (tt TokenType) String() string {
 		return "true"
 	case tokenFalse:
 		return "false"
+	case tokenNil:
+		return "nil"
 	case tokenAssign:
 		return "="
 	case tokenEqualEqual:

@@ -42,7 +42,7 @@ func dropTrailingSemicolons(tokens []Token) []Token {
 }
 
 func TestLexerIdentifiersAndKeywords(t *testing.T) {
-	src := "func var const if else while return true false foo _bar baz123"
+	src := "func var const if else while return true false nil foo _bar baz123"
 	tokens := lexAllTokens(t, src)
 	tokens = tokens[:len(tokens)-1] // drop EOF
 	tokens = dropTrailingSemicolons(tokens)
@@ -60,6 +60,7 @@ func TestLexerIdentifiersAndKeywords(t *testing.T) {
 		{tokenReturn, ""},
 		{tokenTrue, ""},
 		{tokenFalse, ""},
+		{tokenNil, ""},
 		{tokenIdentifier, "foo"},
 		{tokenIdentifier, "_bar"},
 		{tokenIdentifier, "baz123"},
