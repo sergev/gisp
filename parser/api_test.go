@@ -62,3 +62,39 @@ func TestParseReaderHandlesIOReturns(t *testing.T) {
 		t.Fatalf("expected two forms from reader, got %d", len(forms))
 	}
 }
+
+func TestParseStringUnaryCaret(t *testing.T) {
+	src := "display(^123);\n"
+	forms, err := ParseString(src)
+	if err != nil {
+		t.Fatalf("ParseString returned error: %v", err)
+	}
+	if len(forms) != 1 {
+		t.Fatalf("expected single form, got %d", len(forms))
+	}
+
+	callForm, err := lang.ToSlice(forms[0])
+	if err != nil {
+		t.Fatalf("expected proper list for call form: %v", err)
+	}
+	if len(callForm) != 2 {
+		t.Fatalf("expected display call with one argument, got %d elements", len(callForm))
+	}
+	if callForm[0].Type != lang.TypeSymbol || callForm[0].Sym() != "display" {
+		t.Fatalf("expected display symbol, got %v", callForm[0])
+	}
+
+	argList, err := lang.ToSlice(callForm[1])
+	if err != nil {
+		t.Fatalf("expected argument list to be proper list: %v", err)
+	}
+	if len(argList) != 2 {
+		t.Fatalf("expected unary ^ form to have head and value, got %d elements", len(argList))
+	}
+	if argList[0].Type != lang.TypeSymbol || argList[0].Sym() != "^" {
+		t.Fatalf("expected ^ symbol as unary head, got %v", argList[0])
+	}
+	if argList[1].Type != lang.TypeInt || argList[1].Int() != 123 {
+		t.Fatalf("expected integer literal 123, got %v", argList[1])
+	}
+}

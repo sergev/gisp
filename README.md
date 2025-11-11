@@ -19,6 +19,7 @@ semantics.
 - Non-hygienic macros (`define-macro`) for syntactic extensions
 - Distinct empty list and `#f` values
 - Basic standard library including arithmetic, comparison, list utilities, strings, and I/O
+- Unary primitives cover Go-style numeric negation, logical `not`, and bitwise complement via `^` (pointer/channel operators remain unsupported)
 - Reader for s-expressions (numbers, strings with escapes, quoting, quasiquote, comments)
 - Command-line interface offering a REPL and script execution (with shebang support)
 

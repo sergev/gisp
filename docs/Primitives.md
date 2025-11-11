@@ -8,6 +8,7 @@ This document summarizes the built-in primitives that are installed into the glo
 - `-` — Subtracts subsequent numbers from the first. Unary form negates the single numeric argument. Mixed integer/real inputs promote to real.
 - `*` — Multiplies numeric arguments. With no arguments the result is `1`. Mixed integer/real inputs promote to real.
 - `/` — Divides the first numeric argument by each subsequent one. Unary form returns the reciprocal. Always returns a real. Division by zero raises an error.
+- `^` — Unary bitwise complement. Requires exactly one integer argument and returns its bitwise inverse. Non-integer arguments raise a type error.
 
 ## Numeric Comparisons
 

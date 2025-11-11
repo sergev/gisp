@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"math"
 	"math/rand"
 	"strings"
 	"testing"
@@ -36,6 +37,39 @@ func TestPrimSubAndDivEdgeCases(t *testing.T) {
 
 		if _, err := primDiv(ev, []lang.Value{lang.IntValue(4), lang.IntValue(0)}); err == nil || !strings.Contains(err.Error(), "division by zero") {
 			t.Fatalf("expected division by zero error, got %v", err)
+		}
+	})
+}
+
+func TestPrimBitNot(t *testing.T) {
+	ev := NewEvaluator()
+
+	t.Run("flips all bits of integers", func(t *testing.T) {
+		inputs := []int64{0, 1, 42, -17, math.MaxInt64}
+		for _, in := range inputs {
+			val, err := primBitNot(ev, []lang.Value{lang.IntValue(in)})
+			if err != nil {
+				t.Fatalf("primBitNot on %d failed: %v", in, err)
+			}
+			if val.Type != lang.TypeInt {
+				t.Fatalf("expected integer result for %d, got %v", in, val.Type)
+			}
+			expect := ^in
+			if val.Int() != expect {
+				t.Fatalf("expected %d complement, got %d", expect, val.Int())
+			}
+		}
+	})
+
+	t.Run("validates arity and type", func(t *testing.T) {
+		if _, err := primBitNot(ev, nil); err == nil || !strings.Contains(err.Error(), "expects 1 argument") {
+			t.Fatalf("expected arity error, got %v", err)
+		}
+		if _, err := primBitNot(ev, []lang.Value{lang.IntValue(1), lang.IntValue(2)}); err == nil || !strings.Contains(err.Error(), "expects 1 argument") {
+			t.Fatalf("expected arity error for two arguments, got %v", err)
+		}
+		if _, err := primBitNot(ev, []lang.Value{lang.RealValue(1.5)}); err == nil || !strings.Contains(err.Error(), "expects integer") {
+			t.Fatalf("expected type error, got %v", err)
 		}
 	})
 }

@@ -34,6 +34,7 @@ const (
 	tokenMinus        // -
 	tokenStar         // *
 	tokenSlash        // /
+	tokenCaret        // ^
 	tokenLess         // <
 	tokenLessEqual    // <=
 	tokenGreater      // >
@@ -105,6 +106,8 @@ func (tt TokenType) String() string {
 		return "*"
 	case tokenSlash:
 		return "/"
+	case tokenCaret:
+		return "^"
 	case tokenLess:
 		return "<"
 	case tokenLessEqual:

@@ -508,7 +508,7 @@ func (p *parser) parseFactor() (Expr, error) {
 }
 
 func (p *parser) parseUnary() (Expr, error) {
-	if p.curr.Type == tokenBang || p.curr.Type == tokenMinus {
+	if p.curr.Type == tokenBang || p.curr.Type == tokenMinus || p.curr.Type == tokenCaret {
 		opTok := p.curr
 		if err := p.advance(); err != nil {
 			return nil, err

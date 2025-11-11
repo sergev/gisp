@@ -580,6 +580,7 @@ func TestCompileExprUnary(t *testing.T) {
 	}{
 		{"negate", tokenMinus, "-"},
 		{"not", tokenBang, "not"},
+		{"bitwise complement", tokenCaret, "^"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

@@ -34,6 +34,7 @@ func installPrimitives(ev *lang.Evaluator) {
 	define("-", primSub)
 	define("*", primMul)
 	define("/", primDiv)
+	define("^", primBitNot)
 
 	define("=", primNumEq)
 	define("<", primLess)
@@ -386,6 +387,17 @@ func primNot(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 		return lang.Value{}, fmt.Errorf("not expects 1 argument, got %d", len(args))
 	}
 	return lang.BoolValue(!lang.IsTruthy(args[0])), nil
+}
+
+func primBitNot(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	if len(args) != 1 {
+		return lang.Value{}, fmt.Errorf("^ expects 1 argument, got %d", len(args))
+	}
+	arg := args[0]
+	if arg.Type != lang.TypeInt {
+		return lang.Value{}, typeError("^", "integer", arg)
+	}
+	return lang.IntValue(^arg.Int()), nil
 }
 
 func primRandomInteger(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {

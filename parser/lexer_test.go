@@ -272,7 +272,7 @@ func TestLexerBlockCommentUnterminated(t *testing.T) {
 }
 
 func TestLexerOperatorAndPunctuationTokens(t *testing.T) {
-	src := "+ - * / = == ! != < <= > >= && || , ; ( ) { } [ ]"
+	src := "+ - * / ^ = == ! != < <= > >= && || , ; ( ) { } [ ]"
 	lx := newLexer(src)
 
 	want := []TokenType{
@@ -280,6 +280,7 @@ func TestLexerOperatorAndPunctuationTokens(t *testing.T) {
 		tokenMinus,
 		tokenStar,
 		tokenSlash,
+		tokenCaret,
 		tokenAssign,
 		tokenEqualEqual,
 		tokenBang,

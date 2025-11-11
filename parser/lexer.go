@@ -281,6 +281,8 @@ func (lx *lexer) nextToken() (Token, error) {
 		tok = simpleToken(tokenStar, start)
 	case '/':
 		tok = simpleToken(tokenSlash, start)
+	case '^':
+		tok = simpleToken(tokenCaret, start)
 	case '%':
 		return lx.emit(Token{
 			Type: tokenIllegal,

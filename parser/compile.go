@@ -364,6 +364,11 @@ func compileUnaryExpr(b *builder, expr *UnaryExpr, ctx compileContext) (lang.Val
 			b.symbol("not"),
 			val,
 		), nil
+	case tokenCaret:
+		return lang.List(
+			b.symbol("^"),
+			val,
+		), nil
 	default:
 		return lang.Value{}, fmt.Errorf("unsupported unary operator %s", expr.Op)
 	}
