@@ -244,3 +244,47 @@ log:
   message: unexpected token ';'`,
 	)
 }
+
+func TestRegexPatternMatcherExample(t *testing.T) {
+	runTutorialExample(
+		t,
+		"regex_patterns.gisp",
+		`== Regex Engine Demo ==
+== Literal and dot ==
+Pattern /te.t/ matched "test" within "testing" from 0 to 4.
+Captures: ["test"]
+All matches for /te.t/ in "testing":
+  #0: "test" @ [0, 4) captures=["test"]
+
+== Anchors ==
+Pattern /^hello$/ did not match "well hello there".
+All matches for /^hello$/ in "well hello there":
+  (none)
+
+== Character classes ==
+Pattern /[a-z]+/ matched "def" within "ABC def 123" from 4 to 7.
+Captures: ["def"]
+All matches for /[a-z]+/ in "ABC def 123":
+  #0: "def" @ [4, 7) captures=["def"]
+
+== Grouping and alternation ==
+Pattern /colou?r|colour/ matched "colour" within "The colour palette" from 4 to 10.
+Captures: ["colour"]
+All matches for /colou?r|colour/ in "The colour palette":
+  #0: "colour" @ [4, 10) captures=["colour"]
+
+== Quantifiers with bounds ==
+Pattern /(ha){2,4}/ matched "hahaha" within "hahaha wow hahaha" from 0 to 6.
+Captures: ["hahaha", "ha"]
+All matches for /(ha){2,4}/ in "hahaha wow hahaha":
+  #0: "hahaha" @ [0, 6) captures=["hahaha", "ha"]
+  #1: "hahaha" @ [11, 17) captures=["hahaha", "ha"]
+
+== Negated class ==
+Pattern /[^aeiou]+/ matched "q" within "queue rhythm" from 0 to 1.
+Captures: ["q"]
+All matches for /[^aeiou]+/ in "queue rhythm":
+  #0: "q" @ [0, 1) captures=["q"]
+  #1: " rhythm" @ [5, 12) captures=[" rhythm"]`,
+	)
+}

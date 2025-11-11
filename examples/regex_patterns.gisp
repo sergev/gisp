@@ -640,43 +640,43 @@ func matchGroupNode(node, subject, pos, captures) {
     return reverseList(acc)
 }
 
+func repeatExtend(body, subject, min, max, count, currentPos, currentCaptures) {
+    var results = []
+    var canGrow = true
+    if max != -1 && count == max {
+        canGrow = false
+    }
+    if canGrow {
+        var nextStates = matchNode(body, subject, currentPos, currentCaptures)
+        var cursor = nextStates
+        while !nullp(cursor) {
+            var state = first(cursor)
+            var nextPos = statePos(state)
+            var nextCaptures = stateCaptures(state)
+            if nextPos == currentPos {
+                if max == -1 || count + 1 <= max {
+                    if count + 1 >= min {
+                        results = concatLists(results, list(makeState(nextPos, nextCaptures)))
+                    }
+                }
+            } else {
+                results = concatLists(results, repeatExtend(body, subject, min, max, count + 1, nextPos, nextCaptures))
+            }
+            cursor = rest(cursor)
+        }
+    }
+    if count >= min {
+        results = concatLists(results, list(makeState(currentPos, currentCaptures)))
+    }
+    return results
+}
+
 func matchRepeatNode(node, subject, pos, captures) {
     var body = repeatNode(node)
     var min = repeatMin(node)
     var max = repeatMax(node)
 
-    var extend = func(count, currentPos, currentCaptures) {
-        var results = []
-        var canGrow = true
-        if max != -1 && count == max {
-            canGrow = false
-        }
-        if canGrow {
-            var nextStates = matchNode(body, subject, currentPos, currentCaptures)
-            var cursor = nextStates
-            while !nullp(cursor) {
-                var state = first(cursor)
-                var nextPos = statePos(state)
-                var nextCaptures = stateCaptures(state)
-                if nextPos == currentPos {
-                    if max == -1 || count + 1 <= max {
-                        if count + 1 >= min {
-                            results = concatLists(results, list(makeState(nextPos, nextCaptures)))
-                        }
-                    }
-                } else {
-                    results = concatLists(results, extend(count + 1, nextPos, nextCaptures))
-                }
-                cursor = rest(cursor)
-            }
-        }
-        if count >= min {
-            results = concatLists(results, list(makeState(currentPos, currentCaptures)))
-        }
-        return results
-    }
-
-    return extend(0, pos, captures)
+    return repeatExtend(body, subject, min, max, 0, pos, captures)
 }
 
 func matchSequence(nodes, subject, pos, captures) {
