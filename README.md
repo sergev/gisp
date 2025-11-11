@@ -80,11 +80,11 @@ Passing `-` runs code from standard input.
 
 Browse the full catalog in [`examples/README.md`](examples/README.md). A few quick starts:
 
-- `tutorial_01_hello.gisp` — first steps with `display` and the Go-like surface syntax.
-- `fact.gisp` — recursive and tail-recursive factorial implementations.
-- `continuation.gisp` — capture and resume computations with `callcc`.
-- `maze.gisp` — generate and render random mazes with ASCII/Unicode art.
-- `regex_patterns.gisp` — explore the regex matcher DSL with real-world patterns.
+- [`tutorial_01_hello.gisp`](examples/tutorial_01_hello.gisp) — first steps with `display` and the Go-like surface syntax.
+- [`fact.gisp`](examples/fact.gisp) — recursive and tail-recursive factorial implementations.
+- [`continuation.gisp`](examples/continuation.gisp) — capture and resume computations with `callcc`.
+- [`maze.gisp`](examples/maze.gisp) — generate and render random mazes with ASCII/Unicode art.
+- [`regex_patterns.gisp`](examples/regex_patterns.gisp) — explore the regex matcher DSL with real-world patterns.
 
 Run any example with the interpreter:
 
