@@ -1,29 +1,27 @@
 #!/usr/bin/env gisp
 
 func sievePrimes(limit) {
-    var flags = makeVector(limit + 1, true)
-    flags[0] = false
-    flags[1] = false
+    var is_prime = makeVector(limit + 1, true)
 
     var candidate = 2
     while candidate * candidate <= limit {
-        if flags[candidate] {
+        if is_prime[candidate] {
             var multiple = candidate * candidate
             while multiple <= limit {
-                flags[multiple] = false
+                is_prime[multiple] = false
                 multiple += candidate
             }
         }
         candidate++
     }
 
-    var primes = []
-    var n = 2
-    while n <= limit {
-        if flags[n] {
-            primes = append(primes, [n])
+    var primes = nil
+    var n = limit
+    while n >= 2 {
+        if is_prime[n] {
+            primes = cons(n, primes)
         }
-        n++
+        n--
     }
     return primes
 }
