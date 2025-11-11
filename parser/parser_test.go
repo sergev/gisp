@@ -358,6 +358,41 @@ var inc = func(x) {
 	}
 }
 
+func TestParseVectorBracketSyntax(t *testing.T) {
+	src := `
+var buffer[16];
+`
+	prog := parseProgramFromSource(t, src)
+	if len(prog.Decls) != 1 {
+		t.Fatalf("expected single declaration, got %d", len(prog.Decls))
+	}
+	decl, ok := prog.Decls[0].(*VarDecl)
+	if !ok {
+		t.Fatalf("expected VarDecl, got %T", prog.Decls[0])
+	}
+	if decl.Name != "buffer" {
+		t.Fatalf("expected binding name buffer, got %s", decl.Name)
+	}
+	call, ok := decl.Init.(*CallExpr)
+	if !ok {
+		t.Fatalf("expected CallExpr initializer, got %T", decl.Init)
+	}
+	callee, ok := call.Callee.(*IdentifierExpr)
+	if !ok || callee.Name != "makeVector" {
+		t.Fatalf("expected makeVector call, got %T with name %q", call.Callee, callee.Name)
+	}
+	if len(call.Args) != 2 {
+		t.Fatalf("expected two arguments to makeVector, got %d", len(call.Args))
+	}
+	size, ok := call.Args[0].(*NumberExpr)
+	if !ok || size.Value != "16" {
+		t.Fatalf("expected size literal 16, got %T with value %q", call.Args[0], size.Value)
+	}
+	if _, ok := call.Args[1].(*NilExpr); !ok {
+		t.Fatalf("expected nil literal as fill argument, got %T", call.Args[1])
+	}
+}
+
 func TestParseVarConstAndExprDecls(t *testing.T) {
 	src := `
 var counter = 0;

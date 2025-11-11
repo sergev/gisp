@@ -219,7 +219,32 @@ func (p *parser) finishBindingDecl(start Token, isConst bool, expectSemi bool) (
 		return nil, err
 	}
 	var init Expr
-	if p.curr.Type == tokenAssign {
+	if p.curr.Type == tokenLBracket {
+		bracketTok, err := p.expect(tokenLBracket)
+		if err != nil {
+			return nil, err
+		}
+		sizeExpr, err := p.parseExpression()
+		if err != nil {
+			return nil, err
+		}
+		if _, err := p.expect(tokenRBracket); err != nil {
+			return nil, err
+		}
+		init = &CallExpr{
+			Callee: &IdentifierExpr{
+				Name: "makeVector",
+				Posn: posFromToken(bracketTok),
+			},
+			Args: []Expr{
+				sizeExpr,
+				&NilExpr{
+					Posn: posFromToken(bracketTok),
+				},
+			},
+			Posn: posFromToken(bracketTok),
+		}
+	} else if p.curr.Type == tokenAssign {
 		if _, err := p.expect(tokenAssign); err != nil {
 			return nil, err
 		}

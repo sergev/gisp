@@ -1034,6 +1034,46 @@ func TestCompileExprListLiteralEmpty(t *testing.T) {
 	}
 }
 
+func TestCompileVectorBracketSyntax(t *testing.T) {
+	src := `
+var buffer[8];
+`
+	prog, err := Parse(src)
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	forms, err := CompileProgram(prog)
+	if err != nil {
+		t.Fatalf("CompileProgram: %v", err)
+	}
+	if len(forms) != 1 {
+		t.Fatalf("expected single form, got %d", len(forms))
+	}
+	define := requireListHead(t, forms[0], "define")
+	if len(define) != 3 {
+		t.Fatalf("expected define form of length 3, got %d", len(define))
+	}
+	if sym := define[1].(datumSymbol); string(sym) != "buffer" {
+		t.Fatalf("expected buffer binding, got %q", sym)
+	}
+	call, ok := define[2].([]interface{})
+	if !ok {
+		t.Fatalf("expected call expression, got %#v", define[2])
+	}
+	if head, ok := call[0].(datumSymbol); !ok || string(head) != "makeVector" {
+		t.Fatalf("expected makeVector call head, got %#v", call[0])
+	}
+	if len(call) != 3 {
+		t.Fatalf("expected makeVector call to have 3 elements, got %d", len(call))
+	}
+	if size, ok := call[1].(int64); !ok || size != 8 {
+		t.Fatalf("expected numeric size 8, got %#v", call[1])
+	}
+	if fill, ok := call[2].([]interface{}); !ok || len(fill) != 0 {
+		t.Fatalf("expected empty list fill argument, got %#v", call[2])
+	}
+}
+
 func TestCompileExprSwitch(t *testing.T) {
 	expr := &SwitchExpr{
 		Clauses: []*SwitchClause{
