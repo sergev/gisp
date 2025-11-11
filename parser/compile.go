@@ -272,6 +272,8 @@ func compileExpr(b *builder, expr Expr, ctx compileContext) (lang.Value, error) 
 		return compileLambdaExpr(b, e, ctx)
 	case *SwitchExpr:
 		return compileSwitchExpr(b, e, ctx)
+	case *IfExpr:
+		return compileIfExpr(b, e, ctx)
 	case *CallExpr:
 		callee, err := compileExpr(b, e.Callee, ctx)
 		if err != nil {
@@ -348,6 +350,32 @@ func compileSwitchExpr(b *builder, expr *SwitchExpr, ctx compileContext) (lang.V
 	all = append(all, b.symbol("cond"))
 	all = append(all, clauseVals...)
 	return lang.List(all...), nil
+}
+
+func compileIfExpr(b *builder, expr *IfExpr, ctx compileContext) (lang.Value, error) {
+	condVal, err := compileExpr(b, expr.Cond, ctx)
+	if err != nil {
+		return lang.Value{}, err
+	}
+	thenVal, err := compileExpr(b, expr.Then, ctx)
+	if err != nil {
+		return lang.Value{}, err
+	}
+	var elseVal lang.Value
+	if expr.Else != nil {
+		elseVal, err = compileExpr(b, expr.Else, ctx)
+		if err != nil {
+			return lang.Value{}, err
+		}
+	} else {
+		elseVal = lang.EmptyList
+	}
+	return lang.List(
+		b.symbol("if"),
+		condVal,
+		thenVal,
+		elseVal,
+	), nil
 }
 
 func compileUnaryExpr(b *builder, expr *UnaryExpr, ctx compileContext) (lang.Value, error) {

@@ -33,6 +33,10 @@ Go developers.
   `||` expand to short-circuiting macros installed by the runtime prelude.
 - **Special forms:** `switch` expressions select the first truthy case and
   compile down to the runtime `cond`.
+- **Conditional expressions:** `if cond { expr } else { expr }` evaluates to the
+  value of the selected braced expression. Each branch block must contain a
+  single expression. Omitting the `else` branch yields `nil`. `else if` chains
+  are supported.
 - **Literals:** numbers, strings, booleans (`true`/`false`), the empty list
   literal `nil`, and list literals using `[a, b, ...]`.
 - **Anonymous functions:** `func(params) { ... }` produces a closure with the
@@ -111,10 +115,13 @@ PrimaryExpr    = Identifier
                | Nil
                | ListLiteral
                | LambdaExpr
+               | IfExpr
                | SwitchExpr
                | SExprLiteral
                | "(" Expression ")"
                ;
+IfExpr         = "if" Expression ExprBlock [ "else" (ExprBlock | IfExpr) ] ;
+ExprBlock      = "{" Expression [ ";" ] "}" ;
 SwitchExpr     = "switch" "{" { SwitchClause } [ DefaultClause ] "}"
 SwitchClause   = "case" Expression ":" Expression [ ";" ]
 DefaultClause  = "default" ":" Expression [ ";" ]

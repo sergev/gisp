@@ -532,6 +532,40 @@ func TestParseExpressionPrecedence(t *testing.T) {
 	}
 }
 
+func TestParseIfExpression(t *testing.T) {
+	src := `
+var result = if cond {
+	valueTrue
+} else {
+	valueFalse
+};
+`
+	prog := parseProgramFromSource(t, src)
+	if len(prog.Decls) != 1 {
+		t.Fatalf("expected single declaration, got %d", len(prog.Decls))
+	}
+	varDecl, ok := prog.Decls[0].(*VarDecl)
+	if !ok {
+		t.Fatalf("expected VarDecl, got %T", prog.Decls[0])
+	}
+	ifExpr, ok := varDecl.Init.(*IfExpr)
+	if !ok {
+		t.Fatalf("expected IfExpr initializer, got %#v", varDecl.Init)
+	}
+	condIdent, ok := ifExpr.Cond.(*IdentifierExpr)
+	if !ok || condIdent.Name != "cond" {
+		t.Fatalf("expected condition identifier cond, got %#v", ifExpr.Cond)
+	}
+	thenIdent, ok := ifExpr.Then.(*IdentifierExpr)
+	if !ok || thenIdent.Name != "valueTrue" {
+		t.Fatalf("expected then identifier valueTrue, got %#v", ifExpr.Then)
+	}
+	elseIdent, ok := ifExpr.Else.(*IdentifierExpr)
+	if !ok || elseIdent.Name != "valueFalse" {
+		t.Fatalf("expected else identifier valueFalse, got %#v", ifExpr.Else)
+	}
+}
+
 func TestParseLambdaAndListLiteral(t *testing.T) {
 	src := `
 var fn = func(x, y) {

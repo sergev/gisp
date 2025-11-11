@@ -643,6 +643,8 @@ func (p *parser) parsePrimary() (Expr, error) {
 		return p.parseSwitchExpr()
 	case tokenFunc:
 		return p.parseLambdaExpr()
+	case tokenIf:
+		return p.parseIfExpr()
 	case tokenLParen:
 		if _, err := p.expect(tokenLParen); err != nil {
 			return nil, err
@@ -807,6 +809,68 @@ func (p *parser) parseSwitchExpr() (Expr, error) {
 		Default: defaultExpr,
 		Posn:    posFromToken(switchTok),
 	}, nil
+}
+
+func (p *parser) parseIfExpr() (Expr, error) {
+	ifTok, err := p.expect(tokenIf)
+	if err != nil {
+		return nil, err
+	}
+	cond, err := p.parseExpression()
+	if err != nil {
+		return nil, err
+	}
+	thenExpr, err := p.parseExprBlock("then")
+	if err != nil {
+		return nil, err
+	}
+	var elseExpr Expr
+	if p.curr.Type == tokenElse {
+		if _, err := p.expect(tokenElse); err != nil {
+			return nil, err
+		}
+		if p.curr.Type == tokenIf {
+			expr, err := p.parseIfExpr()
+			if err != nil {
+				return nil, err
+			}
+			elseExpr = expr
+		} else {
+			expr, err := p.parseExprBlock("else")
+			if err != nil {
+				return nil, err
+			}
+			elseExpr = expr
+		}
+	}
+	return &IfExpr{
+		Cond: cond,
+		Then: thenExpr,
+		Else: elseExpr,
+		Posn: posFromToken(ifTok),
+	}, nil
+}
+
+func (p *parser) parseExprBlock(context string) (Expr, error) {
+	if _, err := p.expect(tokenLBrace); err != nil {
+		return nil, err
+	}
+	expr, err := p.parseExpression()
+	if err != nil {
+		return nil, err
+	}
+	if p.curr.Type == tokenSemicolon {
+		if _, err := p.expect(tokenSemicolon); err != nil {
+			return nil, err
+		}
+	}
+	if p.curr.Type != tokenRBrace {
+		return nil, p.errorf(p.curr.Pos, "expected } to close %s expression block", context)
+	}
+	if _, err := p.expect(tokenRBrace); err != nil {
+		return nil, err
+	}
+	return expr, nil
 }
 
 func (p *parser) parseParamNames() ([]string, error) {

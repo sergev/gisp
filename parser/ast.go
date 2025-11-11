@@ -129,6 +129,17 @@ type SwitchExpr struct {
 func (e *SwitchExpr) Pos() Position { return e.Posn }
 func (*SwitchExpr) exprNode()       {}
 
+// IfExpr conditionally evaluates expression branches.
+type IfExpr struct {
+	Cond Expr
+	Then Expr
+	Else Expr // may be nil
+	Posn Position
+}
+
+func (e *IfExpr) Pos() Position { return e.Posn }
+func (*IfExpr) exprNode()       {}
+
 // UnaryExpr represents prefix operator application.
 type UnaryExpr struct {
 	Op   TokenType

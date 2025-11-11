@@ -842,6 +842,32 @@ func TestCompileExprSwitch(t *testing.T) {
 		t.Fatalf("expected default literal 0, got %#v", elseClause[1])
 	}
 }
+
+func TestCompileExprIf(t *testing.T) {
+	expr := &IfExpr{
+		Cond: &IdentifierExpr{Name: "ready"},
+		Then: &NumberExpr{Value: "1"},
+		Else: &NumberExpr{Value: "2"},
+	}
+	val, err := compileExpr(&builder{}, expr, compileContext{})
+	if err != nil {
+		t.Fatalf("compileExpr if: %v", err)
+	}
+	ifForm := requireListHead(t, val, "if")
+	if len(ifForm) != 4 {
+		t.Fatalf("expected if form length 4, got %d", len(ifForm))
+	}
+	if cond, ok := ifForm[1].(datumSymbol); !ok || string(cond) != "ready" {
+		t.Fatalf("expected condition symbol ready, got %#v", ifForm[1])
+	}
+	if thenVal, ok := ifForm[2].(int64); !ok || thenVal != 1 {
+		t.Fatalf("expected then literal 1, got %#v", ifForm[2])
+	}
+	if elseVal, ok := ifForm[3].(int64); !ok || elseVal != 2 {
+		t.Fatalf("expected else literal 2, got %#v", ifForm[3])
+	}
+}
+
 func TestCompileExprUnsupported(t *testing.T) {
 	_, err := compileExpr(&builder{}, badExpr{}, compileContext{})
 	if err == nil || !strings.Contains(err.Error(), "unsupported expression") {
