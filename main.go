@@ -11,8 +11,8 @@ import (
 
 	"github.com/peterh/liner"
 	"github.com/sergev/gisp/lang"
+	"github.com/sergev/gisp/parser"
 	"github.com/sergev/gisp/runtime"
-	"github.com/sergev/gisp/sexpr"
 )
 
 func main() {
@@ -46,13 +46,12 @@ func runREPL(ev *lang.Evaluator) {
 	runInteractiveREPL(ev)
 }
 
-func readerPkgReadString(src string) ([]lang.Value, error) {
-	return sexpr.ReadString(src)
+func parseGisp(src string) ([]lang.Value, error) {
+	return parser.ParseString(src)
 }
 
 func isIncomplete(err error) bool {
-	msg := err.Error()
-	return strings.Contains(msg, "unterminated")
+	return parser.IsIncomplete(err)
 }
 
 func runBufferedREPL(ev *lang.Evaluator, reader *bufio.Reader) {
@@ -72,7 +71,7 @@ func runBufferedREPL(ev *lang.Evaluator, reader *bufio.Reader) {
 		}
 		buffer.WriteString(line)
 		src := buffer.String()
-		forms, parseErr := readerPkgReadString(src)
+		forms, parseErr := parseGisp(src)
 		if parseErr != nil {
 			if isIncomplete(parseErr) && !errors.Is(err, io.EOF) {
 				continue
@@ -144,7 +143,7 @@ func runInteractiveREPL(ev *lang.Evaluator) {
 		buffer.WriteString("\n")
 
 		src := buffer.String()
-		forms, parseErr := readerPkgReadString(src)
+		forms, parseErr := parseGisp(src)
 		if parseErr != nil {
 			if isIncomplete(parseErr) {
 				continue

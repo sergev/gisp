@@ -149,7 +149,7 @@ func (lx *lexer) skipBlockComment() (bool, error) {
 		r, _, _, err := lx.readRune()
 		if err != nil {
 			if err == io.EOF {
-				return sawNewline, fmt.Errorf("unterminated block comment")
+				return sawNewline, newIncompleteError(fmt.Errorf("unterminated block comment"))
 			}
 			return sawNewline, err
 		}
@@ -159,7 +159,7 @@ func (lx *lexer) skipBlockComment() (bool, error) {
 		if r == '*' {
 			next, _, state, err := lx.readRune()
 			if err == io.EOF {
-				return sawNewline, fmt.Errorf("unterminated block comment")
+				return sawNewline, newIncompleteError(fmt.Errorf("unterminated block comment"))
 			}
 			if err != nil {
 				return sawNewline, err
@@ -560,7 +560,7 @@ func (lx *lexer) scanNumber(initial rune, start runeState) (string, error) {
 			builder.WriteRune(r)
 			next, _, nextState, err := lx.readRune()
 			if err == io.EOF {
-				return "", fmt.Errorf("unterminated exponent at line %d column %d", start.line, start.column)
+				return "", newIncompleteError(fmt.Errorf("unterminated exponent at line %d column %d", start.line, start.column))
 			}
 			if err != nil {
 				return "", err
@@ -584,7 +584,7 @@ func (lx *lexer) scanString() (string, error) {
 	for {
 		r, _, _, err := lx.readRune()
 		if err == io.EOF {
-			return "", fmt.Errorf("unterminated string literal")
+			return "", newIncompleteError(fmt.Errorf("unterminated string literal"))
 		}
 		if err != nil {
 			return "", err
@@ -595,7 +595,7 @@ func (lx *lexer) scanString() (string, error) {
 		if r == '\\' {
 			esc, _, _, err := lx.readRune()
 			if err == io.EOF {
-				return "", fmt.Errorf("unterminated escape sequence")
+				return "", newIncompleteError(fmt.Errorf("unterminated escape sequence"))
 			}
 			if err != nil {
 				return "", err

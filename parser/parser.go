@@ -12,9 +12,13 @@ func Parse(src string) (*Program, error) {
 		lx: newLexer(src),
 	}
 	if err := p.advance(); err != nil {
-		return nil, err
+		return nil, wrapError(err)
 	}
-	return p.parseProgram()
+	prog, err := p.parseProgram()
+	if err != nil {
+		return nil, wrapError(err)
+	}
+	return prog, nil
 }
 
 type parser struct {
@@ -32,7 +36,7 @@ func (p *parser) advance() error {
 	}
 	tok, err := p.lx.nextToken()
 	if err != nil {
-		return err
+		return wrapError(err)
 	}
 	p.curr = tok
 	return nil
@@ -42,7 +46,7 @@ func (p *parser) peek() (Token, error) {
 	if !p.hasPeek {
 		tok, err := p.lx.nextToken()
 		if err != nil {
-			return Token{}, err
+			return Token{}, wrapError(err)
 		}
 		p.peekTok = tok
 		p.hasPeek = true
@@ -52,7 +56,7 @@ func (p *parser) peek() (Token, error) {
 
 func (p *parser) expect(tt TokenType) (Token, error) {
 	if p.curr.Type != tt {
-		return Token{}, p.errorf(p.curr.Pos, "expected %s, found %s", tt, p.curr.Type)
+		return Token{}, p.errorf(p.curr.Pos, p.curr.Type == tokenEOF, "expected %s, found %s", tt, p.curr.Type)
 	}
 	tok := p.curr
 	if err := p.advance(); err != nil {
@@ -222,7 +226,7 @@ func (p *parser) parseBlock() (*BlockStmt, error) {
 		stmts = append(stmts, stmt)
 	}
 	if p.curr.Type != tokenRBrace {
-		return nil, p.errorf(p.curr.Pos, "expected } to close block")
+		return nil, p.errorf(p.curr.Pos, p.curr.Type == tokenEOF, "expected } to close block")
 	}
 	if _, err := p.expect(tokenRBrace); err != nil {
 		return nil, err
@@ -609,7 +613,7 @@ func (p *parser) parsePostfix() (Expr, error) {
 				Posn:   posFromToken(callTok),
 			}
 		case tokenPlusPlus, tokenMinusMinus:
-			return nil, p.errorf(p.curr.Pos, "%s not allowed in expression context", p.curr.Type)
+			return nil, p.errorf(p.curr.Pos, p.curr.Type == tokenEOF, "%s not allowed in expression context", p.curr.Type)
 		default:
 			return expr, nil
 		}
@@ -715,7 +719,7 @@ func (p *parser) parsePrimary() (Expr, error) {
 	case tokenLBracket:
 		return p.parseListLiteral()
 	default:
-		return nil, p.errorf(p.curr.Pos, "unexpected token %s in expression", p.curr.Type)
+		return nil, p.errorf(p.curr.Pos, p.curr.Type == tokenEOF, "unexpected token %s in expression", p.curr.Type)
 	}
 }
 
@@ -725,7 +729,7 @@ func (p *parser) parseLambdaExpr() (Expr, error) {
 		return nil, err
 	}
 	if p.curr.Type != tokenLParen {
-		return nil, p.errorf(p.curr.Pos, "expected ( after func")
+		return nil, p.errorf(p.curr.Pos, p.curr.Type == tokenEOF, "expected ( after func")
 	}
 	if _, err := p.expect(tokenLParen); err != nil {
 		return nil, err
@@ -798,7 +802,7 @@ func (p *parser) parseSwitchExpr() (Expr, error) {
 				return nil, err
 			}
 			if defaultEncountered {
-				return nil, p.errorf(posFromToken(caseTok), "case clause cannot follow default in switch")
+				return nil, p.errorf(posFromToken(caseTok), false, "case clause cannot follow default in switch")
 			}
 			cond, err := p.parseExpression()
 			if err != nil {
@@ -827,7 +831,7 @@ func (p *parser) parseSwitchExpr() (Expr, error) {
 				return nil, err
 			}
 			if defaultExpr != nil {
-				return nil, p.errorf(posFromToken(defTok), "duplicate default clause in switch")
+				return nil, p.errorf(posFromToken(defTok), false, "duplicate default clause in switch")
 			}
 			if _, err := p.expect(tokenColon); err != nil {
 				return nil, err
@@ -844,19 +848,19 @@ func (p *parser) parseSwitchExpr() (Expr, error) {
 			defaultExpr = body
 			defaultEncountered = true
 		default:
-			return nil, p.errorf(p.curr.Pos, "unexpected token %s in switch", p.curr.Type)
+			return nil, p.errorf(p.curr.Pos, p.curr.Type == tokenEOF, "unexpected token %s in switch", p.curr.Type)
 		}
 	}
 
 	if p.curr.Type != tokenRBrace {
-		return nil, p.errorf(p.curr.Pos, "expected } to close switch")
+		return nil, p.errorf(p.curr.Pos, p.curr.Type == tokenEOF, "expected } to close switch")
 	}
 	if _, err := p.expect(tokenRBrace); err != nil {
 		return nil, err
 	}
 
 	if len(clauses) == 0 && defaultExpr == nil {
-		return nil, p.errorf(posFromToken(switchTok), "switch requires at least one case")
+		return nil, p.errorf(posFromToken(switchTok), false, "switch requires at least one case")
 	}
 
 	return &SwitchExpr{
@@ -920,7 +924,7 @@ func (p *parser) parseExprBlock(context string) (Expr, error) {
 		}
 	}
 	if p.curr.Type != tokenRBrace {
-		return nil, p.errorf(p.curr.Pos, "expected } to close %s expression block", context)
+		return nil, p.errorf(p.curr.Pos, p.curr.Type == tokenEOF, "expected } to close %s expression block", context)
 	}
 	if _, err := p.expect(tokenRBrace); err != nil {
 		return nil, err
@@ -949,8 +953,12 @@ func (p *parser) parseParamNames() ([]string, error) {
 	return params, nil
 }
 
-func (p *parser) errorf(pos Position, format string, args ...interface{}) error {
-	return fmt.Errorf("%s:%d:%d: %s", "input", pos.Line, pos.Column, fmt.Sprintf(format, args...))
+func (p *parser) errorf(pos Position, incomplete bool, format string, args ...interface{}) error {
+	err := fmt.Errorf("%s:%d:%d: %s", "input", pos.Line, pos.Column, fmt.Sprintf(format, args...))
+	if incomplete {
+		return newIncompleteError(err)
+	}
+	return newError(err)
 }
 
 func posFromToken(tok Token) Position {

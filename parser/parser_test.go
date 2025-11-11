@@ -820,6 +820,44 @@ var value = switch {
 	}
 }
 
+func TestParseIncompleteDetection(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name       string
+		src        string
+		incomplete bool
+	}{
+		{
+			name:       "unterminated block",
+			src:        "func f() {",
+			incomplete: true,
+		},
+		{
+			name:       "unterminated string literal",
+			src:        `var s = "unfinished`,
+			incomplete: true,
+		},
+		{
+			name:       "syntax error",
+			src:        "var x = );",
+			incomplete: false,
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			if _, err := Parse(tc.src); err == nil {
+				t.Fatalf("expected error parsing %q", tc.src)
+			} else if IsIncomplete(err) != tc.incomplete {
+				t.Fatalf("IsIncomplete(%q) = %v, want %v (err=%v)", tc.src, IsIncomplete(err), tc.incomplete, err)
+			}
+		})
+	}
+}
+
 func TestCompileTopLevelBindings(t *testing.T) {
 	forms := compileSource(t, `
 var counter = 2 + 3;
