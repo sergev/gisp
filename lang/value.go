@@ -3,6 +3,7 @@ package lang
 import (
 	"fmt"
 	"math"
+	"strings"
 )
 
 // ValueType enumerates the different runtime value categories.
@@ -16,6 +17,7 @@ const (
 	TypeString
 	TypeSymbol
 	TypePair
+	TypeVector
 	TypePrimitive
 	TypeClosure
 	TypeContinuation
@@ -33,6 +35,11 @@ type Value struct {
 type Pair struct {
 	First Value
 	Rest  Value
+}
+
+// Vector represents a mutable indexed collection.
+type Vector struct {
+	Elements []Value
 }
 
 // Primitive represents a built-in Go function exposed to the interpreter.
@@ -100,6 +107,28 @@ func PairValue(first, rest Value) Value {
 	return Value{
 		Type:    TypePair,
 		payload: &Pair{First: first, Rest: rest},
+	}
+}
+
+// VectorValue constructs a vector Value from the provided elements, copying them.
+func VectorValue(elements []Value) Value {
+	buf := make([]Value, len(elements))
+	copy(buf, elements)
+	return Value{
+		Type:    TypeVector,
+		payload: &Vector{Elements: buf},
+	}
+}
+
+// NewVector allocates a vector of the given length filled with the provided value.
+func NewVector(length int, fill Value) Value {
+	buf := make([]Value, length)
+	for i := range buf {
+		buf[i] = fill
+	}
+	return Value{
+		Type:    TypeVector,
+		payload: &Vector{Elements: buf},
 	}
 }
 
@@ -205,6 +234,14 @@ func (v Value) Pair() *Pair {
 	return nil
 }
 
+// Vector returns the underlying vector payload, if any.
+func (v Value) Vector() *Vector {
+	if vec, ok := v.payload.(*Vector); ok {
+		return vec
+	}
+	return nil
+}
+
 func (v Value) Primitive() Primitive {
 	if p, ok := v.payload.(Primitive); ok {
 		return p
@@ -252,6 +289,8 @@ func (v Value) String() string {
 		return v.Sym()
 	case TypePair:
 		return pairToString(v)
+	case TypeVector:
+		return vectorToString(v)
 	case TypePrimitive:
 		return "<primitive>"
 	case TypeClosure:
@@ -290,4 +329,21 @@ func pairToString(v Value) string {
 		first = false
 	}
 	return out
+}
+
+func vectorToString(v Value) string {
+	vec := v.Vector()
+	if vec == nil {
+		return "#<vector invalid>"
+	}
+	var builder strings.Builder
+	builder.WriteString("#(")
+	for i, elem := range vec.Elements {
+		if i > 0 {
+			builder.WriteByte(' ')
+		}
+		builder.WriteString(elem.String())
+	}
+	builder.WriteByte(')')
+	return builder.String()
 }

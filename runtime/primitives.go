@@ -82,6 +82,15 @@ func installPrimitives(ev *lang.Evaluator) {
 	define("list", primList)
 	define("append", primAppend)
 	define("length", primLength)
+	define("vector", primVector)
+	define("vectorp", primIsVector)
+	define("makeVector", primMakeVector)
+	define("vectorLength", primVectorLength)
+	define("vectorRef", primVectorRef)
+	define("vectorSet", primVectorSet)
+	define("vectorFill", primVectorFill)
+	define("vectorToList", primVectorToList)
+	define("listToVector", primListToVector)
 
 	define("eq", primEq)
 	define("equal", primEqual)
@@ -800,6 +809,132 @@ func primLength(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 	return lang.IntValue(int64(len(items))), nil
 }
 
+func primVector(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	return lang.VectorValue(args), nil
+}
+
+func primIsVector(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	return unaryTypePredicate("vectorp", args, func(v lang.Value) bool {
+		return v.Type == lang.TypeVector
+	})
+}
+
+func primMakeVector(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	if len(args) < 1 || len(args) > 2 {
+		return lang.Value{}, fmt.Errorf("makeVector expects 1 or 2 arguments, got %d", len(args))
+	}
+	sizeArg := args[0]
+	if sizeArg.Type != lang.TypeInt {
+		return lang.Value{}, typeError("makeVector", "integer", sizeArg)
+	}
+	length64 := sizeArg.Int()
+	if length64 < 0 {
+		return lang.Value{}, fmt.Errorf("makeVector length must be non-negative, got %d", length64)
+	}
+	length := int(length64)
+	if int64(length) != length64 {
+		return lang.Value{}, fmt.Errorf("makeVector length %d exceeds platform limit", length64)
+	}
+	fill := lang.EmptyList
+	if len(args) == 2 {
+		fill = args[1]
+	}
+	return lang.NewVector(length, fill), nil
+}
+
+func primVectorLength(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	if len(args) != 1 {
+		return lang.Value{}, fmt.Errorf("vectorLength expects 1 argument, got %d", len(args))
+	}
+	vec, err := requireVectorArg("vectorLength", args[0])
+	if err != nil {
+		return lang.Value{}, err
+	}
+	return lang.IntValue(int64(len(vec.Elements))), nil
+}
+
+func primVectorRef(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	if len(args) != 2 {
+		return lang.Value{}, fmt.Errorf("vectorRef expects 2 arguments, got %d", len(args))
+	}
+	vec, err := requireVectorArg("vectorRef", args[0])
+	if err != nil {
+		return lang.Value{}, err
+	}
+	indexArg := args[1]
+	if indexArg.Type != lang.TypeInt {
+		return lang.Value{}, typeError("vectorRef", "integer", indexArg)
+	}
+	idx64 := indexArg.Int()
+	length := len(vec.Elements)
+	if idx64 < 0 || idx64 >= int64(length) {
+		return lang.Value{}, fmt.Errorf("vectorRef index %d out of range for length %d", idx64, length)
+	}
+	idx := int(idx64)
+	return vec.Elements[idx], nil
+}
+
+func primVectorSet(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	if len(args) != 3 {
+		return lang.Value{}, fmt.Errorf("vectorSet expects 3 arguments, got %d", len(args))
+	}
+	vecVal := args[0]
+	vec, err := requireVectorArg("vectorSet", vecVal)
+	if err != nil {
+		return lang.Value{}, err
+	}
+	indexArg := args[1]
+	if indexArg.Type != lang.TypeInt {
+		return lang.Value{}, typeError("vectorSet", "integer", indexArg)
+	}
+	idx64 := indexArg.Int()
+	length := len(vec.Elements)
+	if idx64 < 0 || idx64 >= int64(length) {
+		return lang.Value{}, fmt.Errorf("vectorSet index %d out of range for length %d", idx64, length)
+	}
+	idx := int(idx64)
+	vec.Elements[idx] = args[2]
+	return vecVal, nil
+}
+
+func primVectorFill(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	if len(args) != 2 {
+		return lang.Value{}, fmt.Errorf("vectorFill expects 2 arguments, got %d", len(args))
+	}
+	vecVal := args[0]
+	vec, err := requireVectorArg("vectorFill", vecVal)
+	if err != nil {
+		return lang.Value{}, err
+	}
+	fill := args[1]
+	for i := range vec.Elements {
+		vec.Elements[i] = fill
+	}
+	return vecVal, nil
+}
+
+func primVectorToList(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	if len(args) != 1 {
+		return lang.Value{}, fmt.Errorf("vectorToList expects 1 argument, got %d", len(args))
+	}
+	vec, err := requireVectorArg("vectorToList", args[0])
+	if err != nil {
+		return lang.Value{}, err
+	}
+	return lang.List(vec.Elements...), nil
+}
+
+func primListToVector(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	if len(args) != 1 {
+		return lang.Value{}, fmt.Errorf("listToVector expects 1 argument, got %d", len(args))
+	}
+	items, err := lang.ToSlice(args[0])
+	if err != nil {
+		return lang.Value{}, fmt.Errorf("listToVector expects a proper list: %w", err)
+	}
+	return lang.VectorValue(items), nil
+}
+
 func primEq(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 	if len(args) != 2 {
 		return lang.Value{}, fmt.Errorf("eq expects 2 arguments, got %d", len(args))
@@ -1084,6 +1219,17 @@ func requireIntArg(name string, v lang.Value) (int64, error) {
 	return v.Int(), nil
 }
 
+func requireVectorArg(name string, v lang.Value) (*lang.Vector, error) {
+	if v.Type != lang.TypeVector {
+		return nil, typeError(name, "vector", v)
+	}
+	vec := v.Vector()
+	if vec == nil {
+		return nil, fmt.Errorf("%s received malformed vector", name)
+	}
+	return vec, nil
+}
+
 func typeName(v lang.Value) string {
 	switch v.Type {
 	case lang.TypeEmpty:
@@ -1100,6 +1246,8 @@ func typeName(v lang.Value) string {
 		return "symbol"
 	case lang.TypePair:
 		return "pair"
+	case lang.TypeVector:
+		return "vector"
 	case lang.TypePrimitive:
 		return "primitive"
 	case lang.TypeClosure:
@@ -1145,6 +1293,8 @@ func eqValues(a, b lang.Value) bool {
 		return a.Sym() == b.Sym()
 	case lang.TypePair:
 		return a.Pair() == b.Pair()
+	case lang.TypeVector:
+		return a.Vector() == b.Vector()
 	case lang.TypePrimitive:
 		return primitivePointer(a.Primitive()) == primitivePointer(b.Primitive())
 	case lang.TypeClosure:
@@ -1190,6 +1340,21 @@ func equalValues(a, b lang.Value) bool {
 			return ap == bp
 		}
 		return equalValues(ap.First, bp.First) && equalValues(ap.Rest, bp.Rest)
+	case lang.TypeVector:
+		av := a.Vector()
+		bv := b.Vector()
+		if av == nil || bv == nil {
+			return av == bv
+		}
+		if len(av.Elements) != len(bv.Elements) {
+			return false
+		}
+		for i := range av.Elements {
+			if !equalValues(av.Elements[i], bv.Elements[i]) {
+				return false
+			}
+		}
+		return true
 	case lang.TypePrimitive:
 		return primitivePointer(a.Primitive()) == primitivePointer(b.Primitive())
 	case lang.TypeClosure:

@@ -37,6 +37,11 @@ func TestPairToStringAndTypeHelpers(t *testing.T) {
 		t.Fatalf("expected dotted pair string, got %q", got)
 	}
 
+	vector := VectorValue([]Value{IntValue(1), BoolValue(true)})
+	if got := vector.String(); got != "#(1 #t)" {
+		t.Fatalf("expected vector string, got %q", got)
+	}
+
 	formatted := List(IntValue(1), IntValue(2), IntValue(3)).String()
 	if formatted != "(1 2 3)" {
 		t.Fatalf("expected proper list string, got %q", formatted)

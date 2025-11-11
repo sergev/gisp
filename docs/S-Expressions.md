@@ -1,13 +1,13 @@
 # Gisp S-Expression Grammar
 
-This document describes the concrete syntax accepted by the reader implementation in `reader/reader.go`. The language is an S-expression dialect inspired by Scheme.
+This document describes the concrete syntax accepted by the reader implementation in `sexpr/sexpr.go`. The language is an S-expression dialect inspired by Scheme.
 
 ## Lexical Structure
 
 - **Whitespace** — Any Unicode space characters separate tokens. Newlines are whitespace.
 - **Comments** — A semicolon `;` starts a line comment that runs to the end of the line. Comments may appear between forms.
 - **Delimiters** — Parentheses `(` `)` delimit lists. A dot `.` inside a list introduces a dotted pair.
-- **Dispatch Prefix** — A leading `#` introduces special tokens (`#t`, `#f`).
+- **Dispatch Prefix** — A leading `#` introduces booleans (`#t`, `#f`) or vector literals (`#(elem ...)`).
 - **Quote Prefixes** — The single quote `'`, backtick `` ` ``, and comma `,` (optionally followed by `@`) expand into list forms (see below).
 
 ## Grammar Overview
@@ -18,6 +18,7 @@ The reader parses a sequence of expressions. In EBNF-like notation:
 program    ::= { expression }
 expression ::= list
              | quoted
+             | vector
              | boolean
              | string
              | number
@@ -48,13 +49,26 @@ quoted     ::= "'" expression            ; expands to (quote expression)
 
 The reader rewrites each prefixed form into the corresponding list with a leading symbol (`quote`, `quasiquote`, `unquote`, or `unquote-splicing`).
 
+### Vectors
+
+```
+vector     ::= "#(" vector-contents ")"
+vector-contents
+            ::= /* empty */
+             | expression { expression }
+```
+
+- Vectors evaluate each contained expression and pack the results into a mutable, fixed-size sequence.
+- The literal reader form `#(a b c)` is equivalent to `(vector a b c)` at runtime.
+- Unterminated vectors raise an error.
+
 ### Booleans
 
 ```
 boolean    ::= "#t" | "#f"
 ```
 
-No other dispatch sequences are recognized; encountering `#` followed by another rune is an error.
+No other dispatch sequences are recognized; encountering `#` followed by a rune other than `t`, `f`, or `(` is an error.
 
 ### Strings
 
@@ -97,7 +111,7 @@ Symbols are case-sensitive and may include punctuation other than the reserved c
 The reader reports errors for:
 
 - Unexpected `)` outside a list.
-- Unterminated lists, strings, or dotted lists.
+- Unterminated lists, vectors, strings, or dotted lists.
 - Misplaced dots (e.g., leading dot, multiple dots, or dot not followed by an expression).
 - Unknown dispatch sequences after `#`.
 - Empty tokens (e.g., due to adjacent delimiters with no content).

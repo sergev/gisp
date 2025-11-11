@@ -172,9 +172,55 @@ func readDispatch(sc *scanner) (lang.Value, error) {
 		return lang.BoolValue(true), nil
 	case 'f':
 		return lang.BoolValue(false), nil
+	case '(':
+		return readVector(sc)
 	default:
 		return lang.Value{}, fmt.Errorf("unknown dispatch sequence: #%c", r)
 	}
+}
+
+func readVector(sc *scanner) (lang.Value, error) {
+	if err := sc.skipWhitespace(); err != nil {
+		if sc.isEOF(err) {
+			return lang.Value{}, errors.New("unterminated vector")
+		}
+		return lang.Value{}, err
+	}
+	r, _, err := sc.peek()
+	if err != nil {
+		return lang.Value{}, err
+	}
+	if r == ')' {
+		if _, _, err := sc.read(); err != nil {
+			return lang.Value{}, err
+		}
+		return lang.VectorValue(nil), nil
+	}
+	var elems []lang.Value
+	for {
+		if err := sc.skipWhitespace(); err != nil {
+			if sc.isEOF(err) {
+				return lang.Value{}, errors.New("unterminated vector")
+			}
+			return lang.Value{}, err
+		}
+		next, _, err := sc.peek()
+		if err != nil {
+			return lang.Value{}, err
+		}
+		if next == ')' {
+			if _, _, err := sc.read(); err != nil {
+				return lang.Value{}, err
+			}
+			break
+		}
+		elem, err := readExpr(sc)
+		if err != nil {
+			return lang.Value{}, err
+		}
+		elems = append(elems, elem)
+	}
+	return lang.VectorValue(elems), nil
 }
 
 func readList(sc *scanner) (lang.Value, error) {

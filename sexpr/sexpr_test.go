@@ -97,6 +97,17 @@ func TestReadStringSuccessCases(t *testing.T) {
 			},
 		},
 		{
+			name:  "VectorLiteral",
+			input: "#(1 \"two\" #t)",
+			want: []lang.Value{
+				lang.VectorValue([]lang.Value{
+					lang.IntValue(1),
+					lang.StringValue("two"),
+					lang.BoolValue(true),
+				}),
+			},
+		},
+		{
 			name:  "CommentWithoutNewlineAtEOF",
 			input: "; trailing comment without newline",
 			want:  []lang.Value{},
@@ -177,6 +188,17 @@ func TestParseLiteralSuccessCases(t *testing.T) {
 			),
 			next: len("`'+"),
 		},
+		{
+			name:  "VectorLiteral",
+			src:   "prefix #(1 2 3) suffix",
+			start: strings.Index("prefix #(1 2 3) suffix", "#"),
+			want: lang.VectorValue([]lang.Value{
+				lang.IntValue(1),
+				lang.IntValue(2),
+				lang.IntValue(3),
+			}),
+			next: strings.Index("prefix #(1 2 3) suffix", "#") + len("#(1 2 3)"),
+		},
 	}
 
 	for _, tc := range cases {
@@ -206,6 +228,7 @@ func TestReadStringErrorCases(t *testing.T) {
 		{name: "UnknownDispatch", input: "#x", sub: "unknown dispatch sequence"},
 		{name: "DottedListMisuse", input: "(a . b c)", sub: "expected )"},
 		{name: "UnterminatedString", input: `"unterminated`, sub: "unterminated string"},
+		{name: "UnterminatedVector", input: "#(1 2", sub: "unterminated vector"},
 	}
 
 	for _, tc := range cases {
@@ -273,6 +296,21 @@ func valuesEqual(a, b lang.Value) bool {
 			return ap == nil && bp == nil
 		}
 		return valuesEqual(ap.First, bp.First) && valuesEqual(ap.Rest, bp.Rest)
+	case lang.TypeVector:
+		av := a.Vector()
+		bv := b.Vector()
+		if av == nil || bv == nil {
+			return av == nil && bv == nil
+		}
+		if len(av.Elements) != len(bv.Elements) {
+			return false
+		}
+		for i := range av.Elements {
+			if !valuesEqual(av.Elements[i], bv.Elements[i]) {
+				return false
+			}
+		}
+		return true
 	default:
 		return false
 	}

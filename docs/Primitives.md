@@ -57,6 +57,22 @@ All of the following expect exactly one argument and return `#t` or `#f`. Predic
 - `append` — Appends zero or more lists, with the last argument allowed to be any value. The final argument is returned as-is when earlier lists are exhausted. Non-list arguments before the final one raise an error.
 - `length` — Returns the integer length of a proper list; errors on non-lists.
 
+## Vector Operations
+
+Vectors are fixed-length, mutable, zero-based indexed sequences. They complement lists when constant-time random access or in-place updates are required.
+
+- `vector` — Allocates a fresh vector whose elements are the evaluated arguments. `(vector 1 2 3)` yields a three-element vector.
+- `vectorp` — Predicate that returns `#t` when its argument is a vector.
+- `makeVector` — `(makeVector n [fill])` creates a vector of length `n`. The optional fill value is evaluated once and written into each slot; it defaults to the empty list `()`. Length must be a non-negative integer that fits the host platform.
+- `vectorLength` — Returns the integer length of a vector. Errors on non-vector input.
+- `vectorRef` — `(vectorRef vec index)` returns the element at the given zero-based integer `index`. Out-of-range indices raise an error.
+- `vectorSet` — `(vectorSet vec index value)` mutates the element at `index` to `value`, returning the same vector. Out-of-range indices raise an error.
+- `vectorFill` — `(vectorFill vec value)` overwrites every element of `vec` with `value`, mutating in place and returning the vector.
+- `vectorToList` — Converts a vector into a freshly allocated proper list containing the same elements.
+- `listToVector` — Converts a proper list into a fresh vector. Non-lists raise an error.
+
+Literal vectors use the reader notation `#(elem ...)`, which is sugar for calling `vector`.
+
 ## Control Flow
 
 - `cond` — Evaluates each clause in order and returns the body from the first clause whose predicate is truthy. Clauses are pairs of predicate/body expressions. An optional final clause starting with the symbol `else` serves as a default. When no predicates succeed and no `else` clause is present, the result is the empty list.
