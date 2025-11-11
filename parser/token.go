@@ -63,15 +63,16 @@ const (
 	tokenAndAnd               // &&
 	tokenOrOr                 // ||
 
-	tokenComma     // ,
-	tokenSemicolon // ;
-	tokenColon     // :
-	tokenLParen    // (
-	tokenRParen    // )
-	tokenLBrace    // {
-	tokenRBrace    // }
-	tokenLBracket  // [
-	tokenRBracket  // ]
+	tokenComma       // ,
+	tokenSemicolon   // ;
+	tokenColon       // :
+	tokenLParen      // (
+	tokenRParen      // )
+	tokenVectorStart // #[
+	tokenLBrace      // {
+	tokenRBrace      // }
+	tokenLBracket    // [
+	tokenRBracket    // ]
 )
 
 func (tt TokenType) String() string {
@@ -192,6 +193,8 @@ func (tt TokenType) String() string {
 		return "("
 	case tokenRParen:
 		return ")"
+	case tokenVectorStart:
+		return "#["
 	case tokenLBrace:
 		return "{"
 	case tokenRBrace:

@@ -149,6 +149,50 @@ func TestLexerStringLiterals(t *testing.T) {
 	}
 }
 
+func TestLexerVectorLiteral(t *testing.T) {
+	src := "var vec = #[1, 2, true]"
+	tokens := lexAllTokens(t, src)
+
+	var types []TokenType
+	for _, tok := range tokens {
+		if tok.Type == tokenSemicolon || tok.Type == tokenEOF {
+			continue
+		}
+		types = append(types, tok.Type)
+	}
+
+	want := []TokenType{
+		tokenVar,
+		tokenIdentifier,
+		tokenAssign,
+		tokenVectorStart,
+		tokenNumber,
+		tokenComma,
+		tokenNumber,
+		tokenComma,
+		tokenTrue,
+		tokenRBracket,
+	}
+
+	if !reflect.DeepEqual(types, want) {
+		t.Fatalf("unexpected token sequence\ngot:  %v\nwant: %v", types, want)
+	}
+}
+
+func TestLexerVectorLiteralMissingBracket(t *testing.T) {
+	lx := newLexer("#x")
+	tok, err := lx.nextToken()
+	if err == nil {
+		t.Fatalf("expected error for malformed vector literal")
+	}
+	if tok.Type != tokenIllegal {
+		t.Fatalf("expected illegal token, got %v", tok.Type)
+	}
+	if !strings.Contains(err.Error(), "expected '[' after '#'") {
+		t.Fatalf("unexpected error message: %v", err)
+	}
+}
+
 func TestLexerStringErrors(t *testing.T) {
 	cases := []struct {
 		name    string

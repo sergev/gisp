@@ -323,6 +323,17 @@ func compileExpr(b *builder, expr Expr, ctx compileContext) (lang.Value, error) 
 			elems = append(elems, val)
 		}
 		return lang.List(elems...), nil
+	case *VectorExpr:
+		elems := make([]lang.Value, 0, len(e.Elements)+1)
+		elems = append(elems, b.symbol("vector"))
+		for _, el := range e.Elements {
+			val, err := compileExpr(b, el, ctx)
+			if err != nil {
+				return lang.Value{}, err
+			}
+			elems = append(elems, val)
+		}
+		return lang.List(elems...), nil
 	case *LambdaExpr:
 		return compileLambdaExpr(b, e, ctx)
 	case *SwitchExpr:

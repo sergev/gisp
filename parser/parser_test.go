@@ -724,6 +724,59 @@ var result = fn(1, 2);
 	}
 }
 
+func TestParseVectorLiteral(t *testing.T) {
+	src := `
+var values = #[1, "two", true, func() {
+	return;
+}];
+`
+	prog := parseProgramFromSource(t, src)
+	if len(prog.Decls) != 1 {
+		t.Fatalf("expected single declaration, got %d", len(prog.Decls))
+	}
+	decl, ok := prog.Decls[0].(*VarDecl)
+	if !ok {
+		t.Fatalf("expected VarDecl, got %T", prog.Decls[0])
+	}
+	vec, ok := decl.Init.(*VectorExpr)
+	if !ok {
+		t.Fatalf("expected VectorExpr initializer, got %#v", decl.Init)
+	}
+	if len(vec.Elements) != 4 {
+		t.Fatalf("expected 4 vector elements, got %d", len(vec.Elements))
+	}
+	if num, ok := vec.Elements[0].(*NumberExpr); !ok || num.Value != "1" {
+		t.Fatalf("expected first element numeric literal, got %#v", vec.Elements[0])
+	}
+	if str, ok := vec.Elements[1].(*StringExpr); !ok || str.Value != "two" {
+		t.Fatalf("expected second element string literal, got %#v", vec.Elements[1])
+	}
+	if boolean, ok := vec.Elements[2].(*BoolExpr); !ok || !boolean.Value {
+		t.Fatalf("expected third element true literal, got %#v", vec.Elements[2])
+	}
+	if _, ok := vec.Elements[3].(*LambdaExpr); !ok {
+		t.Fatalf("expected lambda as fourth element, got %#v", vec.Elements[3])
+	}
+}
+
+func TestParseEmptyVectorLiteral(t *testing.T) {
+	prog := parseProgramFromSource(t, "var empty = #[]\n")
+	if len(prog.Decls) != 1 {
+		t.Fatalf("expected single declaration, got %d", len(prog.Decls))
+	}
+	decl, ok := prog.Decls[0].(*VarDecl)
+	if !ok {
+		t.Fatalf("expected VarDecl, got %T", prog.Decls[0])
+	}
+	vec, ok := decl.Init.(*VectorExpr)
+	if !ok {
+		t.Fatalf("expected VectorExpr initializer, got %#v", decl.Init)
+	}
+	if len(vec.Elements) != 0 {
+		t.Fatalf("expected empty vector literal, got %d elements", len(vec.Elements))
+	}
+}
+
 func TestParseNilLiteral(t *testing.T) {
 	prog := parseProgramFromSource(t, "var empty = nil\n")
 	if len(prog.Decls) != 1 {
@@ -808,6 +861,11 @@ var value = switch {
 };
 `,
 			wantErr: "switch requires at least one case",
+		},
+		{
+			name:    "vector missing closing bracket",
+			src:     "var bad = #[1, 2\n",
+			wantErr: "expected ]",
 		},
 	}
 
@@ -1022,6 +1080,24 @@ func TestCompileExpressionForms(t *testing.T) {
 				}
 				if val, ok := list[1].(bool); !ok || !val {
 					t.Fatalf("expected operand true, got %#v", list[1])
+				}
+			},
+		},
+		{
+			name: "VectorLiteral",
+			src:  "var expr = #[1, 2, 3];\n",
+			want: func(t *testing.T, expr interface{}) {
+				list, ok := expr.([]interface{})
+				if !ok || getHead(list) != "vector" {
+					t.Fatalf("expected vector form, got %#v", expr)
+				}
+				if len(list) != 4 {
+					t.Fatalf("expected vector with 3 elements, got %#v", list)
+				}
+				for i := 1; i <= 3; i++ {
+					if val, ok := list[i].(int64); !ok || val != int64(i) {
+						t.Fatalf("expected element %d to be %d, got %#v", i, i, list[i])
+					}
 				}
 			},
 		},

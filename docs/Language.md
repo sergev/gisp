@@ -41,7 +41,8 @@ Go developers.
   single expression. Omitting the `else` branch yields `nil`. `else if` chains
   are supported.
 - **Literals:** numbers, strings, booleans (`true`/`false`), the empty list
-  literal `nil`, and list literals using `[a, b, ...]`.
+  literal `nil`, list literals `[a, b, ...]`, and vector literals `#[a, b, ...]`
+  which compile to runtime vectors with constant-time indexed access.
 - **Anonymous functions:** `func(params) { ... }` produces a closure with the
   same semantics as Scheme lambdas (including lexical scope and recursion).
 - **Inline Scheme:** `` var quoted = `(list 1 2 3) `` inserts the exact
@@ -119,6 +120,7 @@ PrimaryExpr    = Identifier
                | Boolean
                | Nil
                | ListLiteral
+               | VectorLiteral
                | LambdaExpr
                | IfExpr
                | SwitchExpr
@@ -134,6 +136,7 @@ DefaultClause  = "default" ":" Expression [ ";" ]
 
 LambdaExpr     = "func" "(" [ ParamList ] ")" Block ;
 ListLiteral    = "[" [ ArgList ] "]" ;
+VectorLiteral  = "#[" [ ArgList ] "]" ;
 SExprLiteral   = "`" SExpression ;
 
 EqualityOp     = "==" | "!=" ;
@@ -173,6 +176,8 @@ func fact_tr(n, acc) {
 var expr = map(func(x) {
     return x + 1;
 }, [1, 2, 3])
+
+var vec = #[1, 2, 3]
 ```
 
 ## Runtime Integration

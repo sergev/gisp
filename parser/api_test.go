@@ -98,3 +98,37 @@ func TestParseStringUnaryCaret(t *testing.T) {
 		t.Fatalf("expected integer literal 123, got %v", argList[1])
 	}
 }
+
+func TestParseStringVectorLiteral(t *testing.T) {
+	src := "var vec = #[1, 2, 3]; vec;\n"
+	forms, err := ParseString(src)
+	if err != nil {
+		t.Fatalf("ParseString returned error: %v", err)
+	}
+	if len(forms) != 2 {
+		t.Fatalf("expected define and expression forms, got %d", len(forms))
+	}
+
+	defineForm, err := lang.ToSlice(forms[0])
+	if err != nil {
+		t.Fatalf("expected define form to be a proper list: %v", err)
+	}
+	if len(defineForm) != 3 {
+		t.Fatalf("expected define with three elements, got %d", len(defineForm))
+	}
+	if defineForm[2].Type != lang.TypePair {
+		t.Fatalf("expected initializer to be list, got %v", defineForm[2])
+	}
+	initList, err := lang.ToSlice(defineForm[2])
+	if err != nil {
+		t.Fatalf("expected initializer to be proper list: %v", err)
+	}
+	if len(initList) != 4 || initList[0].Sym() != "vector" {
+		t.Fatalf("expected (vector 1 2 3) initializer, got %v", initList)
+	}
+	for i := 1; i <= 3; i++ {
+		if initList[i].Type != lang.TypeInt || initList[i].Int() != int64(i) {
+			t.Fatalf("expected vector element %d, got %v", i, initList[i])
+		}
+	}
+}

@@ -90,6 +90,15 @@ type ListExpr struct {
 func (e *ListExpr) Pos() Position { return e.Posn }
 func (*ListExpr) exprNode()       {}
 
+// VectorExpr is a literal vector #[a, b, ...].
+type VectorExpr struct {
+	Elements []Expr
+	Posn     Position
+}
+
+func (e *VectorExpr) Pos() Position { return e.Posn }
+func (*VectorExpr) exprNode()       {}
+
 // LambdaExpr is an anonymous function.
 type LambdaExpr struct {
 	Params []string

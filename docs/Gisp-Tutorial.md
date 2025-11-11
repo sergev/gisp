@@ -290,6 +290,57 @@ display(map(func(n) { return n * n; }, numbers))
 newline()
 ```
 
+### Vector Literals and Indexed Arrays
+
+Vectors complement lists when you need constant-time indexed access or in-place mutation. Construct them with the `#[ ... ]` literal or by calling `makeVector`. The literal below is shorthand for `(vector 1 2 3)`:
+
+```gisp
+var triple = #[1, 2, 3]
+display(vectorLength(triple))   // 3
+newline()
+```
+
+The sieve of Eratosthenes is a good stress test for vectors because it toggles boolean flags while scanning a numeric range. The implementation below keeps its workspace in a vector and finishes by converting the surviving flags into a list of primes:
+
+```gisp
+func sievePrimes(limit) {
+    var flags = makeVector(limit + 1, true)
+    vectorSet(flags, 0, false)
+    vectorSet(flags, 1, false)
+
+    var candidate = 2
+    while candidate * candidate <= limit {
+        if vectorRef(flags, candidate) {
+            var multiple = candidate * candidate
+            while multiple <= limit {
+                vectorSet(flags, multiple, false)
+                multiple += candidate
+            }
+        }
+        candidate++
+    }
+
+    var primes = []
+    var n = 2
+    while n <= limit {
+        if vectorRef(flags, n) {
+            primes = append(primes, [n])
+        }
+        n++
+    }
+    return primes
+}
+
+display(sievePrimes(50))
+newline()
+```
+
+- `makeVector(limit + 1, true)` creates a mutable array of booleans initialised to `true`.
+- `vectorSet` flips individual slots to `false` as composites are discovered.
+- `vectorRef` reads the flag at an index when building the final list of primes.
+
+Because vectors live on the heap just like lists, you can pass them between functions, keep them in data structures, or convert them to lists later with `vectorToList` when you need list processing helpers.
+
 ---
 
 ## 5. Inline S-Expressions and Macros

@@ -269,6 +269,13 @@ func (lx *lexer) nextToken() (Token, error) {
 			Pos:   positionFromState(start),
 		}
 		return lx.maybeEmitWithBuffer(tok)
+	case r == '#':
+		if lx.match('[') {
+			tok := simpleToken(tokenVectorStart, start)
+			return lx.maybeEmitWithBuffer(tok)
+		}
+		illegal, err := illegalToken(start, fmt.Errorf("expected '[' after '#' for vector literal"))
+		return lx.emit(illegal), err
 	}
 
 	var tok Token
@@ -425,6 +432,8 @@ func (lx *lexer) emit(tok Token) Token {
 func (lx *lexer) adjustParenDepth(tt TokenType) {
 	switch tt {
 	case tokenLParen, tokenLBracket:
+		lx.parenDepth++
+	case tokenVectorStart:
 		lx.parenDepth++
 	case tokenRParen, tokenRBracket:
 		if lx.parenDepth > 0 {

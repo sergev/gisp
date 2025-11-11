@@ -718,6 +718,8 @@ func (p *parser) parsePrimary() (Expr, error) {
 		return expr, nil
 	case tokenLBracket:
 		return p.parseListLiteral()
+	case tokenVectorStart:
+		return p.parseVectorLiteral()
 	default:
 		return nil, p.errorf(p.curr.Pos, p.curr.Type == tokenEOF, "unexpected token %s in expression", p.curr.Type)
 	}
@@ -776,6 +778,35 @@ func (p *parser) parseListLiteral() (Expr, error) {
 		return nil, err
 	}
 	return &ListExpr{
+		Elements: elems,
+		Posn:     posFromToken(startTok),
+	}, nil
+}
+
+func (p *parser) parseVectorLiteral() (Expr, error) {
+	startTok, err := p.expect(tokenVectorStart)
+	if err != nil {
+		return nil, err
+	}
+	var elems []Expr
+	for p.curr.Type != tokenRBracket {
+		expr, err := p.parseExpression()
+		if err != nil {
+			return nil, err
+		}
+		elems = append(elems, expr)
+		if p.curr.Type == tokenComma {
+			if _, err := p.expect(tokenComma); err != nil {
+				return nil, err
+			}
+			continue
+		}
+		break
+	}
+	if _, err := p.expect(tokenRBracket); err != nil {
+		return nil, err
+	}
+	return &VectorExpr{
 		Elements: elems,
 		Posn:     posFromToken(startTok),
 	}, nil
