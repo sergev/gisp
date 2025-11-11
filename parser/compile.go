@@ -84,6 +84,12 @@ func compileDecl(b *builder, decl Decl, ctx compileContext) ([]lang.Value, error
 			return nil, err
 		}
 		return []lang.Value{expr}, nil
+	case *AssignStmt:
+		form, err := compileAssignEffect(b, d, ctx)
+		if err != nil {
+			return nil, err
+		}
+		return []lang.Value{form}, nil
 	default:
 		return nil, fmt.Errorf("unsupported top-level declaration %T", decl)
 	}
@@ -171,52 +177,11 @@ func compileStmtWithRest(b *builder, stmt Stmt, rest lang.Value, ctx compileCont
 		}
 		return b.let([]binding{{name: s.Name, value: initVal}}, rest), nil
 	case *AssignStmt:
-		value, err := compileExpr(b, s.Expr, ctx)
+		effect, err := compileAssignEffect(b, s, ctx)
 		if err != nil {
 			return lang.Value{}, err
 		}
-		switch target := s.Target.(type) {
-		case *IdentifierExpr:
-			name := target.Name
-			if s.Op == tokenAssign || s.Op == 0 {
-				setExpr := b.list(
-					b.symbol("set!"),
-					b.symbol(name),
-					value,
-				)
-				return b.begin([]lang.Value{setExpr, rest}), nil
-			}
-			if primName, ok := compoundAssignPrimitive(s.Op); ok {
-				call := b.list(
-					b.symbol(primName),
-					b.quoteSymbol(name),
-					value,
-				)
-				return b.begin([]lang.Value{call, rest}), nil
-			}
-			return lang.Value{}, fmt.Errorf("unsupported assignment operator %s", s.Op)
-		case *IndexExpr:
-			if s.Op != tokenAssign && s.Op != 0 {
-				return lang.Value{}, fmt.Errorf("compound assignments not supported for indexed targets")
-			}
-			vec, err := compileExpr(b, target.Target, ctx)
-			if err != nil {
-				return lang.Value{}, err
-			}
-			idx, err := compileExpr(b, target.Index, ctx)
-			if err != nil {
-				return lang.Value{}, err
-			}
-			call := b.list(
-				b.symbol("vectorSet"),
-				vec,
-				idx,
-				value,
-			)
-			return b.begin([]lang.Value{call, rest}), nil
-		default:
-			return lang.Value{}, fmt.Errorf("unsupported assignment target %T", s.Target)
-		}
+		return b.begin([]lang.Value{effect, rest}), nil
 	case *IncDecStmt:
 		var primName string
 		switch s.Op {
@@ -402,6 +367,52 @@ func compileExpr(b *builder, expr Expr, ctx compileContext) (lang.Value, error) 
 		return e.Value, nil
 	default:
 		return lang.Value{}, fmt.Errorf("unsupported expression %T", expr)
+	}
+}
+
+func compileAssignEffect(b *builder, s *AssignStmt, ctx compileContext) (lang.Value, error) {
+	value, err := compileExpr(b, s.Expr, ctx)
+	if err != nil {
+		return lang.Value{}, err
+	}
+	switch target := s.Target.(type) {
+	case *IdentifierExpr:
+		name := target.Name
+		if s.Op == tokenAssign || s.Op == 0 {
+			return b.list(
+				b.symbol("set!"),
+				b.symbol(name),
+				value,
+			), nil
+		}
+		if primName, ok := compoundAssignPrimitive(s.Op); ok {
+			return b.list(
+				b.symbol(primName),
+				b.quoteSymbol(name),
+				value,
+			), nil
+		}
+		return lang.Value{}, fmt.Errorf("unsupported assignment operator %s", s.Op)
+	case *IndexExpr:
+		if s.Op != tokenAssign && s.Op != 0 {
+			return lang.Value{}, fmt.Errorf("compound assignments not supported for indexed targets")
+		}
+		vec, err := compileExpr(b, target.Target, ctx)
+		if err != nil {
+			return lang.Value{}, err
+		}
+		idx, err := compileExpr(b, target.Index, ctx)
+		if err != nil {
+			return lang.Value{}, err
+		}
+		return b.list(
+			b.symbol("vectorSet"),
+			vec,
+			idx,
+			value,
+		), nil
+	default:
+		return lang.Value{}, fmt.Errorf("unsupported assignment target %T", s.Target)
 	}
 }
 

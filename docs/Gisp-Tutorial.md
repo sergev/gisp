@@ -339,6 +339,22 @@ newline()
 - `flags[i] = false` updates a slot in-place; it expands to `vectorSet(flags, i, false)` under the hood.
 - `flags[i]` reads a slot; it expands to `vectorRef(flags, i)`.
 
+#### REPL snapshot
+
+```text
+$ ./gisp
+gisp> var flags = #[true, true, true]
+#(#t #t #t)
+gisp> flags[1]
+#t
+gisp> flags[1] = false
+#(#t #f #t)
+gisp> flags[1]
+#f
+gisp> flags
+#(#t #f #t)
+```
+
 Because vectors live on the heap just like lists, you can pass them between functions, keep them in data structures, or convert them to lists later with `vectorToList` when you need list processing helpers.
 
 ---

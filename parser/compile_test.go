@@ -344,6 +344,71 @@ func TestCompileStmtIndexAssign(t *testing.T) {
 	}
 }
 
+func TestCompileAssignDecl(t *testing.T) {
+	prog := &Program{
+		Decls: []Decl{
+			&AssignStmt{
+				Name:   "count",
+				Target: &IdentifierExpr{Name: "count"},
+				Expr:   &NumberExpr{Value: "42"},
+				Op:     tokenAssign,
+			},
+		},
+	}
+	forms, err := CompileProgram(prog)
+	if err != nil {
+		t.Fatalf("CompileProgram assign decl: %v", err)
+	}
+	if len(forms) != 1 {
+		t.Fatalf("expected single form, got %d", len(forms))
+	}
+	setExpr := requireListHead(t, forms[0], "set!")
+	if len(setExpr) != 3 {
+		t.Fatalf("expected set! form length 3, got %d", len(setExpr))
+	}
+	if sym := setExpr[1].(datumSymbol); string(sym) != "count" {
+		t.Fatalf("expected target count, got %q", sym)
+	}
+	if val := setExpr[2].(int64); val != 42 {
+		t.Fatalf("expected value 42, got %d", val)
+	}
+}
+
+func TestCompileAssignDeclVector(t *testing.T) {
+	prog := &Program{
+		Decls: []Decl{
+			&AssignStmt{
+				Target: &IndexExpr{
+					Target: &IdentifierExpr{Name: "flags"},
+					Index:  &NumberExpr{Value: "1"},
+				},
+				Expr: &BoolExpr{Value: false},
+				Op:   tokenAssign,
+			},
+		},
+	}
+	forms, err := CompileProgram(prog)
+	if err != nil {
+		t.Fatalf("CompileProgram vector assign decl: %v", err)
+	}
+	if len(forms) != 1 {
+		t.Fatalf("expected single form, got %d", len(forms))
+	}
+	call := requireListHead(t, forms[0], "vectorSet")
+	if len(call) != 4 {
+		t.Fatalf("expected vectorSet form length 4, got %d", len(call))
+	}
+	if sym := call[1].(datumSymbol); string(sym) != "flags" {
+		t.Fatalf("expected flags as first argument, got %#v", call[1])
+	}
+	if idx := call[2].(int64); idx != 1 {
+		t.Fatalf("expected index 1, got %d", idx)
+	}
+	if val, ok := call[3].(bool); !ok || val {
+		t.Fatalf("expected false value, got %#v", call[3])
+	}
+}
+
 func TestCompileStmtIncDec(t *testing.T) {
 	b := &builder{}
 	stmt := &IncDecStmt{Name: "count", Op: tokenPlusPlus}

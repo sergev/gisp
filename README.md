@@ -94,24 +94,6 @@ Run any of them with the interpreter:
 ./gisp examples/fact.gisp
 ```
 
-### REPL Snapshot: Vector Indexing
-
-```text
-$ ./gisp
-gisp> var flags = #[true, true, true]
-#(#t #t #t)
-gisp> flags[1]
-#t
-gisp> flags[1] = false
-()
-gisp> flags[1]
-#f
-gisp> flags
-#(#t #f #t)
-```
-
-This REPL transcript shows the native `vec[index]` reader and writer syntax in action.
-
 ## Testing
 
 ```bash

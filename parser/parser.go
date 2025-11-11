@@ -118,6 +118,19 @@ func (p *parser) parseTopLevelDecl() (Decl, error) {
 	case tokenConst:
 		return p.parseConstDecl(true)
 	default:
+		if p.curr.Type == tokenIdentifier {
+			if stmt, ok, err := p.tryParseAssignmentStmt(); err != nil {
+				return nil, err
+			} else if ok {
+				assign, _ := stmt.(*AssignStmt)
+				return assign, nil
+			}
+			if stmt, ok, err := p.tryParseIncDecStmt(); err != nil {
+				return nil, err
+			} else if ok {
+				return nil, p.errorf(stmt.Pos(), false, "++/-- not allowed at top level")
+			}
+		}
 		expr, err := p.parseExpression()
 		if err != nil {
 			return nil, err

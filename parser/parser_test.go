@@ -824,6 +824,34 @@ func disable(flags, candidate) {
 	}
 }
 
+func TestParseTopLevelIndexAssignment(t *testing.T) {
+	src := `
+var flags = #[true, true, true]
+flags[1] = false
+`
+	prog := parseProgramFromSource(t, src)
+	if len(prog.Decls) != 2 {
+		t.Fatalf("expected two declarations, got %d", len(prog.Decls))
+	}
+	assign, ok := prog.Decls[1].(*AssignStmt)
+	if !ok {
+		t.Fatalf("expected second declaration to be AssignStmt, got %T", prog.Decls[1])
+	}
+	indexExpr, ok := assign.Target.(*IndexExpr)
+	if !ok {
+		t.Fatalf("expected index target, got %#v", assign.Target)
+	}
+	if base, ok := indexExpr.Target.(*IdentifierExpr); !ok || base.Name != "flags" {
+		t.Fatalf("expected base identifier flags, got %#v", indexExpr.Target)
+	}
+	if idx, ok := indexExpr.Index.(*NumberExpr); !ok || idx.Value != "1" {
+		t.Fatalf("expected numeric index 1, got %#v", indexExpr.Index)
+	}
+	if _, ok := assign.Expr.(*BoolExpr); !ok {
+		t.Fatalf("expected boolean assignment, got %#v", assign.Expr)
+	}
+}
+
 func TestParseEmptyVectorLiteral(t *testing.T) {
 	prog := parseProgramFromSource(t, "var empty = #[]\n")
 	if len(prog.Decls) != 1 {

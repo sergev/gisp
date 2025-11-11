@@ -249,6 +249,7 @@ type AssignStmt struct {
 
 func (s *AssignStmt) Pos() Position { return s.Posn }
 func (*AssignStmt) stmtNode()       {}
+func (*AssignStmt) declNode()       {}
 
 // IncDecStmt performs a post-increment or post-decrement on an identifier.
 type IncDecStmt struct {
