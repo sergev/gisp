@@ -8,7 +8,16 @@ This document summarizes the built-in primitives that are installed into the glo
 - `-` — Subtracts subsequent numbers from the first. Unary form negates the single numeric argument. Mixed integer/real inputs promote to real.
 - `*` — Multiplies numeric arguments. With no arguments the result is `1`. Mixed integer/real inputs promote to real.
 - `/` — Divides the first numeric argument by each subsequent one. Unary form returns the reciprocal. Always returns a real. Division by zero raises an error.
-- `^` — Unary bitwise complement. Requires exactly one integer argument and returns its bitwise inverse. Non-integer arguments raise a type error.
+- `%` — Calculates the remainder of integer division. Requires at least two integer arguments and applies left-to-right. Division by zero raises an error.
+
+## Bitwise and Shift Operators
+
+- `&` — Bitwise AND across two or more integer arguments.
+- `|` — Bitwise OR across two or more integer arguments.
+- `^` — Bitwise XOR across one or more integer arguments. With a single argument it returns the bitwise complement; with multiple arguments it XORs left-to-right.
+- `&^` — Bit clear. Takes two or more integers and applies Go-style bit clearing (`a &^ b`).
+- `<<` — Left shift. Exactly two integer arguments: the value and a non-negative shift amount.
+- `>>` — Right shift. Exactly two integer arguments: the value and a non-negative shift amount. Uses arithmetic shifting for signed integers.
 
 ## Numeric Comparisons
 

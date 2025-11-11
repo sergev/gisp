@@ -27,21 +27,27 @@ const (
 	tokenFalse
 
 	// Operators and punctuation
-	tokenAssign       // =
-	tokenEqualEqual   // ==
-	tokenBangEqual    // !=
-	tokenPlus         // +
-	tokenMinus        // -
-	tokenStar         // *
-	tokenSlash        // /
-	tokenCaret        // ^
-	tokenLess         // <
-	tokenLessEqual    // <=
-	tokenGreater      // >
-	tokenGreaterEqual // >=
-	tokenBang         // !
-	tokenAndAnd       // &&
-	tokenOrOr         // ||
+	tokenAssign         // =
+	tokenEqualEqual     // ==
+	tokenBangEqual      // !=
+	tokenPlus           // +
+	tokenMinus          // -
+	tokenStar           // *
+	tokenSlash          // /
+	tokenPercent        // %
+	tokenCaret          // ^
+	tokenAmpersand      // &
+	tokenPipe           // |
+	tokenShiftLeft      // <<
+	tokenShiftRight     // >>
+	tokenAmpersandCaret // &^
+	tokenLess           // <
+	tokenLessEqual      // <=
+	tokenGreater        // >
+	tokenGreaterEqual   // >=
+	tokenBang           // !
+	tokenAndAnd         // &&
+	tokenOrOr           // ||
 
 	tokenComma     // ,
 	tokenSemicolon // ;
@@ -106,8 +112,20 @@ func (tt TokenType) String() string {
 		return "*"
 	case tokenSlash:
 		return "/"
+	case tokenPercent:
+		return "%"
 	case tokenCaret:
 		return "^"
+	case tokenAmpersand:
+		return "&"
+	case tokenPipe:
+		return "|"
+	case tokenShiftLeft:
+		return "<<"
+	case tokenShiftRight:
+		return ">>"
+	case tokenAmpersandCaret:
+		return "&^"
 	case tokenLess:
 		return "<"
 	case tokenLessEqual:

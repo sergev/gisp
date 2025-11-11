@@ -41,15 +41,41 @@ func TestPrimSubAndDivEdgeCases(t *testing.T) {
 	})
 }
 
-func TestPrimBitNot(t *testing.T) {
+func TestPrimMod(t *testing.T) {
 	ev := NewEvaluator()
 
-	t.Run("flips all bits of integers", func(t *testing.T) {
+	t.Run("supports chained modulo", func(t *testing.T) {
+		val, err := primMod(ev, []lang.Value{lang.IntValue(123), lang.IntValue(45), lang.IntValue(7)})
+		if err != nil {
+			t.Fatalf("primMod failed: %v", err)
+		}
+		if val.Type != lang.TypeInt || val.Int() != ((123%45)%7) {
+			t.Fatalf("expected modulo result %d, got %v", (123%45)%7, val)
+		}
+	})
+
+	t.Run("validates arguments", func(t *testing.T) {
+		if _, err := primMod(ev, []lang.Value{lang.IntValue(1)}); err == nil || !strings.Contains(err.Error(), "at least 2 arguments") {
+			t.Fatalf("expected arity error, got %v", err)
+		}
+		if _, err := primMod(ev, []lang.Value{lang.RealValue(1.0), lang.IntValue(2)}); err == nil || !strings.Contains(err.Error(), "expects integer") {
+			t.Fatalf("expected type error, got %v", err)
+		}
+		if _, err := primMod(ev, []lang.Value{lang.IntValue(10), lang.IntValue(0)}); err == nil || !strings.Contains(err.Error(), "modulo by zero") {
+			t.Fatalf("expected modulo by zero error, got %v", err)
+		}
+	})
+}
+
+func TestPrimBitwiseOperations(t *testing.T) {
+	ev := NewEvaluator()
+
+	t.Run("xor handles unary complement and variadic xor", func(t *testing.T) {
 		inputs := []int64{0, 1, 42, -17, math.MaxInt64}
 		for _, in := range inputs {
-			val, err := primBitNot(ev, []lang.Value{lang.IntValue(in)})
+			val, err := primBitXor(ev, []lang.Value{lang.IntValue(in)})
 			if err != nil {
-				t.Fatalf("primBitNot on %d failed: %v", in, err)
+				t.Fatalf("primBitXor unary on %d failed: %v", in, err)
 			}
 			if val.Type != lang.TypeInt {
 				t.Fatalf("expected integer result for %d, got %v", in, val.Type)
@@ -59,17 +85,96 @@ func TestPrimBitNot(t *testing.T) {
 				t.Fatalf("expected %d complement, got %d", expect, val.Int())
 			}
 		}
-	})
 
-	t.Run("validates arity and type", func(t *testing.T) {
-		if _, err := primBitNot(ev, nil); err == nil || !strings.Contains(err.Error(), "expects 1 argument") {
+		val, err := primBitXor(ev, []lang.Value{
+			lang.IntValue(0b1100),
+			lang.IntValue(0b1010),
+			lang.IntValue(0b0110),
+		})
+		if err != nil {
+			t.Fatalf("primBitXor variadic failed: %v", err)
+		}
+		if val.Int() != 0b0000 {
+			t.Fatalf("expected xor result 0, got %b", val.Int())
+		}
+
+		if _, err := primBitXor(ev, nil); err == nil || !strings.Contains(err.Error(), "at least 1 argument") {
 			t.Fatalf("expected arity error, got %v", err)
 		}
-		if _, err := primBitNot(ev, []lang.Value{lang.IntValue(1), lang.IntValue(2)}); err == nil || !strings.Contains(err.Error(), "expects 1 argument") {
-			t.Fatalf("expected arity error for two arguments, got %v", err)
-		}
-		if _, err := primBitNot(ev, []lang.Value{lang.RealValue(1.5)}); err == nil || !strings.Contains(err.Error(), "expects integer") {
+		if _, err := primBitXor(ev, []lang.Value{lang.RealValue(1.5)}); err == nil || !strings.Contains(err.Error(), "expects integer") {
 			t.Fatalf("expected type error, got %v", err)
+		}
+	})
+
+	t.Run("and/or/clear combine multiple integers", func(t *testing.T) {
+		andVal, err := primBitAnd(ev, []lang.Value{
+			lang.IntValue(0b1111),
+			lang.IntValue(0b1010),
+			lang.IntValue(0b0011),
+		})
+		if err != nil {
+			t.Fatalf("primBitAnd failed: %v", err)
+		}
+		if andVal.Int() != 0b0010 {
+			t.Fatalf("expected bitwise and 0b0010, got %b", andVal.Int())
+		}
+
+		orVal, err := primBitOr(ev, []lang.Value{
+			lang.IntValue(0b0101),
+			lang.IntValue(0b0011),
+		})
+		if err != nil {
+			t.Fatalf("primBitOr failed: %v", err)
+		}
+		if orVal.Int() != 0b0111 {
+			t.Fatalf("expected bitwise or 0b0111, got %b", orVal.Int())
+		}
+
+		clearVal, err := primBitClear(ev, []lang.Value{
+			lang.IntValue(0b1111),
+			lang.IntValue(0b1100),
+			lang.IntValue(0b0011),
+		})
+		if err != nil {
+			t.Fatalf("primBitClear failed: %v", err)
+		}
+		if clearVal.Int() != 0b0000 {
+			t.Fatalf("expected bit clear result 0, got %b", clearVal.Int())
+		}
+
+		if _, err := primBitAnd(ev, []lang.Value{lang.IntValue(1)}); err == nil || !strings.Contains(err.Error(), "at least 2 arguments") {
+			t.Fatalf("expected bit and arity error, got %v", err)
+		}
+		if _, err := primBitOr(ev, []lang.Value{lang.IntValue(1), lang.RealValue(2)}); err == nil || !strings.Contains(err.Error(), "expects integer") {
+			t.Fatalf("expected bit or type error, got %v", err)
+		}
+		if _, err := primBitClear(ev, []lang.Value{lang.IntValue(1)}); err == nil || !strings.Contains(err.Error(), "at least 2 arguments") {
+			t.Fatalf("expected bit clear arity error, got %v", err)
+		}
+	})
+
+	t.Run("shift validates arguments", func(t *testing.T) {
+		left, err := primShiftLeft(ev, []lang.Value{lang.IntValue(3), lang.IntValue(2)})
+		if err != nil {
+			t.Fatalf("primShiftLeft failed: %v", err)
+		}
+		if left.Int() != 12 {
+			t.Fatalf("expected 12, got %d", left.Int())
+		}
+
+		right, err := primShiftRight(ev, []lang.Value{lang.IntValue(-16), lang.IntValue(2)})
+		if err != nil {
+			t.Fatalf("primShiftRight failed: %v", err)
+		}
+		if right.Int() != -4 {
+			t.Fatalf("expected arithmetic shift to -4, got %d", right.Int())
+		}
+
+		if _, err := primShiftLeft(ev, []lang.Value{lang.IntValue(1), lang.IntValue(-1)}); err == nil || !strings.Contains(err.Error(), "non-negative shift") {
+			t.Fatalf("expected negative shift error, got %v", err)
+		}
+		if _, err := primShiftRight(ev, []lang.Value{lang.RealValue(1.5), lang.IntValue(1)}); err == nil || !strings.Contains(err.Error(), "expects integer") {
+			t.Fatalf("expected shift type error, got %v", err)
 		}
 	})
 }

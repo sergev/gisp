@@ -272,7 +272,7 @@ func TestLexerBlockCommentUnterminated(t *testing.T) {
 }
 
 func TestLexerOperatorAndPunctuationTokens(t *testing.T) {
-	src := "+ - * / ^ = == ! != < <= > >= && || , ; ( ) { } [ ]"
+	src := "+ - * / % ^ & | << >> &^ = == ! != < <= > >= && || , ; ( ) { } [ ]"
 	lx := newLexer(src)
 
 	want := []TokenType{
@@ -280,7 +280,13 @@ func TestLexerOperatorAndPunctuationTokens(t *testing.T) {
 		tokenMinus,
 		tokenStar,
 		tokenSlash,
+		tokenPercent,
 		tokenCaret,
+		tokenAmpersand,
+		tokenPipe,
+		tokenShiftLeft,
+		tokenShiftRight,
+		tokenAmpersandCaret,
 		tokenAssign,
 		tokenEqualEqual,
 		tokenBang,
@@ -317,44 +323,27 @@ func TestLexerOperatorAndPunctuationTokens(t *testing.T) {
 	}
 }
 
-func TestLexerUnsupportedPercentOperator(t *testing.T) {
-	lx := newLexer("%")
-	tok, err := lx.nextToken()
-	if err == nil {
-		t.Fatalf("expected error for unsupported operator")
-	}
-	if tok.Type != tokenIllegal {
-		t.Fatalf("expected illegal token, got %v", tok.Type)
-	}
-	if !strings.Contains(err.Error(), "unsupported operator %") {
-		t.Fatalf("unexpected error message: %v", err)
-	}
-}
+func TestLexerBitwiseOperators(t *testing.T) {
+	src := "& | &^ << >>"
+	lx := newLexer(src)
 
-func TestLexerSingleAmpersandAndPipe(t *testing.T) {
-	cases := []struct {
-		name    string
-		src     string
-		wantErr string
-	}{
-		{"ampersand", "&", "unexpected '&'"},
-		{"pipe", "|", "unexpected '|'"},
+	want := []TokenType{
+		tokenAmpersand,
+		tokenPipe,
+		tokenAmpersandCaret,
+		tokenShiftLeft,
+		tokenShiftRight,
 	}
 
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			lx := newLexer(tc.src)
-			tok, err := lx.nextToken()
-			if err == nil {
-				t.Fatalf("expected error, got none")
-			}
-			if tok.Type != tokenIllegal {
-				t.Fatalf("expected illegal token, got %v", tok.Type)
-			}
-			if !strings.Contains(err.Error(), tc.wantErr) {
-				t.Fatalf("unexpected error message: %v", err)
-			}
-		})
+	for i, typ := range want {
+		tok := mustNextToken(t, lx)
+		if tok.Type != typ {
+			t.Fatalf("token %d: expected %v, got %v", i, typ, tok.Type)
+		}
+	}
+
+	if tok := mustNextToken(t, lx); tok.Type != tokenEOF {
+		t.Fatalf("expected EOF, got %v", tok.Type)
 	}
 }
 

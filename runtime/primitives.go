@@ -34,7 +34,13 @@ func installPrimitives(ev *lang.Evaluator) {
 	define("-", primSub)
 	define("*", primMul)
 	define("/", primDiv)
-	define("^", primBitNot)
+	define("%", primMod)
+	define("&", primBitAnd)
+	define("|", primBitOr)
+	define("^", primBitXor)
+	define("&^", primBitClear)
+	define("<<", primShiftLeft)
+	define(">>", primShiftRight)
 
 	define("=", primNumEq)
 	define("<", primLess)
@@ -325,6 +331,27 @@ func primDiv(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 	return lang.RealValue(acc), nil
 }
 
+func primMod(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	if len(args) < 2 {
+		return lang.Value{}, errors.New("% expects at least 2 arguments")
+	}
+	if args[0].Type != lang.TypeInt {
+		return lang.Value{}, typeError("%", "integer", args[0])
+	}
+	result := args[0].Int()
+	for _, arg := range args[1:] {
+		if arg.Type != lang.TypeInt {
+			return lang.Value{}, typeError("%", "integer", arg)
+		}
+		divisor := arg.Int()
+		if divisor == 0 {
+			return lang.Value{}, errors.New("modulo by zero")
+		}
+		result %= divisor
+	}
+	return lang.IntValue(result), nil
+}
+
 func primNumEq(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 	if len(args) < 2 {
 		return lang.BoolValue(true), nil
@@ -389,15 +416,119 @@ func primNot(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 	return lang.BoolValue(!lang.IsTruthy(args[0])), nil
 }
 
-func primBitNot(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
-	if len(args) != 1 {
-		return lang.Value{}, fmt.Errorf("^ expects 1 argument, got %d", len(args))
+func primBitAnd(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	if len(args) < 2 {
+		return lang.Value{}, fmt.Errorf("& expects at least 2 arguments, got %d", len(args))
 	}
-	arg := args[0]
-	if arg.Type != lang.TypeInt {
-		return lang.Value{}, typeError("^", "integer", arg)
+	result, err := requireIntArg("&", args[0])
+	if err != nil {
+		return lang.Value{}, err
 	}
-	return lang.IntValue(^arg.Int()), nil
+	for _, arg := range args[1:] {
+		value, err := requireIntArg("&", arg)
+		if err != nil {
+			return lang.Value{}, err
+		}
+		result &= value
+	}
+	return lang.IntValue(result), nil
+}
+
+func primBitOr(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	if len(args) < 2 {
+		return lang.Value{}, fmt.Errorf("| expects at least 2 arguments, got %d", len(args))
+	}
+	result, err := requireIntArg("|", args[0])
+	if err != nil {
+		return lang.Value{}, err
+	}
+	for _, arg := range args[1:] {
+		value, err := requireIntArg("|", arg)
+		if err != nil {
+			return lang.Value{}, err
+		}
+		result |= value
+	}
+	return lang.IntValue(result), nil
+}
+
+func primBitXor(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	if len(args) == 0 {
+		return lang.Value{}, fmt.Errorf("^ expects at least 1 argument, got %d", len(args))
+	}
+	if len(args) == 1 {
+		value, err := requireIntArg("^", args[0])
+		if err != nil {
+			return lang.Value{}, err
+		}
+		return lang.IntValue(^value), nil
+	}
+	result, err := requireIntArg("^", args[0])
+	if err != nil {
+		return lang.Value{}, err
+	}
+	for _, arg := range args[1:] {
+		value, err := requireIntArg("^", arg)
+		if err != nil {
+			return lang.Value{}, err
+		}
+		result ^= value
+	}
+	return lang.IntValue(result), nil
+}
+
+func primBitClear(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	if len(args) < 2 {
+		return lang.Value{}, fmt.Errorf("&^ expects at least 2 arguments, got %d", len(args))
+	}
+	result, err := requireIntArg("&^", args[0])
+	if err != nil {
+		return lang.Value{}, err
+	}
+	for _, arg := range args[1:] {
+		value, err := requireIntArg("&^", arg)
+		if err != nil {
+			return lang.Value{}, err
+		}
+		result &^= value
+	}
+	return lang.IntValue(result), nil
+}
+
+func primShiftLeft(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	if len(args) != 2 {
+		return lang.Value{}, fmt.Errorf("<< expects 2 arguments, got %d", len(args))
+	}
+	value, err := requireIntArg("<<", args[0])
+	if err != nil {
+		return lang.Value{}, err
+	}
+	shift, err := requireIntArg("<<", args[1])
+	if err != nil {
+		return lang.Value{}, err
+	}
+	if shift < 0 {
+		return lang.Value{}, fmt.Errorf("<< expects non-negative shift, got %d", shift)
+	}
+	return lang.IntValue(value << uint(shift)), nil
+}
+
+func primShiftRight(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	if len(args) != 2 {
+		return lang.Value{}, fmt.Errorf(">> expects 2 arguments, got %d", len(args))
+	}
+	value, err := requireIntArg(">>", args[0])
+	if err != nil {
+		return lang.Value{}, err
+	}
+	shift, err := requireIntArg(">>", args[1])
+	if err != nil {
+		return lang.Value{}, err
+	}
+	if shift < 0 {
+		return lang.Value{}, fmt.Errorf(">> expects non-negative shift, got %d", shift)
+	}
+	return lang.IntValue(value >> uint(shift)), nil
 }
 
 func primRandomInteger(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
@@ -857,6 +988,13 @@ func unaryTypePredicate(name string, args []lang.Value, pred func(lang.Value) bo
 
 func typeError(name, expected string, got lang.Value) error {
 	return fmt.Errorf("%s expects %s, got %s", name, expected, typeName(got))
+}
+
+func requireIntArg(name string, v lang.Value) (int64, error) {
+	if v.Type != lang.TypeInt {
+		return 0, typeError(name, "integer", v)
+	}
+	return v.Int(), nil
 }
 
 func typeName(v lang.Value) string {

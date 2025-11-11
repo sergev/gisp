@@ -392,6 +392,8 @@ func compileBinaryExpr(b *builder, expr *BinaryExpr, ctx compileContext) (lang.V
 		return lang.List(b.symbol("*"), left, right), nil
 	case tokenSlash:
 		return lang.List(b.symbol("/"), left, right), nil
+	case tokenPercent:
+		return lang.List(b.symbol("%"), left, right), nil
 	case tokenEqualEqual:
 		return lang.List(b.symbol("="), left, right), nil
 	case tokenBangEqual:
@@ -407,6 +409,18 @@ func compileBinaryExpr(b *builder, expr *BinaryExpr, ctx compileContext) (lang.V
 		return lang.List(b.symbol(">"), left, right), nil
 	case tokenGreaterEqual:
 		return lang.List(b.symbol(">="), left, right), nil
+	case tokenAmpersand:
+		return lang.List(b.symbol("&"), left, right), nil
+	case tokenCaret:
+		return lang.List(b.symbol("^"), left, right), nil
+	case tokenPipe:
+		return lang.List(b.symbol("|"), left, right), nil
+	case tokenAmpersandCaret:
+		return lang.List(b.symbol("&^"), left, right), nil
+	case tokenShiftLeft:
+		return lang.List(b.symbol("<<"), left, right), nil
+	case tokenShiftRight:
+		return lang.List(b.symbol(">>"), left, right), nil
 	case tokenAndAnd:
 		return lang.List(b.symbol("and"), left, right), nil
 	case tokenOrOr:

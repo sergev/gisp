@@ -24,11 +24,13 @@ Go developers.
   Go's rules (after identifiers, literals, `return`, `)`/`]`/`}` at newlines, and
   before a closing `}`), so you only need to spell them out when you want to
   force a statement to continue onto the next line.
-- **Expressions:** infix operators `+`, `-`, `*`, `/`, `==`, `!=`, `<`, `<=`,
-  `>`, `>=`, logical `&&`/`||`, unary `!` and unary negation. `==` compiles to
-  the runtime numeric primitive `=` (and `!=` expands to `(not (= ...))`), so it
+- **Expressions:** infix operators `+`, `-`, `*`, `/`, `%`, `<<`, `>>`, `&`,
+  `|`, `^`, `&^`, `==`, `!=`, `<`, `<=`, `>`, `>=`, logical `&&`/`||`, unary
+  `!`, unary negation, and unary `^` for bitwise complement. `==` compiles to the
+  runtime numeric primitive `=` (and `!=` expands to `(not (= ...))`), so it
   expects numbers; use the `eq` and `equal` primitives via backticks when you
-  need identity or structural comparison of non-numeric values.
+  need identity or structural comparison of non-numeric values. Logical `&&` and
+  `||` expand to short-circuiting macros installed by the runtime prelude.
 - **Special forms:** `switch` expressions select the first truthy case and
   compile down to the runtime `cond`.
 - **Literals:** numbers, strings, booleans (`true`/`false`), and list literals
@@ -123,9 +125,9 @@ SExprLiteral   = "`" SExpression ;
 
 EqualityOp     = "==" | "!=" ;
 RelOp          = "<" | "<=" | ">" | ">=" ;
-AddOp          = "+" | "-" ;
-MulOp          = "*" | "/" ;
-PrefixOp       = "-" | "!" ;
+AddOp          = "+" | "-" | "|" | "^" ;
+MulOp          = "*" | "/" | "%" | "<<" | ">>" | "&" | "&^" ;
+PrefixOp       = "-" | "!" | "^" ;
 
 Identifier     = letter { letter | digit | "_" } ;
 Number         = digit { digit } [ "." digit { digit } ] ;

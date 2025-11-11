@@ -281,13 +281,10 @@ func (lx *lexer) nextToken() (Token, error) {
 		tok = simpleToken(tokenStar, start)
 	case '/':
 		tok = simpleToken(tokenSlash, start)
+	case '%':
+		tok = simpleToken(tokenPercent, start)
 	case '^':
 		tok = simpleToken(tokenCaret, start)
-	case '%':
-		return lx.emit(Token{
-			Type: tokenIllegal,
-			Pos:  positionFromState(start),
-		}), fmt.Errorf("unsupported operator %%")
 	case '(':
 		tok = simpleToken(tokenLParen, start)
 	case ')':
@@ -319,30 +316,36 @@ func (lx *lexer) nextToken() (Token, error) {
 			tok = simpleToken(tokenBang, start)
 		}
 	case '<':
-		if lx.match('=') {
+		switch {
+		case lx.match('<'):
+			tok = simpleToken(tokenShiftLeft, start)
+		case lx.match('='):
 			tok = simpleToken(tokenLessEqual, start)
-		} else {
+		default:
 			tok = simpleToken(tokenLess, start)
 		}
 	case '>':
-		if lx.match('=') {
+		switch {
+		case lx.match('>'):
+			tok = simpleToken(tokenShiftRight, start)
+		case lx.match('='):
 			tok = simpleToken(tokenGreaterEqual, start)
-		} else {
+		default:
 			tok = simpleToken(tokenGreater, start)
 		}
 	case '&':
-		if lx.match('&') {
+		if lx.match('^') {
+			tok = simpleToken(tokenAmpersandCaret, start)
+		} else if lx.match('&') {
 			tok = simpleToken(tokenAndAnd, start)
 		} else {
-			illegal, err := illegalToken(start, fmt.Errorf("unexpected '&'"))
-			return lx.emit(illegal), err
+			tok = simpleToken(tokenAmpersand, start)
 		}
 	case '|':
 		if lx.match('|') {
 			tok = simpleToken(tokenOrOr, start)
 		} else {
-			illegal, err := illegalToken(start, fmt.Errorf("unexpected '|'"))
-			return lx.emit(illegal), err
+			tok = simpleToken(tokenPipe, start)
 		}
 	default:
 		illegal, err := illegalToken(start, fmt.Errorf("unexpected character %q", r))

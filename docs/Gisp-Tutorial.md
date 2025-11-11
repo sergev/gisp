@@ -101,6 +101,8 @@ newline()
 
 Use scientific notation (`1.2e-3`) for very small or large values. The parser tests cover integers, decimals, and exponent forms, so you get the same behaviour in scripts and the REPL.
 
+Unary operators mirror Go where the runtime has a sensible meaning: use `-x` for numeric negation, `!x` for boolean negation, and `^x` for the bitwise complement of an integer. Pointer dereference, address taking, and channel receive are intentionally absent because the runtime does not expose Go pointers or channels.
+
 ### Strings and Booleans
 
 Strings use double quotes and support standard escape sequences (`\n`, `\t`, `\\`, `\"`). Booleans are `true` and `false`, and only `false` is considered falsy at runtime.

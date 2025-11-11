@@ -464,23 +464,27 @@ func (p *parser) parseTerm() (Expr, error) {
 	if err != nil {
 		return nil, err
 	}
-	for p.curr.Type == tokenPlus || p.curr.Type == tokenMinus {
-		opTok := p.curr
-		if err := p.advance(); err != nil {
-			return nil, err
-		}
-		right, err := p.parseFactor()
-		if err != nil {
-			return nil, err
-		}
-		left = &BinaryExpr{
-			Op:    opTok.Type,
-			Left:  left,
-			Right: right,
-			Posn:  posFromToken(opTok),
+	for {
+		switch p.curr.Type {
+		case tokenPlus, tokenMinus, tokenPipe, tokenCaret:
+			opTok := p.curr
+			if err := p.advance(); err != nil {
+				return nil, err
+			}
+			right, err := p.parseFactor()
+			if err != nil {
+				return nil, err
+			}
+			left = &BinaryExpr{
+				Op:    opTok.Type,
+				Left:  left,
+				Right: right,
+				Posn:  posFromToken(opTok),
+			}
+		default:
+			return left, nil
 		}
 	}
-	return left, nil
 }
 
 func (p *parser) parseFactor() (Expr, error) {
@@ -488,23 +492,27 @@ func (p *parser) parseFactor() (Expr, error) {
 	if err != nil {
 		return nil, err
 	}
-	for p.curr.Type == tokenStar || p.curr.Type == tokenSlash {
-		opTok := p.curr
-		if err := p.advance(); err != nil {
-			return nil, err
-		}
-		right, err := p.parseUnary()
-		if err != nil {
-			return nil, err
-		}
-		left = &BinaryExpr{
-			Op:    opTok.Type,
-			Left:  left,
-			Right: right,
-			Posn:  posFromToken(opTok),
+	for {
+		switch p.curr.Type {
+		case tokenStar, tokenSlash, tokenPercent, tokenShiftLeft, tokenShiftRight, tokenAmpersand, tokenAmpersandCaret:
+			opTok := p.curr
+			if err := p.advance(); err != nil {
+				return nil, err
+			}
+			right, err := p.parseUnary()
+			if err != nil {
+				return nil, err
+			}
+			left = &BinaryExpr{
+				Op:    opTok.Type,
+				Left:  left,
+				Right: right,
+				Posn:  posFromToken(opTok),
+			}
+		default:
+			return left, nil
 		}
 	}
-	return left, nil
 }
 
 func (p *parser) parseUnary() (Expr, error) {
