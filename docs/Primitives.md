@@ -73,7 +73,7 @@ Vectors are fixed-length, mutable, zero-based indexed sequences. They complement
 - `vectorToList` — Converts a vector into a freshly allocated proper list containing the same elements.
 - `listToVector` — Converts a proper list into a fresh vector. Non-lists raise an error.
 
-Literal vectors use the reader notation `#(elem ...)`, which is sugar for calling `vector`.
+Literal vectors use the reader notation `#(elem ...)`, which is sugar for calling `vector`. When writing Gisp source, prefer the surface literal `#[elem, ...]` or the declaration shorthand `var buffer[size]`; both expand to the same runtime structure while matching the Go-like syntax.
 
 ## Control Flow
 

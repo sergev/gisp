@@ -2,7 +2,7 @@
 
 This tutorial walks from the first `display` call through macro metaprogramming and numerical experiments, showing how Gisp maps to the Scheme core that powers the interpreter. Along the way we port several classic Scheme programs, most of them popularised by *Structure and Interpretation of Computer Programs* (SICP), into idiomatic Gisp so you can see how the language handles both floating-point computation and symbolic manipulation.
 
-Use this document side by side with `docs/Language.md`, `docs/Primitives.md`, and the examples in `examples/` if you want more precise reference material.
+Use this document side by side with `docs/Language.md`, `docs/Primitives.md`, and the curated catalog in [`examples/README.md`](../examples/README.md) if you want more precise reference material or runnable samples.
 
 ---
 
@@ -38,7 +38,7 @@ Gisp understands both `.gs` (s-expression syntax) and `.gisp` files:
 ./gisp examples/fact.gisp
 ```
 
-Scripts may start with `#!/usr/bin/env gisp`, letting you run them directly once the binary is on your `PATH`.
+Browse [`examples/README.md`](../examples/README.md) to discover the full tutorial sequence, ports, benchmarks, and pattern-matching walkthroughs. Scripts may start with `#!/usr/bin/env gisp`, letting you run them directly once the binary is on your `PATH`.
 
 ---
 
@@ -188,6 +188,8 @@ display(accumulateUntil(2.0))
 newline()
 ```
 
+`while` is the only loop statement in the surface language. Inside a loop you can use `break` to exit immediately or `continue` to skip to the next iteration; both compile to continuation jumps in the underlying evaluator.
+
 ### Higher-Order Functions
 
 Functions are first-class values. The following implements `iterate`, a helper that repeatedly applies a function:
@@ -292,11 +294,15 @@ newline()
 
 ### Vector Literals and Indexed Arrays
 
-Vectors complement lists when you need constant-time indexed access or in-place mutation. Construct them with the `#[ ... ]` literal or by calling `makeVector`. The literal below is shorthand for `(vector 1 2 3)`:
+Vectors complement lists when you need constant-time indexed access or in-place mutation. Construct them with the `#[ ... ]` literal, declare a zero-filled buffer with `var storage[size]` (shorthand for `makeVector(size, nil)`), or call `makeVector` directly. The literal below is shorthand for `(vector 1 2 3)`:
 
 ```gisp
 var triple = #[1, 2, 3]
 display(vectorLength(triple))   // 3
+newline()
+
+var scratch[4]
+display(scratch[0])             // nil
 newline()
 ```
 
@@ -336,8 +342,10 @@ newline()
 ```
 
 - `makeVector(limit + 1, true)` creates a mutable array of booleans initialised to `true`.
+- `var flags[limit + 1]` is equivalent to `var flags = makeVector(limit + 1, nil)` if you prefer the declarative shorthand.
 - `flags[i] = false` updates a slot in-place; it expands to `vectorSet(flags, i, false)` under the hood.
 - `flags[i]` reads a slot; it expands to `vectorRef(flags, i)`.
+- `vectorFill`, `vectorToList`, and `listToVector` round out the core APIs for bulk updates and conversions.
 
 #### REPL snapshot
 

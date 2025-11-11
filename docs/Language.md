@@ -20,7 +20,8 @@ Go developers.
 
 - **Declarations:** `func`, `var`, and `const` at the top level.
 - **Statements:** variable declarations, assignment, post-increment/decrement
-  (`x++`, `x--`), expression statements, `if`/`else`, `while`, and `return`.
+  (`x++`, `x--`), expression statements, `if`/`else`, `while`, `break`,
+  `continue`, and `return`.
   Semicolons are inserted automatically using
   Go's rules (after identifiers, literals, `return`, `)`/`]`/`}` at newlines, and
   before a closing `}`), so you only need to spell them out when you want to
@@ -48,6 +49,22 @@ Go developers.
 - **Inline Scheme:** `` var quoted = `(list 1 2 3) `` inserts the exact
   s-expression `(list 1 2 3)` into the compiled output.
 
+### Vectors
+
+Vectors provide fixed-length, mutable storage with constant-time indexed access. You can:
+
+- Build them inline with the literal form `#[elem, ...]`. It expands to the same runtime representation as the Scheme reader literal `#(elem ...)` or an explicit `(vector elem ...)` call.
+- Allocate them programmatically via `makeVector(length, [fill])`. The optional fill value is evaluated once and copied into every slot.
+- Declare a zero-filled vector with `var buffer[size]`. This is shorthand for `var buffer = makeVector(size, nil)`; every slot starts out as `nil`.
+- Read and write elements using array-style syntax. `vec[index]` expands to `vectorRef(vec, index)`, and `vec[index] = value` expands to `vectorSet(vec, index, value)`. Indices are zero-based; out-of-range accesses raise an error.
+- Inspect and transform them with the standard primitives: `vectorLength`, `vectorFill`, `vectorToList`, and `listToVector`.
+
+Use vectors when you need in-place updates, dense numeric storage, or a scratch buffer that would be cumbersome with linked lists. For a tour that includes the sieve-of-Eratosthenes example, see the “Vector Literals and Indexed Arrays” section of the tutorial.
+
+> Tips:
+> - When embedding raw Scheme code via backticks, the reader literal `#( ... )` is often more convenient than spelling out `(vector ...)`.
+> - Prefer the surface literal `#[ ... ]` or `var name[size]` inside `.gisp` files so the syntax stays consistent with the Go-flavoured style.
+
 ### Symbol Literals in Backticks
 
 Inline s-expression literals are handed to the Scheme-style reader in `sexpr`, so all of Scheme's prefix sugar is available. A bare token like `` `+ `` reads as the symbol `+`, and `` `'+ `` expands to `(quote +)`. Prefer those forms over spelling out `(quote ...)` manually—for example, `cons(`'+, args)` is identical to `cons(`(quote +), args)` but shorter. We intentionally do **not** rewrite string literals such as `"+"` into symbols: strings are plain data, and automatic coercion would make it impossible to represent an actual string containing a plus sign. If you do need to turn a string into a symbol at runtime, use the existing `stringToSymbol` primitive instead of overloading the reader.
@@ -74,7 +91,9 @@ FuncDecl       = "func" Identifier "(" [ ParamList ] ")" Block ;
 ParamList      = Parameter { "," Parameter } ;
 Parameter      = Identifier ;
 
-VarDecl        = "var" Identifier [ "=" Expression ] ";" ;
+VarDecl        = "var" Identifier
+               ( "[" Expression "]"
+               | [ "=" Expression ] ) ";" ;
 ConstDecl      = "const" Identifier "=" Expression ";" ;
 
 Block          = "{" { Statement } "}" ;
@@ -180,6 +199,8 @@ var expr = map(func(x) {
 var vec = #[1, 2, 3]
 ```
 
+Additional sample programs live under `examples/`. See [`examples/README.md`](../examples/README.md) for a catalog grouped by topic (tutorial walkthroughs, language ports, benchmarks, and pattern-matching demos).
+
 ## Runtime Integration
 
 - Files ending in `.gisp` are parsed with the Gisp syntax when loaded through
@@ -192,9 +213,12 @@ var vec = #[1, 2, 3]
 ## Notes on Control Flow
 
 `return` statements are implemented using continuations so they exit the nearest
-containing function, matching the behaviour of Scheme's `call/cc`. `while` is
-compiled into a recursive loop that preserves tail recursion, so `continue` and
-`break` are not required; use conditionals and function exits as needed.
+containing function, matching the behaviour of Scheme's `call/cc`. `while`
+compiles into a tail-recursive loop; `break` exits the loop immediately and
+`continue` jumps to the next iteration. Both statements are only legal inside
+loops and translate to continuation-based exits under the hood. For more
+specialised control transfers, introduce helper functions or rely on `callcc` to
+capture and invoke continuations directly.
 
 For direct access to continuations from the Go-style surface syntax, the runtime
 exposes a `callcc` primitive, equivalent to ``(lambda (f) (call/cc f))``.

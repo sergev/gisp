@@ -78,16 +78,15 @@ Passing `-` runs code from standard input.
 
 ## Examples
 
-Sample programs live in `examples/`:
+Browse the full catalog in [`examples/README.md`](examples/README.md). A few quick starts:
 
-- `hello.gs` – hello world via `display` and `newline`
-- `continuation.gs` – demonstrates capturing and invoking continuations with `call/cc`
-- `fact.gisp` – factorials using the Go-like syntax
-- `tutorial_*.gisp` – end-to-end walkthrough files referenced by the tutorial
-- `puzzle15.gisp` – interactive 15 puzzle; enter moves as symbols (`up`, `down`, `left`, `right`)
-- `snobol_patterns.gisp` – Snobol-inspired backtracking pattern matcher written in pure Gisp
+- `tutorial_01_hello.gisp` — first steps with `display` and the Go-like surface syntax.
+- `fact.gisp` — recursive and tail-recursive factorial implementations.
+- `continuation.gisp` — capture and resume computations with `callcc`.
+- `maze.gisp` — generate and render random mazes with ASCII/Unicode art.
+- `regex_patterns.gisp` — explore the regex matcher DSL with real-world patterns.
 
-Run any of them with the interpreter:
+Run any example with the interpreter:
 
 ```bash
 ./gisp examples/hello.gs
