@@ -9,6 +9,7 @@ This document summarizes the built-in primitives that are installed into the glo
 - `*` — Multiplies numeric arguments. With no arguments the result is `1`. Mixed integer/real inputs promote to real.
 - `/` — Divides the first numeric argument by each subsequent one. Unary form returns the reciprocal. Always returns a real. Division by zero raises an error.
 - `%` — Calculates the remainder of integer division. Requires at least two integer arguments and applies left-to-right. Division by zero raises an error.
+- `+=`, `-=`, `*=`, `/=`, `%=` — Compound numeric assignments. Expect two arguments: a quoted symbol naming an existing binding and a numeric delta. They read the current binding, apply the corresponding arithmetic primitive, store the result back into the same binding, and return the updated value.
 
 ## Bitwise and Shift Operators
 
@@ -18,6 +19,7 @@ This document summarizes the built-in primitives that are installed into the glo
 - `&^` — Bit clear. Takes two or more integers and applies Go-style bit clearing (`a &^ b`).
 - `<<` — Left shift. Exactly two integer arguments: the value and a non-negative shift amount.
 - `>>` — Right shift. Exactly two integer arguments: the value and a non-negative shift amount. Uses arithmetic shifting for signed integers.
+- `<<=`, `>>=`, `&=`, `|=`, `^=`, `&^=` — Compound bitwise assignments. Like the arithmetic forms, they accept a quoted symbol naming the target binding and a single integer operand. They apply the corresponding bitwise or shifting primitive, mutate the binding in place, and return the updated value.
 
 ## Numeric Comparisons
 

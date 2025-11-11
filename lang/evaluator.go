@@ -4,13 +4,14 @@ import "fmt"
 
 // Evaluator executes Scheme-like programs.
 type Evaluator struct {
-	Global *Env
+	Global     *Env
+	currentEnv *Env
 }
 
 // NewEvaluator constructs an evaluator rooted at a new global environment.
 func NewEvaluator() *Evaluator {
 	global := NewEnv(nil)
-	return &Evaluator{Global: global}
+	return &Evaluator{Global: global, currentEnv: global}
 }
 
 // Eval evaluates a single expression within the provided environment.
@@ -18,11 +19,39 @@ func (ev *Evaluator) Eval(expr Value, env *Env) (Value, error) {
 	if env == nil {
 		env = ev.Global
 	}
+	prev := ev.currentEnv
+	ev.setCurrentEnv(env)
 	state := &evalState{
 		expr: expr,
 		env:  env,
 	}
-	return ev.run(state)
+	val, err := ev.run(state)
+	ev.currentEnv = prev
+	return val, err
+}
+
+// CurrentEnv returns the environment associated with the ongoing evaluation.
+func (ev *Evaluator) CurrentEnv() *Env {
+	if ev.currentEnv != nil {
+		return ev.currentEnv
+	}
+	return ev.Global
+}
+
+func (ev *Evaluator) setCurrentEnv(env *Env) {
+	if env == nil {
+		ev.currentEnv = ev.Global
+		return
+	}
+	ev.currentEnv = env
+}
+
+func (ev *Evaluator) withCurrentEnv(env *Env, fn func() (Value, error)) (Value, error) {
+	prev := ev.currentEnv
+	ev.setCurrentEnv(env)
+	val, err := fn()
+	ev.currentEnv = prev
+	return val, err
 }
 
 // Apply invokes a procedure with arguments.
@@ -645,7 +674,9 @@ func (ev *Evaluator) invokeProcedure(state *evalState, operator Value, args []Va
 		if fn == nil {
 			return fmt.Errorf("invalid primitive")
 		}
-		val, err := fn(ev, args)
+		val, err := ev.withCurrentEnv(state.env, func() (Value, error) {
+			return fn(ev, args)
+		})
 		if err != nil {
 			return err
 		}

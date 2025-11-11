@@ -48,3 +48,28 @@ func (e *Env) Get(name string) (Value, error) {
 func (e *Env) Parent() *Env {
 	return e.parent
 }
+
+// Locate returns the environment frame that defines name.
+func (e *Env) Locate(name string) (*Env, error) {
+	for env := e; env != nil; env = env.parent {
+		if _, ok := env.values[name]; ok {
+			return env, nil
+		}
+	}
+	return nil, fmt.Errorf("unbound variable: %s", name)
+}
+
+// Update finds the binding for name and replaces its value using fn.
+func (e *Env) Update(name string, fn func(Value) (Value, error)) (Value, error) {
+	frame, err := e.Locate(name)
+	if err != nil {
+		return Value{}, err
+	}
+	current := frame.values[name]
+	next, err := fn(current)
+	if err != nil {
+		return Value{}, err
+	}
+	frame.values[name] = next
+	return next, nil
+}

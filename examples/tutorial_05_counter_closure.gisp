@@ -3,7 +3,7 @@
 func counter(start) {
     var value = start
     return func(step) {
-        value = value + step
+        value += step
         return value
     }
 }

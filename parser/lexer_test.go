@@ -220,6 +220,34 @@ func TestLexerSExprLiteral(t *testing.T) {
 	}
 }
 
+func TestLexerCompoundAssignmentTokens(t *testing.T) {
+	src := "x += y -= z *= w /= q %= r <<= s >>= t &= u |= v ^= w &^= z"
+	tokens := lexAllTokens(t, src)
+	tokens = tokens[:len(tokens)-1]
+	tokens = dropTrailingSemicolons(tokens)
+
+	want := []TokenType{
+		tokenIdentifier, tokenPlusAssign, tokenIdentifier,
+		tokenMinusAssign, tokenIdentifier, tokenStarAssign,
+		tokenIdentifier, tokenSlashAssign, tokenIdentifier,
+		tokenPercentAssign, tokenIdentifier, tokenShiftLeftAssign,
+		tokenIdentifier, tokenShiftRightAssign, tokenIdentifier,
+		tokenAmpersandAssign, tokenIdentifier, tokenPipeAssign,
+		tokenIdentifier, tokenCaretAssign, tokenIdentifier,
+		tokenAmpersandCaretAssign, tokenIdentifier,
+	}
+
+	if len(tokens) != len(want) {
+		t.Fatalf("expected %d tokens, got %d", len(want), len(tokens))
+	}
+
+	for i, typ := range want {
+		if tokens[i].Type != typ {
+			t.Fatalf("token %d: expected %v, got %v", i, typ, tokens[i].Type)
+		}
+	}
+}
+
 func TestLexerSExprStopsBeforeComma(t *testing.T) {
 	lx := newLexer("`'+,")
 

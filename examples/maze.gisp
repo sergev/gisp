@@ -54,7 +54,7 @@ func makeSolidRow(width) {
     var count = 0
     while count < width {
         acc = cons(cellWall, acc)
-        count = count + 1
+        count += 1
     }
     return reverseList(acc)
 }
@@ -71,7 +71,7 @@ func makeAlternatingRow(width) {
             acc = cons(cellEmpty, acc)
             useWall = true
         }
-        count = count + 1
+        count += 1
     }
     return reverseList(acc)
 }
@@ -90,7 +90,7 @@ func createEmptyMaze(width, height) {
             acc = cons(makeAlternatingRow(fullWidth), acc)
             useWallRow = true
         }
-        count = count + 1
+        count += 1
     }
     return reverseList(acc)
 }
@@ -124,10 +124,10 @@ func collectEmptyCells(maze) {
                 coords = cons([y, x], coords)
             }
             cells = rest(cells)
-            x = x + 1
+            x += 1
         }
         rows = rest(rows)
-        y = y + 1
+        y += 1
     }
     return reverseList(coords)
 }
@@ -225,7 +225,7 @@ func bitValue(index) {
     var i = 0
     while i < index {
         result = result * 2
-        i = i + 1
+        i += 1
     }
     return result
 }
@@ -267,7 +267,7 @@ func cellCode(maze, coord) {
             mask = mask + bitValue(index)
         }
         cursor = rest(cursor)
-        index = index + 1
+        index += 1
     }
     return mask
 }
@@ -344,14 +344,14 @@ func mazeString(maze) {
         while !nullp(cells) {
             line = stringAppend(line, cellString(maze, [y, x]))
             cells = rest(cells)
-            x = x + 1
+            x += 1
         }
         output = stringAppend(output, line)
         rows = rest(rows)
         if !nullp(rows) {
             output = stringAppend(output, "\n")
         }
-        y = y + 1
+        y += 1
     }
     return output
 }

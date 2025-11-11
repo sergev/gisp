@@ -377,6 +377,9 @@ func demo(a, b) {
 	if !ok || assignSum.Name != "sum" {
 		t.Fatalf("expected assignment to sum, got %#v", body.Stmts[2])
 	}
+	if assignSum.Op != tokenAssign {
+		t.Fatalf("expected simple assignment operator, got %v", assignSum.Op)
+	}
 
 	ifStmt, ok := body.Stmts[3].(*IfStmt)
 	if !ok {
@@ -429,6 +432,43 @@ func demo(a, b) {
 	if call, ok := exprStmt.Expr.(*CallExpr); !ok || call.Callee.(*IdentifierExpr).Name != "print" {
 		t.Fatalf("expected call to print, got %#v", exprStmt.Expr)
 	}
+}
+
+func TestParseCompoundAssignments(t *testing.T) {
+	src := `
+func demo() {
+	count += 2;
+	count <<= shift;
+	flags &= mask
+}
+`
+	prog := parseProgramFromSource(t, src)
+	if len(prog.Decls) != 1 {
+		t.Fatalf("expected single declaration, got %d", len(prog.Decls))
+	}
+	fn, ok := prog.Decls[0].(*FuncDecl)
+	if !ok {
+		t.Fatalf("expected FuncDecl, got %T", prog.Decls[0])
+	}
+	if len(fn.Body.Stmts) != 3 {
+		t.Fatalf("expected 3 statements, got %d", len(fn.Body.Stmts))
+	}
+	check := func(idx int, name string, op TokenType) {
+		stmt, ok := fn.Body.Stmts[idx].(*AssignStmt)
+		if !ok {
+			t.Fatalf("statement %d: expected AssignStmt, got %#v", idx, fn.Body.Stmts[idx])
+		}
+		if stmt.Name != name {
+			t.Fatalf("statement %d: expected target %q, got %q", idx, name, stmt.Name)
+		}
+		if stmt.Op != op {
+			t.Fatalf("statement %d: expected op %v, got %v", idx, op, stmt.Op)
+		}
+	}
+
+	check(0, "count", tokenPlusAssign)
+	check(1, "count", tokenShiftLeftAssign)
+	check(2, "flags", tokenAmpersandAssign)
 }
 
 func TestParseVarDeclWithOptionalSemicolon(t *testing.T) {

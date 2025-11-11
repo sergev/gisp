@@ -234,6 +234,67 @@ func TestPrimRandomIntegerAndSeed(t *testing.T) {
 	})
 }
 
+func TestCompoundAssignPrimitives(t *testing.T) {
+	ev := NewEvaluator()
+	env := lang.NewEnv(ev.Global)
+
+	env.Define("count", lang.IntValue(10))
+	val, err := ev.Eval(compoundAssignExpr("+=", "count", lang.IntValue(5)), env)
+	if err != nil {
+		t.Fatalf("+= evaluation failed: %v", err)
+	}
+	if val.Type != lang.TypeInt || val.Int() != 15 {
+		t.Fatalf("+= returned unexpected value %v", val)
+	}
+	if got, err := env.Get("count"); err != nil || got.Int() != 15 {
+		t.Fatalf("count not updated, got %v err %v", got, err)
+	}
+
+	env.Define("ratio", lang.RealValue(9))
+	val, err = ev.Eval(compoundAssignExpr("/=", "ratio", lang.IntValue(3)), env)
+	if err != nil {
+		t.Fatalf("/= evaluation failed: %v", err)
+	}
+	if val.Type != lang.TypeReal || val.Real() != 3 {
+		t.Fatalf("/= returned unexpected value %v", val)
+	}
+	if got, err := env.Get("ratio"); err != nil || got.Real() != 3 {
+		t.Fatalf("ratio not updated, got %v err %v", got, err)
+	}
+
+	env.Define("flags", lang.IntValue(0b1111))
+	val, err = ev.Eval(compoundAssignExpr("&^=", "flags", lang.IntValue(0b1010)), env)
+	if err != nil {
+		t.Fatalf("&^= evaluation failed: %v", err)
+	}
+	if val.Type != lang.TypeInt || val.Int() != 0b0101 {
+		t.Fatalf("&^= returned unexpected value %v", val)
+	}
+	if got, err := env.Get("flags"); err != nil || got.Int() != 0b0101 {
+		t.Fatalf("flags not updated, got %v err %v", got, err)
+	}
+
+	_, err = ev.Eval(lang.List(
+		lang.SymbolValue("+="),
+		lang.IntValue(1),
+		lang.IntValue(2),
+	), env)
+	if err == nil || !strings.Contains(err.Error(), "symbol") {
+		t.Fatalf("expected symbol type error, got %v", err)
+	}
+}
+
+func compoundAssignExpr(op, name string, value lang.Value) lang.Value {
+	return lang.List(
+		lang.SymbolValue(op),
+		lang.List(
+			lang.SymbolValue("quote"),
+			lang.SymbolValue(name),
+		),
+		value,
+	)
+}
+
 func TestPrimRead(t *testing.T) {
 	ev := NewEvaluator()
 

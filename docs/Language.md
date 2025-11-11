@@ -86,7 +86,7 @@ Statement      =
     | Block
     ;
 
-AssignStmt     = Identifier "=" Expression ";" ;
+AssignStmt     = Identifier AssignOp Expression ";" ;
 ExprStmt       = Expression ";" ;
 
 IfStmt         = "if" Expression Block [ "else" Block ] ;
@@ -136,6 +136,9 @@ RelOp          = "<" | "<=" | ">" | ">=" ;
 AddOp          = "+" | "-" | "|" | "^" ;
 MulOp          = "*" | "/" | "%" | "<<" | ">>" | "&" | "&^" ;
 PrefixOp       = "-" | "!" | "^" ;
+
+AssignOp       = "=" | "+=" | "-=" | "*=" | "/=" | "%="
+               | "<<=" | ">>=" | "&=" | "|=" | "^=" | "&^=" ;
 
 Identifier     = letter { letter | digit | "_" } ;
 Number         = digit { digit } [ "." digit { digit } ] ;

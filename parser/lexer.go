@@ -274,17 +274,41 @@ func (lx *lexer) nextToken() (Token, error) {
 	var tok Token
 	switch r {
 	case '+':
-		tok = simpleToken(tokenPlus, start)
+		if lx.match('=') {
+			tok = simpleToken(tokenPlusAssign, start)
+		} else {
+			tok = simpleToken(tokenPlus, start)
+		}
 	case '-':
-		tok = simpleToken(tokenMinus, start)
+		if lx.match('=') {
+			tok = simpleToken(tokenMinusAssign, start)
+		} else {
+			tok = simpleToken(tokenMinus, start)
+		}
 	case '*':
-		tok = simpleToken(tokenStar, start)
+		if lx.match('=') {
+			tok = simpleToken(tokenStarAssign, start)
+		} else {
+			tok = simpleToken(tokenStar, start)
+		}
 	case '/':
-		tok = simpleToken(tokenSlash, start)
+		if lx.match('=') {
+			tok = simpleToken(tokenSlashAssign, start)
+		} else {
+			tok = simpleToken(tokenSlash, start)
+		}
 	case '%':
-		tok = simpleToken(tokenPercent, start)
+		if lx.match('=') {
+			tok = simpleToken(tokenPercentAssign, start)
+		} else {
+			tok = simpleToken(tokenPercent, start)
+		}
 	case '^':
-		tok = simpleToken(tokenCaret, start)
+		if lx.match('=') {
+			tok = simpleToken(tokenCaretAssign, start)
+		} else {
+			tok = simpleToken(tokenCaret, start)
+		}
 	case '(':
 		tok = simpleToken(tokenLParen, start)
 	case ')':
@@ -316,34 +340,48 @@ func (lx *lexer) nextToken() (Token, error) {
 			tok = simpleToken(tokenBang, start)
 		}
 	case '<':
-		switch {
-		case lx.match('<'):
-			tok = simpleToken(tokenShiftLeft, start)
-		case lx.match('='):
+		if lx.match('<') {
+			if lx.match('=') {
+				tok = simpleToken(tokenShiftLeftAssign, start)
+			} else {
+				tok = simpleToken(tokenShiftLeft, start)
+			}
+		} else if lx.match('=') {
 			tok = simpleToken(tokenLessEqual, start)
-		default:
+		} else {
 			tok = simpleToken(tokenLess, start)
 		}
 	case '>':
-		switch {
-		case lx.match('>'):
-			tok = simpleToken(tokenShiftRight, start)
-		case lx.match('='):
+		if lx.match('>') {
+			if lx.match('=') {
+				tok = simpleToken(tokenShiftRightAssign, start)
+			} else {
+				tok = simpleToken(tokenShiftRight, start)
+			}
+		} else if lx.match('=') {
 			tok = simpleToken(tokenGreaterEqual, start)
-		default:
+		} else {
 			tok = simpleToken(tokenGreater, start)
 		}
 	case '&':
 		if lx.match('^') {
-			tok = simpleToken(tokenAmpersandCaret, start)
+			if lx.match('=') {
+				tok = simpleToken(tokenAmpersandCaretAssign, start)
+			} else {
+				tok = simpleToken(tokenAmpersandCaret, start)
+			}
 		} else if lx.match('&') {
 			tok = simpleToken(tokenAndAnd, start)
+		} else if lx.match('=') {
+			tok = simpleToken(tokenAmpersandAssign, start)
 		} else {
 			tok = simpleToken(tokenAmpersand, start)
 		}
 	case '|':
 		if lx.match('|') {
 			tok = simpleToken(tokenOrOr, start)
+		} else if lx.match('=') {
+			tok = simpleToken(tokenPipeAssign, start)
 		} else {
 			tok = simpleToken(tokenPipe, start)
 		}

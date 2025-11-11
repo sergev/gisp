@@ -28,27 +28,38 @@ const (
 	tokenNil
 
 	// Operators and punctuation
-	tokenAssign         // =
-	tokenEqualEqual     // ==
-	tokenBangEqual      // !=
-	tokenPlus           // +
-	tokenMinus          // -
-	tokenStar           // *
-	tokenSlash          // /
-	tokenPercent        // %
-	tokenCaret          // ^
-	tokenAmpersand      // &
-	tokenPipe           // |
-	tokenShiftLeft      // <<
-	tokenShiftRight     // >>
-	tokenAmpersandCaret // &^
-	tokenLess           // <
-	tokenLessEqual      // <=
-	tokenGreater        // >
-	tokenGreaterEqual   // >=
-	tokenBang           // !
-	tokenAndAnd         // &&
-	tokenOrOr           // ||
+	tokenAssign               // =
+	tokenPlusAssign           // +=
+	tokenMinusAssign          // -=
+	tokenStarAssign           // *=
+	tokenSlashAssign          // /=
+	tokenPercentAssign        // %=
+	tokenShiftLeftAssign      // <<=
+	tokenShiftRightAssign     // >>=
+	tokenAmpersandAssign      // &=
+	tokenPipeAssign           // |=
+	tokenCaretAssign          // ^=
+	tokenAmpersandCaretAssign // &^=
+	tokenEqualEqual           // ==
+	tokenBangEqual            // !=
+	tokenPlus                 // +
+	tokenMinus                // -
+	tokenStar                 // *
+	tokenSlash                // /
+	tokenPercent              // %
+	tokenCaret                // ^
+	tokenAmpersand            // &
+	tokenPipe                 // |
+	tokenShiftLeft            // <<
+	tokenShiftRight           // >>
+	tokenAmpersandCaret       // &^
+	tokenLess                 // <
+	tokenLessEqual            // <=
+	tokenGreater              // >
+	tokenGreaterEqual         // >=
+	tokenBang                 // !
+	tokenAndAnd               // &&
+	tokenOrOr                 // ||
 
 	tokenComma     // ,
 	tokenSemicolon // ;
@@ -103,6 +114,28 @@ func (tt TokenType) String() string {
 		return "nil"
 	case tokenAssign:
 		return "="
+	case tokenPlusAssign:
+		return "+="
+	case tokenMinusAssign:
+		return "-="
+	case tokenStarAssign:
+		return "*="
+	case tokenSlashAssign:
+		return "/="
+	case tokenPercentAssign:
+		return "%="
+	case tokenShiftLeftAssign:
+		return "<<="
+	case tokenShiftRightAssign:
+		return ">>="
+	case tokenAmpersandAssign:
+		return "&="
+	case tokenPipeAssign:
+		return "|="
+	case tokenCaretAssign:
+		return "^="
+	case tokenAmpersandCaretAssign:
+		return "&^="
 	case tokenEqualEqual:
 		return "=="
 	case tokenBangEqual:

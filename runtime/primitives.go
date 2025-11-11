@@ -35,12 +35,23 @@ func installPrimitives(ev *lang.Evaluator) {
 	define("*", primMul)
 	define("/", primDiv)
 	define("%", primMod)
+	define("+=", primAddAssign)
+	define("-=", primSubAssign)
+	define("*=", primMulAssign)
+	define("/=", primDivAssign)
+	define("%=", primModAssign)
 	define("&", primBitAnd)
 	define("|", primBitOr)
 	define("^", primBitXor)
 	define("&^", primBitClear)
 	define("<<", primShiftLeft)
 	define(">>", primShiftRight)
+	define("<<=", primShiftLeftAssign)
+	define(">>=", primShiftRightAssign)
+	define("&=", primBitAndAssign)
+	define("|=", primBitOrAssign)
+	define("^=", primBitXorAssign)
+	define("&^=", primBitClearAssign)
 
 	define("=", primNumEq)
 	define("<", primLess)
@@ -350,6 +361,72 @@ func primMod(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
 		result %= divisor
 	}
 	return lang.IntValue(result), nil
+}
+
+func primAddAssign(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	return compoundAssign(ev, "+=", args, func(current, delta lang.Value) (lang.Value, error) {
+		return primAdd(ev, []lang.Value{current, delta})
+	})
+}
+
+func primSubAssign(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	return compoundAssign(ev, "-=", args, func(current, delta lang.Value) (lang.Value, error) {
+		return primSub(ev, []lang.Value{current, delta})
+	})
+}
+
+func primMulAssign(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	return compoundAssign(ev, "*=", args, func(current, delta lang.Value) (lang.Value, error) {
+		return primMul(ev, []lang.Value{current, delta})
+	})
+}
+
+func primDivAssign(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	return compoundAssign(ev, "/=", args, func(current, delta lang.Value) (lang.Value, error) {
+		return primDiv(ev, []lang.Value{current, delta})
+	})
+}
+
+func primModAssign(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	return compoundAssign(ev, "%=", args, func(current, delta lang.Value) (lang.Value, error) {
+		return primMod(ev, []lang.Value{current, delta})
+	})
+}
+
+func primShiftLeftAssign(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	return compoundAssign(ev, "<<=", args, func(current, delta lang.Value) (lang.Value, error) {
+		return primShiftLeft(ev, []lang.Value{current, delta})
+	})
+}
+
+func primShiftRightAssign(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	return compoundAssign(ev, ">>=", args, func(current, delta lang.Value) (lang.Value, error) {
+		return primShiftRight(ev, []lang.Value{current, delta})
+	})
+}
+
+func primBitAndAssign(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	return compoundAssign(ev, "&=", args, func(current, delta lang.Value) (lang.Value, error) {
+		return primBitAnd(ev, []lang.Value{current, delta})
+	})
+}
+
+func primBitOrAssign(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	return compoundAssign(ev, "|=", args, func(current, delta lang.Value) (lang.Value, error) {
+		return primBitOr(ev, []lang.Value{current, delta})
+	})
+}
+
+func primBitXorAssign(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	return compoundAssign(ev, "^=", args, func(current, delta lang.Value) (lang.Value, error) {
+		return primBitXor(ev, []lang.Value{current, delta})
+	})
+}
+
+func primBitClearAssign(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
+	return compoundAssign(ev, "&^=", args, func(current, delta lang.Value) (lang.Value, error) {
+		return primBitClear(ev, []lang.Value{current, delta})
+	})
 }
 
 func primNumEq(ev *lang.Evaluator, args []lang.Value) (lang.Value, error) {
@@ -1133,4 +1210,29 @@ func primitivePointer(p lang.Primitive) uintptr {
 		return 0
 	}
 	return reflect.ValueOf(p).Pointer()
+}
+
+func compoundAssign(ev *lang.Evaluator, name string, args []lang.Value, updater func(lang.Value, lang.Value) (lang.Value, error)) (lang.Value, error) {
+	targetName, delta, err := compoundAssignArgs(name, args)
+	if err != nil {
+		return lang.Value{}, err
+	}
+	env := ev.CurrentEnv()
+	if env == nil {
+		env = ev.Global
+	}
+	return env.Update(targetName, func(current lang.Value) (lang.Value, error) {
+		return updater(current, delta)
+	})
+}
+
+func compoundAssignArgs(name string, args []lang.Value) (string, lang.Value, error) {
+	if len(args) != 2 {
+		return "", lang.Value{}, fmt.Errorf("%s expects 2 arguments, got %d", name, len(args))
+	}
+	target := args[0]
+	if target.Type != lang.TypeSymbol {
+		return "", lang.Value{}, typeError(name, "symbol", target)
+	}
+	return target.Sym(), args[1], nil
 }

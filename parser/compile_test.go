@@ -262,7 +262,7 @@ func TestCompileStmtsVarDecl(t *testing.T) {
 
 func TestCompileStmtAssign(t *testing.T) {
 	b := &builder{}
-	stmt := &AssignStmt{Name: "x", Expr: &NumberExpr{Value: "10"}}
+	stmt := &AssignStmt{Name: "x", Expr: &NumberExpr{Value: "10"}, Op: tokenAssign}
 	result, err := compileStmtWithRest(b, stmt, lang.SymbolValue("rest"), compileContext{})
 	if err != nil {
 		t.Fatalf("compileStmtWithRest: %v", err)
@@ -277,6 +277,31 @@ func TestCompileStmtAssign(t *testing.T) {
 	}
 	if val := setExpr[2].(int64); val != 10 {
 		t.Fatalf("expected value 10, got %d", val)
+	}
+}
+
+func TestCompileStmtCompoundAssign(t *testing.T) {
+	b := &builder{}
+	stmt := &AssignStmt{
+		Name: "x",
+		Expr: &NumberExpr{Value: "5"},
+		Op:   tokenPlusAssign,
+	}
+	result, err := compileStmtWithRest(b, stmt, lang.SymbolValue("rest"), compileContext{})
+	if err != nil {
+		t.Fatalf("compileStmtWithRest: %v", err)
+	}
+	begin := requireListHead(t, result, "begin")
+	call := begin[1].([]interface{})
+	if string(call[0].(datumSymbol)) != "+=" {
+		t.Fatalf("expected compound primitive +=, got %#v", call[0])
+	}
+	quote := call[1].([]interface{})
+	if len(quote) != 2 || string(quote[0].(datumSymbol)) != "quote" || string(quote[1].(datumSymbol)) != "x" {
+		t.Fatalf("expected quoted target, got %#v", quote)
+	}
+	if val := call[2].(int64); val != 5 {
+		t.Fatalf("expected value 5, got %d", val)
 	}
 }
 

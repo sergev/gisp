@@ -102,6 +102,26 @@ func (p *parser) parseTopLevelDecl() (Decl, error) {
 	}
 }
 
+func isAssignmentToken(tt TokenType) bool {
+	switch tt {
+	case tokenAssign,
+		tokenPlusAssign,
+		tokenMinusAssign,
+		tokenStarAssign,
+		tokenSlashAssign,
+		tokenPercentAssign,
+		tokenShiftLeftAssign,
+		tokenShiftRightAssign,
+		tokenAmpersandAssign,
+		tokenPipeAssign,
+		tokenCaretAssign,
+		tokenAmpersandCaretAssign:
+		return true
+	default:
+		return false
+	}
+}
+
 func (p *parser) parseFuncDecl() (Decl, error) {
 	funcTok, err := p.expect(tokenFunc)
 	if err != nil {
@@ -267,13 +287,14 @@ func (p *parser) tryParseAssignmentStmt() (Stmt, bool, error) {
 	if err != nil {
 		return nil, false, err
 	}
-	if peek.Type != tokenAssign {
+	if !isAssignmentToken(peek.Type) {
 		return nil, false, nil
 	}
 	if _, err := p.expect(tokenIdentifier); err != nil {
 		return nil, false, err
 	}
-	if _, err := p.expect(tokenAssign); err != nil {
+	assignType := peek.Type
+	if _, err := p.expect(assignType); err != nil {
 		return nil, false, err
 	}
 	value, err := p.parseExpression()
@@ -286,6 +307,7 @@ func (p *parser) tryParseAssignmentStmt() (Stmt, bool, error) {
 	return &AssignStmt{
 		Name: nameTok.Lexeme,
 		Expr: value,
+		Op:   assignType,
 		Posn: posFromToken(nameTok),
 	}, true, nil
 }

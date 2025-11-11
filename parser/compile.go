@@ -35,6 +35,35 @@ func (c compileContext) withReturn(sym string) compileContext {
 	return c
 }
 
+func compoundAssignPrimitive(tt TokenType) (string, bool) {
+	switch tt {
+	case tokenPlusAssign:
+		return "+=", true
+	case tokenMinusAssign:
+		return "-=", true
+	case tokenStarAssign:
+		return "*=", true
+	case tokenSlashAssign:
+		return "/=", true
+	case tokenPercentAssign:
+		return "%=", true
+	case tokenShiftLeftAssign:
+		return "<<=", true
+	case tokenShiftRightAssign:
+		return ">>=", true
+	case tokenAmpersandAssign:
+		return "&=", true
+	case tokenPipeAssign:
+		return "|=", true
+	case tokenCaretAssign:
+		return "^=", true
+	case tokenAmpersandCaretAssign:
+		return "&^=", true
+	default:
+		return "", false
+	}
+}
+
 func compileDecl(b *builder, decl Decl, ctx compileContext) ([]lang.Value, error) {
 	switch d := decl.(type) {
 	case *FuncDecl:
@@ -146,12 +175,23 @@ func compileStmtWithRest(b *builder, stmt Stmt, rest lang.Value, ctx compileCont
 		if err != nil {
 			return lang.Value{}, err
 		}
-		setExpr := b.list(
-			b.symbol("set!"),
-			b.symbol(s.Name),
-			expr,
-		)
-		return b.begin([]lang.Value{setExpr, rest}), nil
+		if s.Op == tokenAssign || s.Op == 0 {
+			setExpr := b.list(
+				b.symbol("set!"),
+				b.symbol(s.Name),
+				expr,
+			)
+			return b.begin([]lang.Value{setExpr, rest}), nil
+		}
+		if primName, ok := compoundAssignPrimitive(s.Op); ok {
+			call := b.list(
+				b.symbol(primName),
+				b.quoteSymbol(s.Name),
+				expr,
+			)
+			return b.begin([]lang.Value{call, rest}), nil
+		}
+		return lang.Value{}, fmt.Errorf("unsupported assignment operator %s", s.Op)
 	case *ExprStmt:
 		expr, err := compileExpr(b, s.Expr, ctx)
 		if err != nil {

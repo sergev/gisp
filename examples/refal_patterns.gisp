@@ -22,7 +22,7 @@ func listLength(lst) {
     var count = 0
     var cursor = lst
     while !nullp(cursor) {
-        count = count + 1
+        count += 1
         cursor = rest(cursor)
     }
     return count
@@ -35,7 +35,7 @@ func takeList(lst, count) {
     while taken < count && !nullp(cursor) {
         acc = cons(first(cursor), acc)
         cursor = rest(cursor)
-        taken = taken + 1
+        taken += 1
     }
     return reverseList(acc)
 }
@@ -45,7 +45,7 @@ func dropList(lst, count) {
     var dropped = 0
     while dropped < count && !nullp(cursor) {
         cursor = rest(cursor)
-        dropped = dropped + 1
+        dropped += 1
     }
     return cursor
 }
@@ -164,7 +164,7 @@ func countWordPrefix(subject) {
         if pairp(term) {
             return count
         }
-        count = count + 1
+        count += 1
         cursor = rest(cursor)
     }
     return count
@@ -349,7 +349,7 @@ func displayMatches(title, patternDesc, subject, pattern) {
         newline()
         displayEnv(first(cursor))
         cursor = rest(cursor)
-        index = index + 1
+        index += 1
     }
     newline()
 }

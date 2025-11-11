@@ -67,3 +67,10 @@ type binding struct {
 	name  string
 	value lang.Value
 }
+
+func (b *builder) quoteSymbol(name string) lang.Value {
+	return b.list(
+		b.symbol("quote"),
+		b.symbol(name),
+	)
+}

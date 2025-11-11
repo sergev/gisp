@@ -223,6 +223,7 @@ func (*ExprDecl) declNode()       {}
 type AssignStmt struct {
 	Name string
 	Expr Expr
+	Op   TokenType
 	Posn Position
 }
 
