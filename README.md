@@ -1,13 +1,4 @@
-# gisp
-
-`gisp` is a minimal Scheme-inspired interpreter written in Go. It offers a simple type system,
-lexical scoping, macros, and first-class continuations while keeping the language approachable.
-Alongside the traditional S-expression syntax, the project ships with **Gisp**, a Go-flavoured
-surface language that compiles down to the same Scheme semantics (tail calls, macros, continuations).
-
-The project intentionally favors clarity over strict Scheme compatibility: standard procedures use
-explicit names (`list`, `append`, `call/cc`, etc.), but the runtime behaviour follows familiar Lisp
-semantics.
+Gisp is a programming language that uses Go-like syntax but compiles to a dynamic interpreted runtime featuring Scheme-inspired semantics — including lists, vectors, tail calls, and continuations.
 
 ## Features
 
@@ -18,9 +9,9 @@ semantics.
 - Tail-call optimization to support deeply recursive programs
 - First-class continuations via `call/cc`
 - Non-hygienic macros (`define-macro`) for syntactic extensions
-- Distinct empty list and `#f` values
+- Distinct empty list and `false` values
 - Basic standard library including arithmetic, comparison, list utilities, strings, and I/O
-- Unary primitives cover Go-style numeric negation, logical `not`, and bitwise complement via `^` (pointer/channel operators remain unsupported)
+- Unary primitives cover Go-style numeric negation, logical `not`, and bitwise complement via `^`
 - Reader for s-expressions (numbers, strings with escapes, quoting, quasiquote, comments)
 - Command-line interface offering a REPL and script execution (with shebang support)
 
@@ -28,10 +19,10 @@ Garbage collection relies entirely on the Go runtime—no additional memory mana
 
 ## Documentation
 
+- [Step-by-step tutorial](docs/Gisp-Tutorial.md)
 - [Gisp language guide](docs/Language.md)
 - [Runtime primitives](docs/Primitives.md)
 - [S-expression grammar](docs/S-Expressions.md)
-- [Step-by-step tutorial](docs/Gisp-Tutorial.md)
 
 ## Getting Started
 
