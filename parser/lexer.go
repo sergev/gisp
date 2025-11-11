@@ -509,6 +509,8 @@ func (lx *lexer) shouldInsertSemicolon() bool {
 		tokenFalse,
 		tokenNil,
 		tokenReturn,
+		tokenBreak,
+		tokenContinue,
 		tokenPlusPlus,
 		tokenMinusMinus,
 		tokenRParen,
@@ -732,6 +734,10 @@ func keywordToken(lexeme string) (TokenType, bool) {
 		return tokenElse, true
 	case "while":
 		return tokenWhile, true
+	case "break":
+		return tokenBreak, true
+	case "continue":
+		return tokenContinue, true
 	case "switch":
 		return tokenSwitch, true
 	case "case":

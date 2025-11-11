@@ -27,11 +27,19 @@ func CompileProgram(prog *Program) ([]lang.Value, error) {
 }
 
 type compileContext struct {
-	returnSym string
+	returnSym   string
+	breakSym    string
+	continueSym string
 }
 
 func (c compileContext) withReturn(sym string) compileContext {
 	c.returnSym = sym
+	return c
+}
+
+func (c compileContext) withLoop(breakSym, continueSym string) compileContext {
+	c.breakSym = breakSym
+	c.continueSym = continueSym
 	return c
 }
 
@@ -239,11 +247,13 @@ func compileStmtWithRest(b *builder, stmt Stmt, rest lang.Value, ctx compileCont
 		if err != nil {
 			return lang.Value{}, err
 		}
-		body, err := compileBlock(b, s.Body, ctx)
+		breakSym := b.gensym("break")
+		loopSym := b.gensym("loop")
+		loopCtx := ctx.withLoop(breakSym, loopSym)
+		body, err := compileBlock(b, s.Body, loopCtx)
 		if err != nil {
 			return lang.Value{}, err
 		}
-		loopSym := b.gensym("loop")
 		loopBody := b.list(
 			b.symbol("if"),
 			cond,
@@ -266,7 +276,30 @@ func compileStmtWithRest(b *builder, stmt Stmt, rest lang.Value, ctx compileCont
 		loopCall := b.list(b.symbol(loopSym))
 		loopLetBody := b.begin([]lang.Value{loopSet, loopCall})
 		loopLet := b.let([]binding{{name: loopSym, value: lang.EmptyList}}, loopLetBody)
-		return b.begin([]lang.Value{loopLet, rest}), nil
+		callCC := b.list(
+			b.symbol("call/cc"),
+			b.list(
+				b.symbol("lambda"),
+				lang.List(b.symbol(breakSym)),
+				loopLet,
+			),
+		)
+		return b.begin([]lang.Value{callCC, rest}), nil
+	case *BreakStmt:
+		if ctx.breakSym == "" {
+			return lang.Value{}, fmt.Errorf("break not allowed in this context")
+		}
+		return b.list(
+			b.symbol(ctx.breakSym),
+			lang.EmptyList,
+		), nil
+	case *ContinueStmt:
+		if ctx.continueSym == "" {
+			return lang.Value{}, fmt.Errorf("continue not allowed in this context")
+		}
+		return b.list(
+			b.symbol(ctx.continueSym),
+		), nil
 	case *ReturnStmt:
 		if ctx.returnSym == "" {
 			return lang.Value{}, fmt.Errorf("return not allowed in this context")

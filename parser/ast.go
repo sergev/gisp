@@ -282,6 +282,22 @@ type WhileStmt struct {
 func (s *WhileStmt) Pos() Position { return s.Posn }
 func (*WhileStmt) stmtNode()       {}
 
+// BreakStmt exits the nearest enclosing loop.
+type BreakStmt struct {
+	Posn Position
+}
+
+func (s *BreakStmt) Pos() Position { return s.Posn }
+func (*BreakStmt) stmtNode()       {}
+
+// ContinueStmt skips to the next iteration of the nearest enclosing loop.
+type ContinueStmt struct {
+	Posn Position
+}
+
+func (s *ContinueStmt) Pos() Position { return s.Posn }
+func (*ContinueStmt) stmtNode()       {}
+
 // ReturnStmt exits the current function, optionally with a value.
 type ReturnStmt struct {
 	Result Expr // may be nil

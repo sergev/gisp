@@ -525,9 +525,31 @@ func TestCompileStmtWhile(t *testing.T) {
 		t.Fatalf("compileStmtWithRest: %v", err)
 	}
 	begin := requireListHead(t, result, "begin")
-	letForm := begin[1].([]interface{})
-	if string(letForm[0].(datumSymbol)) != "let" {
-		t.Fatalf("expected let form, got %#v", letForm[0])
+	if len(begin) != 3 {
+		t.Fatalf("expected begin form with call/cc and rest, got %d elements", len(begin))
+	}
+	callCCForm, ok := begin[1].([]interface{})
+	if !ok {
+		t.Fatalf("expected list form for call/cc, got %#v", begin[1])
+	}
+	if string(callCCForm[0].(datumSymbol)) != "call/cc" {
+		t.Fatalf("expected call/cc form, got %#v", callCCForm[0])
+	}
+	lambdaForm, ok := callCCForm[1].([]interface{})
+	if !ok || string(lambdaForm[0].(datumSymbol)) != "lambda" {
+		t.Fatalf("expected lambda continuation, got %#v", callCCForm[1])
+	}
+	params := lambdaForm[1].([]interface{})
+	if len(params) != 1 {
+		t.Fatalf("expected single parameter to lambda, got %d", len(params))
+	}
+	breakSym, ok := params[0].(datumSymbol)
+	if !ok || !strings.HasPrefix(string(breakSym), "__gisp_break_") {
+		t.Fatalf("expected break gensym parameter, got %#v", params[0])
+	}
+	letForm, ok := lambdaForm[2].([]interface{})
+	if !ok || string(letForm[0].(datumSymbol)) != "let" {
+		t.Fatalf("expected let form, got %#v", lambdaForm[2])
 	}
 	bindings := letForm[1].([]interface{})
 	if len(bindings) != 1 {
@@ -555,11 +577,11 @@ func TestCompileStmtWhile(t *testing.T) {
 	if setTarget := setForm[1].(datumSymbol); setTarget != loopName {
 		t.Fatalf("expected set! target %q, got %q", loopName, setTarget)
 	}
-	lambdaForm := setForm[2].([]interface{})
-	if string(lambdaForm[0].(datumSymbol)) != "lambda" {
-		t.Fatalf("expected lambda form, got %#v", lambdaForm[0])
+	loopLambda := setForm[2].([]interface{})
+	if string(loopLambda[0].(datumSymbol)) != "lambda" {
+		t.Fatalf("expected lambda form, got %#v", loopLambda[0])
 	}
-	lambdaBody := lambdaForm[2]
+	lambdaBody := loopLambda[2]
 	if !containsSymbolWithPrefix(lambdaBody, string(loopName)) {
 		t.Fatalf("expected recursive loop call in lambda body, got %#v", lambdaBody)
 	}
@@ -570,6 +592,57 @@ func TestCompileStmtWhile(t *testing.T) {
 	callSym, ok := callForm[0].(datumSymbol)
 	if !ok || callSym != loopName {
 		t.Fatalf("expected tail call to loop function %q, got %#v", loopName, callForm[0])
+	}
+	if restSym, ok := begin[2].(datumSymbol); !ok || restSym != "rest" {
+		t.Fatalf("expected rest continuation as final begin expr, got %#v", begin[2])
+	}
+}
+
+func TestCompileStmtBreakRequiresLoop(t *testing.T) {
+	b := &builder{}
+	_, err := compileStmtWithRest(b, &BreakStmt{}, lang.SymbolValue("rest"), compileContext{})
+	if err == nil || !strings.Contains(err.Error(), "break not allowed") {
+		t.Fatalf("expected break context error, got %v", err)
+	}
+}
+
+func TestCompileStmtContinueRequiresLoop(t *testing.T) {
+	b := &builder{}
+	_, err := compileStmtWithRest(b, &ContinueStmt{}, lang.SymbolValue("rest"), compileContext{})
+	if err == nil || !strings.Contains(err.Error(), "continue not allowed") {
+		t.Fatalf("expected continue context error, got %v", err)
+	}
+}
+
+func TestCompileStmtBreakAndContinueForms(t *testing.T) {
+	b := &builder{}
+	ctx := compileContext{}.withLoop("break-handler", "loop-handler")
+
+	breakVal, err := compileStmtWithRest(b, &BreakStmt{}, lang.SymbolValue("rest"), ctx)
+	if err != nil {
+		t.Fatalf("compileStmtWithRest (break): %v", err)
+	}
+	breakDatum := valueToDatum(t, breakVal).([]interface{})
+	if len(breakDatum) != 2 {
+		t.Fatalf("expected break invocation length 2, got %d", len(breakDatum))
+	}
+	if sym := breakDatum[0].(datumSymbol); string(sym) != "break-handler" {
+		t.Fatalf("expected break handler symbol, got %q", sym)
+	}
+	if _, ok := breakDatum[1].([]interface{}); !ok {
+		t.Fatalf("expected empty list argument to break handler, got %#v", breakDatum[1])
+	}
+
+	continueVal, err := compileStmtWithRest(b, &ContinueStmt{}, lang.SymbolValue("rest"), ctx)
+	if err != nil {
+		t.Fatalf("compileStmtWithRest (continue): %v", err)
+	}
+	continueDatum := valueToDatum(t, continueVal).([]interface{})
+	if len(continueDatum) != 1 {
+		t.Fatalf("expected continue call with no args, got %d elements", len(continueDatum))
+	}
+	if sym := continueDatum[0].(datumSymbol); string(sym) != "loop-handler" {
+		t.Fatalf("expected continue to call loop handler, got %q", sym)
 	}
 }
 

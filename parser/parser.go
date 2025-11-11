@@ -22,10 +22,11 @@ func Parse(src string) (*Program, error) {
 }
 
 type parser struct {
-	lx      *lexer
-	curr    Token
-	peekTok Token
-	hasPeek bool
+	lx        *lexer
+	curr      Token
+	peekTok   Token
+	hasPeek   bool
+	loopDepth int
 }
 
 type parserState struct {
@@ -294,6 +295,10 @@ func (p *parser) parseStatement() (Stmt, error) {
 		return p.parseIfStmt()
 	case tokenWhile:
 		return p.parseWhileStmt()
+	case tokenBreak:
+		return p.parseBreakStmt()
+	case tokenContinue:
+		return p.parseContinueStmt()
 	case tokenReturn:
 		return p.parseReturnStmt()
 	case tokenLBrace:
@@ -457,7 +462,9 @@ func (p *parser) parseWhileStmt() (Stmt, error) {
 	if err != nil {
 		return nil, err
 	}
+	p.loopDepth++
 	body, err := p.parseBlock()
+	p.loopDepth--
 	if err != nil {
 		return nil, err
 	}
@@ -465,6 +472,42 @@ func (p *parser) parseWhileStmt() (Stmt, error) {
 		Cond: cond,
 		Body: body,
 		Posn: posFromToken(whTok),
+	}, nil
+}
+
+func (p *parser) parseBreakStmt() (Stmt, error) {
+	breakTok, err := p.expect(tokenBreak)
+	if err != nil {
+		return nil, err
+	}
+	if p.loopDepth == 0 {
+		return nil, p.errorf(posFromToken(breakTok), false, "break not allowed outside loops")
+	}
+	if p.curr.Type == tokenSemicolon {
+		if _, err := p.expect(tokenSemicolon); err != nil {
+			return nil, err
+		}
+	}
+	return &BreakStmt{
+		Posn: posFromToken(breakTok),
+	}, nil
+}
+
+func (p *parser) parseContinueStmt() (Stmt, error) {
+	continueTok, err := p.expect(tokenContinue)
+	if err != nil {
+		return nil, err
+	}
+	if p.loopDepth == 0 {
+		return nil, p.errorf(posFromToken(continueTok), false, "continue not allowed outside loops")
+	}
+	if p.curr.Type == tokenSemicolon {
+		if _, err := p.expect(tokenSemicolon); err != nil {
+			return nil, err
+		}
+	}
+	return &ContinueStmt{
+		Posn: posFromToken(continueTok),
 	}, nil
 }
 

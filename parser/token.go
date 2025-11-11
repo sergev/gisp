@@ -19,6 +19,8 @@ const (
 	tokenIf
 	tokenElse
 	tokenWhile
+	tokenBreak
+	tokenContinue
 	tokenSwitch
 	tokenCase
 	tokenDefault
@@ -101,6 +103,10 @@ func (tt TokenType) String() string {
 		return "else"
 	case tokenWhile:
 		return "while"
+	case tokenBreak:
+		return "break"
+	case tokenContinue:
+		return "continue"
 	case tokenSwitch:
 		return "switch"
 	case tokenCase:

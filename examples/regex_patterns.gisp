@@ -116,7 +116,7 @@ func findCapture(captures, index) {
         }
         cursor = rest(cursor)
     }
-    return #f
+    return false
 }
 
 // ---------------------------------------------------------------------------
@@ -298,7 +298,7 @@ func ctxAtEnd(ctx) {
 
 func peekChar(ctx) {
     if ctxAtEnd(ctx) {
-        return #f
+        return false
     }
     var pos = ctxPos(ctx)
     return stringSlice(ctxPattern(ctx), pos, pos + 1)
@@ -307,7 +307,7 @@ func peekChar(ctx) {
 func peekAhead(ctx, offset) {
     var target = ctxPos(ctx) + offset
     if target >= ctxLength(ctx) {
-        return #f
+        return false
     }
     return stringSlice(ctxPattern(ctx), target, target + 1)
 }
@@ -318,7 +318,7 @@ func advance(ctx, amount) {
 
 func consumeChar(ctx) {
     var ch = peekChar(ctx)
-    if ch == #f {
+    if !ch {
         error("Unexpected end of pattern")
     }
     advance(ctx, 1)
@@ -327,7 +327,7 @@ func consumeChar(ctx) {
 
 func consumeIf(ctx, ch) {
     var peeked = peekChar(ctx)
-    if peeked != #f && equal(peeked, ch) {
+    if peeked && equal(peeked, ch) {
         advance(ctx, 1)
         return true
     }
@@ -348,17 +348,17 @@ func parseNumber(ctx) {
     var digits = ""
     while true {
         var ch = peekChar(ctx)
-        if ch == #f || !isDigitChar(ch) {
+        if !ch || !isDigitChar(ch) {
             break
         }
         digits = stringAppend(digits, ch)
         advance(ctx, 1)
     }
     if stringLength(digits) == 0 {
-        return #f
+        return false
     }
     var parsed = stringToNumber(digits)
-    if parsed == #f || !integerp(parsed) || parsed < 0 {
+    if !parsed || !integerp(parsed) || parsed < 0 {
         parseError(ctx, "Invalid number in quantifier")
     }
     return parsed
@@ -375,7 +375,7 @@ func parseCharClass(ctx) {
     var firstItem = true
     while true {
         var ch = peekChar(ctx)
-        if ch == #f {
+        if !ch {
             parseError(ctx, "Unterminated character class")
         }
         if equal(ch, "]") && !firstItem {
@@ -384,9 +384,9 @@ func parseCharClass(ctx) {
         }
         var startChar = parseClassChar(ctx)
         var next = peekChar(ctx)
-        if next != #f && equal(next, "-") {
+        if next && equal(next, "-") {
             var after = peekAhead(ctx, 1)
-            if after != #f && !equal(after, "]") {
+            if after && !equal(after, "]") {
                 advance(ctx, 1) // consume '-'
                 var endChar = parseClassChar(ctx)
                 items = cons(makeClassRange(startChar, endChar), items)
@@ -404,7 +404,7 @@ func parseClassChar(ctx) {
     var ch = consumeChar(ctx)
     if equal(ch, "\\") {
         var escaped = peekChar(ctx)
-        if escaped == #f {
+        if !escaped {
             parseError(ctx, "Unterminated escape in character class")
         }
         advance(ctx, 1)
@@ -415,7 +415,7 @@ func parseClassChar(ctx) {
 
 func parseAtom(ctx) {
     var ch = peekChar(ctx)
-    if ch == #f {
+    if !ch {
         return makeEmpty()
     }
     if equal(ch, "(") {
@@ -443,7 +443,7 @@ func parseAtom(ctx) {
     if equal(ch, "\\") {
         advance(ctx, 1)
         var next = peekChar(ctx)
-        if next == #f {
+        if !next {
             parseError(ctx, "Dangling escape at end of pattern")
         }
         advance(ctx, 1)
@@ -460,7 +460,7 @@ func parseFactor(ctx) {
     var atom = parseAtom(ctx)
     while true {
         var ch = peekChar(ctx)
-        if ch == #f {
+        if !ch {
             break
         }
         if equal(ch, "*") {
@@ -491,7 +491,7 @@ func parseFactor(ctx) {
 func parseQuantifier(ctx) {
     advance(ctx, 1) // consume '{'
     var min = parseNumber(ctx)
-    if min == #f {
+    if !min {
         parseError(ctx, "Expected number after '{'")
     }
     var max = min
@@ -501,7 +501,7 @@ func parseQuantifier(ctx) {
             max = -1
         } else {
             var upper = parseNumber(ctx)
-            if upper == #f {
+            if !upper {
                 parseError(ctx, "Expected upper bound in quantifier")
             }
             max = upper
@@ -518,7 +518,7 @@ func parseTerm(ctx) {
     var parts = []
     while true {
         var ch = peekChar(ctx)
-        if ch == #f || equal(ch, ")") || equal(ch, "|") {
+        if !ch || equal(ch, ")") || equal(ch, "|") {
             break
         }
         var factor = parseFactor(ctx)
@@ -783,8 +783,8 @@ func buildCaptureValues(captures, groupCount, subject) {
     var acc = []
     while idx <= groupCount {
         var entry = findCapture(captures, idx)
-        var value = #f
-        if entry != #f {
+        var value = false
+        if entry {
             var start = first(rest(entry))
             var end = first(rest(rest(entry)))
             value = stringSlice(subject, start, end)
@@ -834,18 +834,18 @@ func regexExecFrom(compiled, subject, startPos) {
         }
         start++
     }
-    return #f
+    return false
 }
 
 func matchRegex(compiled, subject) {
     var match = regexExecFrom(compiled, subject, 0)
-    if match == #f {
-        return #f
+    if !match {
+        return false
     }
     if matchStart(match) == 0 && matchEnd(match) == stringLength(subject) {
         return match
     }
-    return #f
+    return false
 }
 
 func regexSearch(compiled, subject) {
@@ -858,7 +858,7 @@ func regexFindAll(compiled, subject) {
     var start = 0
     while start <= length {
         var match = regexExecFrom(compiled, subject, start)
-        if match == #f {
+        if !match {
             break
         }
         results = cons(match, results)
@@ -882,7 +882,7 @@ func displayHeading(title) {
 }
 
 func displayMatch(pattern, subject, match) {
-    if match == #f {
+    if !match {
         display("Pattern /")
         display(pattern)
         display("/ did not match \"")
@@ -908,8 +908,8 @@ func displayMatch(pattern, subject, match) {
         if !firstField {
             display(", ")
         }
-        if value == #f {
-            display("#f")
+        if !value {
+            display("false")
         } else {
             display("\"")
             display(value)
@@ -954,8 +954,8 @@ func displayCapturesList(captures) {
         if !firstField {
             display(", ")
         }
-        if value == #f {
-            display("#f")
+        if !value {
+            display("false")
         } else {
             display("\"")
             display(value)

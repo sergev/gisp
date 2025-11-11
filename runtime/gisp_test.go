@@ -52,6 +52,35 @@ sign;
 	}
 }
 
+func TestEvaluateGispWhileBreakContinue(t *testing.T) {
+	ev := NewEvaluator()
+	src := `
+func compute() {
+	var n = 0
+	var sum = 0
+	while n < 6 {
+		n = n + 1
+		if n == 3 {
+			continue
+		}
+		if n > 4 {
+			break
+		}
+		sum = sum + n
+	}
+	return sum
+}
+compute()
+`
+	val, err := EvaluateGispString(ev, src)
+	if err != nil {
+		t.Fatalf("EvaluateGispString while/break/continue returned error: %v", err)
+	}
+	if val.Type != lang.TypeInt || val.Int() != 7 {
+		t.Fatalf("expected result 7, got %v", val)
+	}
+}
+
 func runTutorialExample(t *testing.T, scriptName, expected string) {
 	t.Helper()
 

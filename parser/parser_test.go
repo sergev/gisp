@@ -267,6 +267,72 @@ func countdown(n) {
 	if !strings.Contains(body, "__gisp_loop_") {
 		t.Fatalf("expected while translation to introduce loop binding, got %s", body)
 	}
+	if !strings.Contains(body, "call/cc") {
+		t.Fatalf("expected while translation to capture break continuation, got %s", body)
+	}
+	if !strings.Contains(body, "__gisp_break_") {
+		t.Fatalf("expected while translation to introduce break binding, got %s", body)
+	}
+}
+
+func TestParseBreakAndContinueStatements(t *testing.T) {
+	src := `
+func demo() {
+	while true {
+		continue;
+		break;
+	}
+}
+`
+	prog := parseProgramFromSource(t, src)
+	if len(prog.Decls) != 1 {
+		t.Fatalf("expected 1 declaration, got %d", len(prog.Decls))
+	}
+	fn, ok := prog.Decls[0].(*FuncDecl)
+	if !ok {
+		t.Fatalf("expected FuncDecl, got %T", prog.Decls[0])
+	}
+	if len(fn.Body.Stmts) != 1 {
+		t.Fatalf("expected single statement in function body, got %d", len(fn.Body.Stmts))
+	}
+	whileStmt, ok := fn.Body.Stmts[0].(*WhileStmt)
+	if !ok {
+		t.Fatalf("expected while statement, got %T", fn.Body.Stmts[0])
+	}
+	if whileStmt.Body == nil {
+		t.Fatal("expected while body")
+	}
+	if len(whileStmt.Body.Stmts) != 2 {
+		t.Fatalf("expected two statements in while body, got %d", len(whileStmt.Body.Stmts))
+	}
+	if _, ok := whileStmt.Body.Stmts[0].(*ContinueStmt); !ok {
+		t.Fatalf("expected first stmt to be continue, got %T", whileStmt.Body.Stmts[0])
+	}
+	if _, ok := whileStmt.Body.Stmts[1].(*BreakStmt); !ok {
+		t.Fatalf("expected second stmt to be break, got %T", whileStmt.Body.Stmts[1])
+	}
+}
+
+func TestParseBreakOutsideLoopError(t *testing.T) {
+	src := `
+func demo() {
+	break;
+}
+`
+	if _, err := Parse(src); err == nil || !strings.Contains(err.Error(), "break not allowed outside loops") {
+		t.Fatalf("expected break context error, got %v", err)
+	}
+}
+
+func TestParseContinueOutsideLoopError(t *testing.T) {
+	src := `
+func demo() {
+	continue;
+}
+`
+	if _, err := Parse(src); err == nil || !strings.Contains(err.Error(), "continue not allowed outside loops") {
+		t.Fatalf("expected continue context error, got %v", err)
+	}
 }
 
 func TestLambdaExpression(t *testing.T) {
