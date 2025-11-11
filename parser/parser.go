@@ -1071,11 +1071,11 @@ func (p *parser) parseParamNames() ([]string, error) {
 }
 
 func (p *parser) errorf(pos Position, incomplete bool, format string, args ...interface{}) error {
-	err := fmt.Errorf("%s:%d:%d: %s", "input", pos.Line, pos.Column, fmt.Sprintf(format, args...))
+	err := fmt.Errorf(format, args...)
 	if incomplete {
-		return newIncompleteError(err)
+		return newIncompleteErrorAt(pos, err)
 	}
-	return newError(err)
+	return newErrorAt(pos, err)
 }
 
 func posFromToken(tok Token) Position {

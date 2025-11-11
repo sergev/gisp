@@ -108,7 +108,7 @@ func (lx *lexer) readRune() (rune, int, runeState, error) {
 	state := lx.mark()
 	r, w := utf8.DecodeRuneInString(lx.src[lx.pos:])
 	if r == utf8.RuneError && w == 1 {
-		return 0, 0, state, fmt.Errorf("invalid UTF-8 encoding at byte %d", lx.pos)
+		return 0, 0, state, newErrorAt(positionFromState(state), fmt.Errorf("invalid UTF-8 encoding at byte %d", state.pos))
 	}
 	lx.pos += w
 	if r == '\n' {
@@ -194,10 +194,10 @@ func (lx *lexer) skipLine() error {
 func (lx *lexer) skipBlockComment() (bool, error) {
 	sawNewline := false
 	for {
-		r, _, _, err := lx.readRune()
+		r, _, state, err := lx.readRune()
 		if err != nil {
 			if err == io.EOF {
-				return sawNewline, newIncompleteError(fmt.Errorf("unterminated block comment"))
+				return sawNewline, newIncompleteErrorAt(positionFromState(state), fmt.Errorf("unterminated block comment"))
 			}
 			return sawNewline, err
 		}
@@ -205,9 +205,9 @@ func (lx *lexer) skipBlockComment() (bool, error) {
 			sawNewline = true
 		}
 		if r == '*' {
-			next, _, state, err := lx.readRune()
+			next, _, nextState, err := lx.readRune()
 			if err == io.EOF {
-				return sawNewline, newIncompleteError(fmt.Errorf("unterminated block comment"))
+				return sawNewline, newIncompleteErrorAt(positionFromState(nextState), fmt.Errorf("unterminated block comment"))
 			}
 			if err != nil {
 				return sawNewline, err
@@ -215,7 +215,7 @@ func (lx *lexer) skipBlockComment() (bool, error) {
 			if next == '/' {
 				return sawNewline, nil
 			}
-			lx.unread(state)
+			lx.unread(nextState)
 		}
 	}
 }
@@ -617,7 +617,7 @@ func (lx *lexer) scanNumber(initial rune, start runeState) (string, error) {
 			builder.WriteRune(r)
 			next, _, nextState, err := lx.readRune()
 			if err == io.EOF {
-				return "", newIncompleteError(fmt.Errorf("unterminated exponent at line %d column %d", start.line, start.column))
+				return "", newIncompleteErrorAt(positionFromState(state), fmt.Errorf("unterminated exponent"))
 			}
 			if err != nil {
 				return "", err
@@ -639,9 +639,9 @@ func (lx *lexer) scanNumber(initial rune, start runeState) (string, error) {
 func (lx *lexer) scanString() (string, error) {
 	var builder strings.Builder
 	for {
-		r, _, _, err := lx.readRune()
+		r, _, state, err := lx.readRune()
 		if err == io.EOF {
-			return "", newIncompleteError(fmt.Errorf("unterminated string literal"))
+			return "", newIncompleteErrorAt(positionFromState(state), fmt.Errorf("unterminated string literal"))
 		}
 		if err != nil {
 			return "", err
@@ -650,9 +650,9 @@ func (lx *lexer) scanString() (string, error) {
 			break
 		}
 		if r == '\\' {
-			esc, _, _, err := lx.readRune()
+			esc, _, escState, err := lx.readRune()
 			if err == io.EOF {
-				return "", newIncompleteError(fmt.Errorf("unterminated escape sequence"))
+				return "", newIncompleteErrorAt(positionFromState(escState), fmt.Errorf("unterminated escape sequence"))
 			}
 			if err != nil {
 				return "", err
@@ -672,7 +672,7 @@ func (lx *lexer) scanString() (string, error) {
 			continue
 		}
 		if r == '\n' {
-			return "", fmt.Errorf("newline in string literal")
+			return "", newErrorAt(positionFromState(state), fmt.Errorf("newline in string literal"))
 		}
 		builder.WriteRune(r)
 	}
@@ -682,7 +682,7 @@ func (lx *lexer) scanString() (string, error) {
 func (lx *lexer) scanSExpr(start runeState) (lang.Value, error) {
 	value, end, err := sexpr.ParseLiteral(lx.src, lx.pos)
 	if err != nil {
-		return lang.Value{}, fmt.Errorf("invalid s-expression literal at line %d column %d: %w", start.line, start.column, err)
+		return lang.Value{}, newErrorAt(positionFromState(start), fmt.Errorf("invalid s-expression literal: %w", err))
 	}
 	lx.advanceTo(end)
 	return value, nil
@@ -759,10 +759,11 @@ func simpleToken(tt TokenType, start runeState) Token {
 }
 
 func illegalToken(start runeState, err error) (Token, error) {
+	pos := positionFromState(start)
 	return Token{
 		Type: tokenIllegal,
-		Pos:  positionFromState(start),
-	}, err
+		Pos:  pos,
+	}, newErrorAt(pos, err)
 }
 
 func positionFromState(state runeState) Position {
