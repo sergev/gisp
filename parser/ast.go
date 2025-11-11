@@ -119,6 +119,16 @@ type CallExpr struct {
 func (e *CallExpr) Pos() Position { return e.Posn }
 func (*CallExpr) exprNode()       {}
 
+// IndexExpr represents square-bracket indexing (target[index]).
+type IndexExpr struct {
+	Target Expr
+	Index  Expr
+	Posn   Position
+}
+
+func (e *IndexExpr) Pos() Position { return e.Posn }
+func (*IndexExpr) exprNode()       {}
+
 // SwitchClause represents a single case within a switch expression.
 type SwitchClause struct {
 	Cond Expr
@@ -230,10 +240,11 @@ func (*ExprDecl) declNode()       {}
 
 // AssignStmt mutates an existing binding.
 type AssignStmt struct {
-	Name string
-	Expr Expr
-	Op   TokenType
-	Posn Position
+	Name   string // populated for identifier targets
+	Target Expr
+	Expr   Expr
+	Op     TokenType
+	Posn   Position
 }
 
 func (s *AssignStmt) Pos() Position { return s.Posn }

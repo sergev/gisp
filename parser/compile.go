@@ -171,27 +171,52 @@ func compileStmtWithRest(b *builder, stmt Stmt, rest lang.Value, ctx compileCont
 		}
 		return b.let([]binding{{name: s.Name, value: initVal}}, rest), nil
 	case *AssignStmt:
-		expr, err := compileExpr(b, s.Expr, ctx)
+		value, err := compileExpr(b, s.Expr, ctx)
 		if err != nil {
 			return lang.Value{}, err
 		}
-		if s.Op == tokenAssign || s.Op == 0 {
-			setExpr := b.list(
-				b.symbol("set!"),
-				b.symbol(s.Name),
-				expr,
-			)
-			return b.begin([]lang.Value{setExpr, rest}), nil
-		}
-		if primName, ok := compoundAssignPrimitive(s.Op); ok {
+		switch target := s.Target.(type) {
+		case *IdentifierExpr:
+			name := target.Name
+			if s.Op == tokenAssign || s.Op == 0 {
+				setExpr := b.list(
+					b.symbol("set!"),
+					b.symbol(name),
+					value,
+				)
+				return b.begin([]lang.Value{setExpr, rest}), nil
+			}
+			if primName, ok := compoundAssignPrimitive(s.Op); ok {
+				call := b.list(
+					b.symbol(primName),
+					b.quoteSymbol(name),
+					value,
+				)
+				return b.begin([]lang.Value{call, rest}), nil
+			}
+			return lang.Value{}, fmt.Errorf("unsupported assignment operator %s", s.Op)
+		case *IndexExpr:
+			if s.Op != tokenAssign && s.Op != 0 {
+				return lang.Value{}, fmt.Errorf("compound assignments not supported for indexed targets")
+			}
+			vec, err := compileExpr(b, target.Target, ctx)
+			if err != nil {
+				return lang.Value{}, err
+			}
+			idx, err := compileExpr(b, target.Index, ctx)
+			if err != nil {
+				return lang.Value{}, err
+			}
 			call := b.list(
-				b.symbol(primName),
-				b.quoteSymbol(s.Name),
-				expr,
+				b.symbol("vectorSet"),
+				vec,
+				idx,
+				value,
 			)
 			return b.begin([]lang.Value{call, rest}), nil
+		default:
+			return lang.Value{}, fmt.Errorf("unsupported assignment target %T", s.Target)
 		}
-		return lang.Value{}, fmt.Errorf("unsupported assignment operator %s", s.Op)
 	case *IncDecStmt:
 		var primName string
 		switch s.Op {
@@ -355,6 +380,20 @@ func compileExpr(b *builder, expr Expr, ctx compileContext) (lang.Value, error) 
 			args = append(args, val)
 		}
 		return lang.List(args...), nil
+	case *IndexExpr:
+		target, err := compileExpr(b, e.Target, ctx)
+		if err != nil {
+			return lang.Value{}, err
+		}
+		index, err := compileExpr(b, e.Index, ctx)
+		if err != nil {
+			return lang.Value{}, err
+		}
+		return lang.List(
+			b.symbol("vectorRef"),
+			target,
+			index,
+		), nil
 	case *UnaryExpr:
 		return compileUnaryExpr(b, e, ctx)
 	case *BinaryExpr:

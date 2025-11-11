@@ -262,7 +262,12 @@ func TestCompileStmtsVarDecl(t *testing.T) {
 
 func TestCompileStmtAssign(t *testing.T) {
 	b := &builder{}
-	stmt := &AssignStmt{Name: "x", Expr: &NumberExpr{Value: "10"}, Op: tokenAssign}
+	stmt := &AssignStmt{
+		Name:   "x",
+		Target: &IdentifierExpr{Name: "x"},
+		Expr:   &NumberExpr{Value: "10"},
+		Op:     tokenAssign,
+	}
 	result, err := compileStmtWithRest(b, stmt, lang.SymbolValue("rest"), compileContext{})
 	if err != nil {
 		t.Fatalf("compileStmtWithRest: %v", err)
@@ -283,9 +288,10 @@ func TestCompileStmtAssign(t *testing.T) {
 func TestCompileStmtCompoundAssign(t *testing.T) {
 	b := &builder{}
 	stmt := &AssignStmt{
-		Name: "x",
-		Expr: &NumberExpr{Value: "5"},
-		Op:   tokenPlusAssign,
+		Name:   "x",
+		Target: &IdentifierExpr{Name: "x"},
+		Expr:   &NumberExpr{Value: "5"},
+		Op:     tokenPlusAssign,
 	}
 	result, err := compileStmtWithRest(b, stmt, lang.SymbolValue("rest"), compileContext{})
 	if err != nil {
@@ -302,6 +308,39 @@ func TestCompileStmtCompoundAssign(t *testing.T) {
 	}
 	if val := call[2].(int64); val != 5 {
 		t.Fatalf("expected value 5, got %d", val)
+	}
+}
+
+func TestCompileStmtIndexAssign(t *testing.T) {
+	b := &builder{}
+	stmt := &AssignStmt{
+		Target: &IndexExpr{
+			Target: &IdentifierExpr{Name: "flags"},
+			Index:  &IdentifierExpr{Name: "candidate"},
+		},
+		Expr: &BoolExpr{Value: false},
+		Op:   tokenAssign,
+	}
+	result, err := compileStmtWithRest(b, stmt, lang.SymbolValue("rest"), compileContext{})
+	if err != nil {
+		t.Fatalf("compileStmtWithRest index assign: %v", err)
+	}
+	begin := requireListHead(t, result, "begin")
+	call, ok := begin[1].([]interface{})
+	if !ok {
+		t.Fatalf("expected vectorSet call, got %#v", begin[1])
+	}
+	if head, ok := call[0].(datumSymbol); !ok || string(head) != "vectorSet" {
+		t.Fatalf("expected vectorSet head, got %#v", call[0])
+	}
+	if sym, ok := call[1].(datumSymbol); !ok || string(sym) != "flags" {
+		t.Fatalf("expected flags as first argument, got %#v", call[1])
+	}
+	if sym, ok := call[2].(datumSymbol); !ok || string(sym) != "candidate" {
+		t.Fatalf("expected candidate as second argument, got %#v", call[2])
+	}
+	if val, ok := call[3].(bool); !ok || val {
+		t.Fatalf("expected false boolean as third argument, got %#v", call[3])
 	}
 }
 
@@ -617,6 +656,28 @@ func TestCompileExprCall(t *testing.T) {
 	}
 	if string(call[0].(datumSymbol)) != "sum" || call[1].(int64) != 1 || call[2].(int64) != 2 {
 		t.Fatalf("unexpected call %#v", call)
+	}
+}
+
+func TestCompileExprIndex(t *testing.T) {
+	b := &builder{}
+	expr := &IndexExpr{
+		Target: &IdentifierExpr{Name: "flags"},
+		Index:  &IdentifierExpr{Name: "candidate"},
+	}
+	val, err := compileExpr(b, expr, compileContext{})
+	if err != nil {
+		t.Fatalf("compileExpr index: %v", err)
+	}
+	call := requireListHead(t, val, "vectorRef")
+	if len(call) != 3 {
+		t.Fatalf("expected vectorRef form with 3 elements, got %d", len(call))
+	}
+	if sym, ok := call[1].(datumSymbol); !ok || string(sym) != "flags" {
+		t.Fatalf("expected flags symbol as target, got %#v", call[1])
+	}
+	if sym, ok := call[2].(datumSymbol); !ok || string(sym) != "candidate" {
+		t.Fatalf("expected candidate symbol as index, got %#v", call[2])
 	}
 }
 

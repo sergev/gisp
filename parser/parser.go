@@ -28,6 +28,32 @@ type parser struct {
 	hasPeek bool
 }
 
+type parserState struct {
+	curr    Token
+	peekTok Token
+	hasPeek bool
+	lxState lexerState
+}
+
+func (p *parser) saveState() parserState {
+	state := parserState{
+		curr:    p.curr,
+		hasPeek: p.hasPeek,
+	}
+	if p.hasPeek {
+		state.peekTok = p.peekTok
+	}
+	state.lxState = p.lx.saveState()
+	return state
+}
+
+func (p *parser) restoreState(state parserState) {
+	p.curr = state.curr
+	p.peekTok = state.peekTok
+	p.hasPeek = state.hasPeek
+	p.lx.restoreState(state.lxState)
+}
+
 func (p *parser) advance() error {
 	if p.hasPeek {
 		p.curr = p.peekTok
@@ -291,18 +317,44 @@ func (p *parser) parseStatement() (Stmt, error) {
 }
 
 func (p *parser) tryParseAssignmentStmt() (Stmt, bool, error) {
-	nameTok := p.curr
-	peek, err := p.peek()
+	state := p.saveState()
+	nameTok, err := p.expect(tokenIdentifier)
 	if err != nil {
 		return nil, false, err
 	}
-	if !isAssignmentToken(peek.Type) {
+	base := &IdentifierExpr{
+		Name: nameTok.Lexeme,
+		Posn: posFromToken(nameTok),
+	}
+	var target Expr = base
+	for p.curr.Type == tokenLBracket {
+		bracketTok, err := p.expect(tokenLBracket)
+		if err != nil {
+			return nil, false, err
+		}
+		indexExpr, err := p.parseExpression()
+		if err != nil {
+			return nil, false, err
+		}
+		if _, err := p.expect(tokenRBracket); err != nil {
+			return nil, false, err
+		}
+		target = &IndexExpr{
+			Target: target,
+			Index:  indexExpr,
+			Posn:   posFromToken(bracketTok),
+		}
+	}
+	if !isAssignmentToken(p.curr.Type) {
+		p.restoreState(state)
 		return nil, false, nil
 	}
-	if _, err := p.expect(tokenIdentifier); err != nil {
-		return nil, false, err
+	assignType := p.curr.Type
+	if assignType != tokenAssign {
+		if _, ok := target.(*IdentifierExpr); !ok {
+			return nil, false, p.errorf(p.curr.Pos, false, "%s assignment targets must be identifiers", assignType)
+		}
 	}
-	assignType := peek.Type
 	if _, err := p.expect(assignType); err != nil {
 		return nil, false, err
 	}
@@ -313,12 +365,16 @@ func (p *parser) tryParseAssignmentStmt() (Stmt, bool, error) {
 	if _, err := p.expect(tokenSemicolon); err != nil {
 		return nil, false, err
 	}
-	return &AssignStmt{
-		Name: nameTok.Lexeme,
-		Expr: value,
-		Op:   assignType,
-		Posn: posFromToken(nameTok),
-	}, true, nil
+	stmt := &AssignStmt{
+		Target: target,
+		Expr:   value,
+		Op:     assignType,
+		Posn:   posFromToken(nameTok),
+	}
+	if ident, ok := target.(*IdentifierExpr); ok {
+		stmt.Name = ident.Name
+	}
+	return stmt, true, nil
 }
 
 func (p *parser) tryParseIncDecStmt() (Stmt, bool, error) {
@@ -611,6 +667,23 @@ func (p *parser) parsePostfix() (Expr, error) {
 				Callee: expr,
 				Args:   args,
 				Posn:   posFromToken(callTok),
+			}
+		case tokenLBracket:
+			bracketTok, err := p.expect(tokenLBracket)
+			if err != nil {
+				return nil, err
+			}
+			indexExpr, err := p.parseExpression()
+			if err != nil {
+				return nil, err
+			}
+			if _, err := p.expect(tokenRBracket); err != nil {
+				return nil, err
+			}
+			expr = &IndexExpr{
+				Target: expr,
+				Index:  indexExpr,
+				Posn:   posFromToken(bracketTok),
 			}
 		case tokenPlusPlus, tokenMinusMinus:
 			return nil, p.errorf(p.curr.Pos, p.curr.Type == tokenEOF, "%s not allowed in expression context", p.curr.Type)

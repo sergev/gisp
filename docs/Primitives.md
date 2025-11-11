@@ -67,6 +67,8 @@ Vectors are fixed-length, mutable, zero-based indexed sequences. They complement
 - `vectorLength` — Returns the integer length of a vector. Errors on non-vector input.
 - `vectorRef` — `(vectorRef vec index)` returns the element at the given zero-based integer `index`. Out-of-range indices raise an error.
 - `vectorSet` — `(vectorSet vec index value)` mutates the element at `index` to `value`, returning the same vector. Out-of-range indices raise an error.
+- `vec[index]` — Surface syntax that expands to `vectorRef(vec, index)`.
+- `vec[index] = value` — Surface syntax that expands to `vectorSet(vec, index, value)`.
 - `vectorFill` — `(vectorFill vec value)` overwrites every element of `vec` with `value`, mutating in place and returning the vector.
 - `vectorToList` — Converts a vector into a freshly allocated proper list containing the same elements.
 - `listToVector` — Converts a proper list into a fresh vector. Non-lists raise an error.

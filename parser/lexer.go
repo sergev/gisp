@@ -25,6 +25,54 @@ type lexer struct {
 	braceDepth   int
 }
 
+type lexerState struct {
+	pos          int
+	line         int
+	column       int
+	hasLastToken bool
+	lastToken    TokenType
+	lastPos      Position
+	hasBuffered  bool
+	bufferedTok  Token
+	parenDepth   int
+	braceDepth   int
+}
+
+func (lx *lexer) saveState() lexerState {
+	state := lexerState{
+		pos:          lx.pos,
+		line:         lx.line,
+		column:       lx.column,
+		hasLastToken: lx.hasLastToken,
+		lastToken:    lx.lastToken,
+		lastPos:      lx.lastPos,
+		parenDepth:   lx.parenDepth,
+		braceDepth:   lx.braceDepth,
+	}
+	if lx.bufferedTok != nil {
+		state.hasBuffered = true
+		state.bufferedTok = *lx.bufferedTok
+	}
+	return state
+}
+
+func (lx *lexer) restoreState(state lexerState) {
+	lx.pos = state.pos
+	lx.line = state.line
+	lx.column = state.column
+	lx.hasLastToken = state.hasLastToken
+	lx.lastToken = state.lastToken
+	lx.lastPos = state.lastPos
+	lx.parenDepth = state.parenDepth
+	lx.braceDepth = state.braceDepth
+	if state.hasBuffered {
+		tok := state.bufferedTok
+		lx.bufferedTok = &tok
+	} else {
+		lx.bufferedTok = nil
+	}
+}
+
 func newLexer(src string) *lexer {
 	return &lexer{
 		src:    src,

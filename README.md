@@ -12,6 +12,7 @@ semantics.
 ## Features
 
 - Go-like Gisp language with inline s-expression escapes
+- Mutable vectors with native `vec[index]` reads and `vec[index] = value` writes
 - Atoms, lists, integers (`int64`), reals (`float64`), booleans, and strings
 - Proper lexical scope with closures and unified namespace (functions are values)
 - Tail-call optimization to support deeply recursive programs
@@ -93,17 +94,23 @@ Run any of them with the interpreter:
 ./gisp examples/fact.gisp
 ```
 
-Use the `read` primitive when you need to accept raw Scheme data at runtime:
+### REPL Snapshot: Vector Indexing
 
-```gisp
-display("Enter a datum: ")
-var datum = read()
-display("You typed: ")
-display(datum)
-newline()
+```text
+$ ./gisp
+gisp> var flags = #[true, true, true]
+#(#t #t #t)
+gisp> flags[1]
+#t
+gisp> flags[1] = false
+()
+gisp> flags[1]
+#f
+gisp> flags
+#(#t #f #t)
 ```
 
-The regression test suite keeps these examples in sync with the runtime.
+This REPL transcript shows the native `vec[index]` reader and writer syntax in action.
 
 ## Testing
 

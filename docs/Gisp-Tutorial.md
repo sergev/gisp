@@ -305,15 +305,15 @@ The sieve of Eratosthenes is a good stress test for vectors because it toggles b
 ```gisp
 func sievePrimes(limit) {
     var flags = makeVector(limit + 1, true)
-    vectorSet(flags, 0, false)
-    vectorSet(flags, 1, false)
+    flags[0] = false
+    flags[1] = false
 
     var candidate = 2
     while candidate * candidate <= limit {
-        if vectorRef(flags, candidate) {
+        if flags[candidate] {
             var multiple = candidate * candidate
             while multiple <= limit {
-                vectorSet(flags, multiple, false)
+                flags[multiple] = false
                 multiple += candidate
             }
         }
@@ -323,7 +323,7 @@ func sievePrimes(limit) {
     var primes = []
     var n = 2
     while n <= limit {
-        if vectorRef(flags, n) {
+        if flags[n] {
             primes = append(primes, [n])
         }
         n++
@@ -336,8 +336,8 @@ newline()
 ```
 
 - `makeVector(limit + 1, true)` creates a mutable array of booleans initialised to `true`.
-- `vectorSet` flips individual slots to `false` as composites are discovered.
-- `vectorRef` reads the flag at an index when building the final list of primes.
+- `flags[i] = false` updates a slot in-place; it expands to `vectorSet(flags, i, false)` under the hood.
+- `flags[i]` reads a slot; it expands to `vectorRef(flags, i)`.
 
 Because vectors live on the heap just like lists, you can pass them between functions, keep them in data structures, or convert them to lists later with `vectorToList` when you need list processing helpers.
 

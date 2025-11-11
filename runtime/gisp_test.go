@@ -112,6 +112,10 @@ func TestTutorial07ListHelpers(t *testing.T) {
 	runTutorialExample(t, "tutorial_07_list_helpers.gisp", "1\n(2 3 4)\n(1 4 9 16)")
 }
 
+func TestTutorial07Vectors(t *testing.T) {
+	runTutorialExample(t, "tutorial_07_vectors.gisp", "(2 3 5 7 11 13 17 19 23 29 31 37 41 43 47)")
+}
+
 func TestTutorial08UnlessMacro(t *testing.T) {
 	runTutorialExample(t, "tutorial_08_unless_macro.gisp", "value was false")
 }

@@ -759,6 +759,71 @@ var values = #[1, "two", true, func() {
 	}
 }
 
+func TestParseIndexExpression(t *testing.T) {
+	prog := parseProgramFromSource(t, "var value = flags[candidate];\n")
+	if len(prog.Decls) != 1 {
+		t.Fatalf("expected single declaration, got %d", len(prog.Decls))
+	}
+	varDecl, ok := prog.Decls[0].(*VarDecl)
+	if !ok {
+		t.Fatalf("expected VarDecl, got %T", prog.Decls[0])
+	}
+	indexExpr, ok := varDecl.Init.(*IndexExpr)
+	if !ok {
+		t.Fatalf("expected index expression initializer, got %#v", varDecl.Init)
+	}
+	baseIdent, ok := indexExpr.Target.(*IdentifierExpr)
+	if !ok || baseIdent.Name != "flags" {
+		t.Fatalf("expected base identifier flags, got %#v", indexExpr.Target)
+	}
+	indexIdent, ok := indexExpr.Index.(*IdentifierExpr)
+	if !ok || indexIdent.Name != "candidate" {
+		t.Fatalf("expected index identifier candidate, got %#v", indexExpr.Index)
+	}
+}
+
+func TestParseIndexAssignment(t *testing.T) {
+	src := `
+func disable(flags, candidate) {
+	flags[candidate] = false;
+}
+`
+	prog := parseProgramFromSource(t, src)
+	if len(prog.Decls) != 1 {
+		t.Fatalf("expected single declaration, got %d", len(prog.Decls))
+	}
+	fnDecl, ok := prog.Decls[0].(*FuncDecl)
+	if !ok {
+		t.Fatalf("expected FuncDecl, got %T", prog.Decls[0])
+	}
+	if len(fnDecl.Body.Stmts) != 1 {
+		t.Fatalf("expected single statement in function body, got %d", len(fnDecl.Body.Stmts))
+	}
+	assign, ok := fnDecl.Body.Stmts[0].(*AssignStmt)
+	if !ok {
+		t.Fatalf("expected assignment statement, got %#v", fnDecl.Body.Stmts[0])
+	}
+	if assign.Name != "" {
+		t.Fatalf("expected identifier name to be empty for index target, got %q", assign.Name)
+	}
+	indexExpr, ok := assign.Target.(*IndexExpr)
+	if !ok {
+		t.Fatalf("expected index target, got %#v", assign.Target)
+	}
+	baseIdent, ok := indexExpr.Target.(*IdentifierExpr)
+	if !ok || baseIdent.Name != "flags" {
+		t.Fatalf("expected base identifier flags, got %#v", indexExpr.Target)
+	}
+	indexIdent, ok := indexExpr.Index.(*IdentifierExpr)
+	if !ok || indexIdent.Name != "candidate" {
+		t.Fatalf("expected index identifier candidate, got %#v", indexExpr.Index)
+	}
+	boolExpr, ok := assign.Expr.(*BoolExpr)
+	if !ok || boolExpr.Value {
+		t.Fatalf("expected false boolean assignment, got %#v", assign.Expr)
+	}
+}
+
 func TestParseEmptyVectorLiteral(t *testing.T) {
 	prog := parseProgramFromSource(t, "var empty = #[]\n")
 	if len(prog.Decls) != 1 {
