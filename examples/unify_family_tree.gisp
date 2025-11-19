@@ -1,0 +1,532 @@
+#!/usr/bin/env gisp
+
+// Family Tree Relationships Demo using Unification Algorithm
+// Demonstrates how unification enables Prolog-style logic programming queries
+
+// Include unification functions from unify.gisp
+// occurs? returns true if and only if u occurs in v
+func occurs(u, v) {
+    if !pairp(v) {
+        return false
+    }
+    return occursHelper(u, rest(v))
+}
+
+func occursHelper(u, l) {
+    if !pairp(l) {
+        return false
+    }
+    if eq(u, first(l)) {
+        return true
+    }
+    if occurs(u, first(l)) {
+        return true
+    }
+    return occursHelper(u, rest(l))
+}
+
+// sigma returns a new substitution procedure extending s by
+// the substitution of u with v
+func sigma(u, v, s) {
+    return func(x) {
+        return sigmaApply(u, v, s, s(x))
+    }
+}
+
+func sigmaApply(u, v, s, x) {
+    if symbolp(x) {
+        if eq(x, u) {
+            return v
+        }
+        return x
+    }
+    return cons(first(x), map(func(elem) {
+        return sigmaApply(u, v, s, elem)
+    }, rest(x)))
+}
+
+// try-subst tries to substitute u for v but may require a
+// full unification if (s u) is not a variable, and it may
+// fail if it sees that u occurs in v.
+func trySubst(u, v, s, ks, kf) {
+    var uSub = s(u)
+    if !symbolp(uSub) {
+        return uni(uSub, v, s, ks, kf)
+    }
+    var vSub = s(v)
+    if eq(uSub, vSub) {
+        return ks(s)
+    }
+    if occurs(uSub, vSub) {
+        return kf("cycle")
+    }
+    return ks(sigma(uSub, vSub, s))
+}
+
+// uni attempts to unify u and v with a continuation-passing
+// style that returns a substitution to the success argument
+// ks or an error message to the failure argument kf.  The
+// substitution itself is represented by a procedure from
+// variables to terms.
+func uni(u, v, s, ks, kf) {
+    if symbolp(u) {
+        return trySubst(u, v, s, ks, kf)
+    }
+    if symbolp(v) {
+        return trySubst(v, u, s, ks, kf)
+    }
+    if eq(first(u), first(v)) && length(u) == length(v) {
+        return uniHelper(rest(u), rest(v), s, ks, kf)
+    }
+    return kf("clash")
+}
+
+func uniHelper(u, v, s, ks, kf) {
+    if nullp(u) {
+        return ks(s)
+    }
+    return uni(first(u), first(v), s, func(newS) {
+        return uniHelper(rest(u), rest(v), newS, ks, kf)
+    }, kf)
+}
+
+// unify shows one possible interface to uni, where the initial
+// substitution is the identity procedure, the initial success
+// continuation returns the unified term, and the initial failure
+// continuation returns the error message.
+func unify(u, v) {
+    return uni(u, v, func(x) {
+        return x
+    }, func(s) {
+        return s(u)
+    }, func(msg) {
+        return msg
+    })
+}
+
+// ============================================================================
+// Family Tree Knowledge Base
+// ============================================================================
+
+// Family tree facts - representing relationships as terms
+// Generation 1 (great-grandparents)
+var facts = [
+    `'(parent charles david),
+    `'(parent charles elizabeth),
+    `'(parent margaret david),
+    `'(parent margaret elizabeth),
+    `'(parent robert alice),
+    `'(parent robert bob),
+    `'(parent mary alice),
+    `'(parent mary bob),
+    // Generation 2 (grandparents and parents)
+    `'(parent david frank),
+    `'(parent david grace),
+    `'(parent elizabeth frank),
+    `'(parent elizabeth grace),
+    `'(parent alice henry),
+    `'(parent alice isabel),
+    `'(parent bob henry),
+    `'(parent bob isabel),
+    // Generation 3 (parents)
+    `'(parent frank john),
+    `'(parent frank kate),
+    `'(parent grace john),
+    `'(parent grace kate),
+    `'(parent henry lucy),
+    `'(parent isabel lucy),
+    // Generation 4 (children)
+    `'(parent john mike),
+    `'(parent kate mike),
+    `'(parent lucy sarah),
+    `'(parent lucy tom)
+]
+
+// ============================================================================
+// Query Functions Using Unification
+// ============================================================================
+
+// Helper to reverse a list
+func reverseList(lst) {
+    var acc = []
+    var cursor = lst
+    while !nullp(cursor) {
+        acc = cons(first(cursor), acc)
+        cursor = rest(cursor)
+    }
+    return acc
+}
+
+// Helper to remove duplicates from a list
+func removeDuplicates(lst) {
+    var result = []
+    var cursor = lst
+    while !nullp(cursor) {
+        var item = first(cursor)
+        var found = false
+        var checkCursor = result
+        while !nullp(checkCursor) && !found {
+            if eq(first(checkCursor), item) {
+                found = true
+            }
+            checkCursor = rest(checkCursor)
+        }
+        if !found {
+            result = cons(item, result)
+        }
+        cursor = rest(cursor)
+    }
+    return reverseList(result)
+}
+
+// Check if unify returned an error string
+func isError(result) {
+    if !stringp(result) {
+        return false
+    }
+    var msg = result
+    return eq(msg, "clash") || eq(msg, "cycle")
+}
+
+// Extract all unique people from facts using unification
+// Returns a deduplicated list of all people (both parents and children) in the knowledge base
+func getAllPeople() {
+    var allPeople = []
+    var parentVar = gensym()
+    var childVar = gensym()
+    var pattern = cons(`'parent, cons(parentVar, cons(childVar, [])))
+
+    var cursor = facts
+    while !nullp(cursor) {
+        var fact = first(cursor)
+        // Unify pattern with fact
+        var result = unify(pattern, fact)
+        // Check if unification succeeded
+        if !isError(result) {
+            // Unification succeeded! Extract both parent and child
+            var unifiedTerm = result
+            var boundParent = first(rest(unifiedTerm))
+            var boundChild = first(rest(rest(unifiedTerm)))
+            // Add both parent and child to the list
+            allPeople = cons(boundChild, allPeople)
+            allPeople = cons(boundParent, allPeople)
+        }
+        cursor = rest(cursor)
+    }
+    return removeDuplicates(allPeople)
+}
+
+// Find parents using unification with variables
+// Pattern: (parent X child) where X is a variable to be bound
+func findParentsOf(child) {
+    var results = []
+    // Create a variable symbol for the parent (using gensym for uniqueness)
+    var parentVar = gensym()
+    // Build pattern: (parent parentVar child)
+    var pattern = cons(`'parent, cons(parentVar, cons(child, [])))
+
+    var cursor = facts
+    while !nullp(cursor) {
+        var fact = first(cursor)
+        // Unify pattern with fact - if successful, parentVar will be bound
+        var result = unify(pattern, fact)
+        // Check if unification succeeded (not an error string)
+        if !isError(result) {
+            // Unification succeeded! Verify the child matches
+            var unifiedTerm = result
+            var unifiedChild = first(rest(rest(unifiedTerm)))
+            // Only add if the child in the unified result matches what we're looking for
+            if eq(unifiedChild, child) {
+                var boundParent = first(rest(unifiedTerm))
+                results = cons(boundParent, results)
+            }
+        }
+        cursor = rest(cursor)
+    }
+    return removeDuplicates(reverseList(results))
+}
+
+// findChildren finds all children of a given person using unification
+// Pattern: (parent parent childVar) where childVar is a variable to be bound
+func findChildrenOf(parent) {
+    var results = []
+    // Create a variable symbol for the child
+    var childVar = gensym()
+    // Build pattern: (parent parent childVar)
+    var pattern = cons(`'parent, cons(parent, cons(childVar, [])))
+
+    var cursor = facts
+    while !nullp(cursor) {
+        var fact = first(cursor)
+        // Unify pattern with fact
+        var result = unify(pattern, fact)
+        // Check if unification succeeded
+        if !isError(result) {
+            // Unification succeeded! Verify the parent matches
+            var unifiedTerm = result
+            var unifiedParent = first(rest(unifiedTerm))
+            // Only add if the parent in the unified result matches what we're looking for
+            if eq(unifiedParent, parent) {
+                var boundChild = first(rest(rest(unifiedTerm)))
+                results = cons(boundChild, results)
+            }
+        }
+        cursor = rest(cursor)
+    }
+    return removeDuplicates(reverseList(results))
+}
+
+// findGrandparents finds all grandparents of a given person
+func findGrandparentsOf(person) {
+    var results = []
+    var parents = findParentsOf(person)
+    var parentCursor = parents
+    while !nullp(parentCursor) {
+        var parent = first(parentCursor)
+        var grandparents = findParentsOf(parent)
+        var gpCursor = grandparents
+        while !nullp(gpCursor) {
+            var gp = first(gpCursor)
+            results = cons(gp, results)
+            gpCursor = rest(gpCursor)
+        }
+        parentCursor = rest(parentCursor)
+    }
+    return removeDuplicates(reverseList(results))
+}
+
+// findSiblings finds all siblings of a given person
+func findSiblingsOf(person) {
+    var results = []
+    var parents = findParentsOf(person)
+    if nullp(parents) {
+        return []
+    }
+    // Find all children of each parent using unification
+    var parentCursor = parents
+    while !nullp(parentCursor) {
+        var parent = first(parentCursor)
+        var children = findChildrenOf(parent)
+        var childCursor = children
+        while !nullp(childCursor) {
+            var child = first(childCursor)
+            // Exclude the person themselves
+            if !eq(child, person) {
+                results = cons(child, results)
+            }
+            childCursor = rest(childCursor)
+        }
+        parentCursor = rest(parentCursor)
+    }
+    return removeDuplicates(reverseList(results))
+}
+
+// findCousins finds all cousins of a given person
+// Cousins share a grandparent but have different parents
+func findCousinsOf(person) {
+    var results = []
+    var grandparents = findGrandparentsOf(person)
+    var parents = findParentsOf(person)
+
+    if nullp(grandparents) {
+        return []
+    }
+
+    // Get all unique people from facts using unification
+    var allPeople = getAllPeople()
+
+    // Check each person
+    var peopleCursor = allPeople
+    while !nullp(peopleCursor) {
+        var potentialCousin = first(peopleCursor)
+
+        // Skip if it's the same person
+        if !eq(potentialCousin, person) {
+            // Check if this person shares a grandparent
+            var cousinGrandparents = findGrandparentsOf(potentialCousin)
+            var cousinParents = findParentsOf(potentialCousin)
+
+            // Check for shared grandparent
+            var sharedGP = false
+            var gpCursor = grandparents
+            while !nullp(gpCursor) && !sharedGP {
+                var gp = first(gpCursor)
+                var cgpCursor = cousinGrandparents
+                while !nullp(cgpCursor) && !sharedGP {
+                    if eq(gp, first(cgpCursor)) {
+                        sharedGP = true
+                    }
+                    cgpCursor = rest(cgpCursor)
+                }
+                gpCursor = rest(gpCursor)
+            }
+
+            // Check that parents are different
+            var differentParents = true
+            var pCursor = parents
+            while !nullp(pCursor) && differentParents {
+                var p = first(pCursor)
+                var cpCursor = cousinParents
+                while !nullp(cpCursor) && differentParents {
+                    if eq(p, first(cpCursor)) {
+                        differentParents = false
+                    }
+                    cpCursor = rest(cpCursor)
+                }
+                pCursor = rest(pCursor)
+            }
+
+            if sharedGP && differentParents {
+                results = cons(potentialCousin, results)
+            }
+        }
+        peopleCursor = rest(peopleCursor)
+    }
+    return removeDuplicates(reverseList(results))
+}
+
+// Helper to find all descendants of a person
+func findDescendantsOf(ancestor) {
+    var descendants = []
+    // Get all unique people from facts using unification
+    var allPeople = getAllPeople()
+
+    var peopleCursor = allPeople
+    while !nullp(peopleCursor) {
+        var person = first(peopleCursor)
+        // Check if ancestor is an ancestor of this person
+        var current = person
+        var depth = 0
+        var found = false
+        while !nullp(current) && depth < 10 && !found {
+            var parents = findParentsOf(current)
+            if nullp(parents) {
+                break
+            }
+            var pCursor = parents
+            while !nullp(pCursor) && !found {
+                if eq(first(pCursor), ancestor) {
+                    found = true
+                    descendants = cons(person, descendants)
+                }
+                pCursor = rest(pCursor)
+            }
+            if !found {
+                current = first(parents)
+                depth++
+            }
+        }
+        peopleCursor = rest(peopleCursor)
+    }
+    return removeDuplicates(descendants)
+}
+
+// Helper to display a list of symbols
+func displayList(lst, label) {
+    display(label)
+    display(": ")
+    if nullp(lst) {
+        display("(none)")
+    } else {
+        var cursor = lst
+        var firstItem = true
+        while !nullp(cursor) {
+            if !firstItem {
+                display(", ")
+            }
+            display(first(cursor))
+            cursor = rest(cursor)
+            firstItem = false
+        }
+    }
+    newline()
+}
+
+// ============================================================================
+// Demo Queries
+// ============================================================================
+
+display("=== Family Tree Relationships Demo using Unification ===\n")
+newline()
+
+display("This demo uses the unification algorithm to query family relationships.\n")
+display("Unification matches patterns with variables against facts in the knowledge base.\n")
+display("For example, the pattern (parent X lucy) unifies with (parent henry lucy),\n")
+display("binding the variable X to 'henry'.\n")
+newline()
+
+display("Family Tree Structure:\n")
+display("Generation 1: charles, margaret, robert, mary\n")
+display("Generation 2: david, elizabeth, alice, bob\n")
+display("Generation 3: frank, grace, henry, isabel\n")
+display("Generation 4: john, kate, lucy\n")
+display("Generation 5: mike, sarah, tom\n")
+newline()
+
+display("=== Demonstration: Unification in Action ===\n")
+display("Unifying pattern (parent X lucy) with fact (parent henry lucy):\n")
+var demoPattern = cons(`'parent, cons(`'X, cons(`'lucy, [])))
+var demoFact = cons(`'parent, cons(`'henry, cons(`'lucy, [])))
+var demoResult = unify(demoPattern, demoFact)
+display("Result: ")
+display(demoResult)
+newline()
+display("(When unification succeeds, the variable X in the pattern is bound to a value)\n")
+display("(In this case, X was bound to the parent found in the matching fact)\n")
+newline()
+
+display("=== Query 1: Who are the parents of lucy? ===\n")
+var lucyParents = findParentsOf(`'lucy)
+displayList(lucyParents, "Parents of lucy")
+newline()
+
+display("=== Query 2: Who are the children of alice? ===\n")
+var aliceChildren = findChildrenOf(`'alice)
+displayList(aliceChildren, "Children of alice")
+newline()
+
+display("=== Query 3: Who are the grandparents of mike? ===\n")
+var mikeGrandparents = findGrandparentsOf(`'mike)
+displayList(mikeGrandparents, "Grandparents of mike")
+newline()
+
+display("=== Query 4: Who are the siblings of henry? ===\n")
+var henrySiblings = findSiblingsOf(`'henry)
+displayList(henrySiblings, "Siblings of henry")
+newline()
+
+display("=== Query 5: Who are the siblings of john? ===\n")
+var johnSiblings = findSiblingsOf(`'john)
+displayList(johnSiblings, "Siblings of john")
+newline()
+
+display("=== Query 6: Who are the grandparents of sarah? ===\n")
+var sarahGrandparents = findGrandparentsOf(`'sarah)
+displayList(sarahGrandparents, "Grandparents of sarah")
+newline()
+
+display("=== Query 7: Who are the parents of david? ===\n")
+var davidParents = findParentsOf(`'david)
+displayList(davidParents, "Parents of david")
+newline()
+
+display("=== Query 8: Who are the cousins of mike? ===\n")
+var mikeCousins = findCousinsOf(`'mike)
+displayList(mikeCousins, "Cousins of mike")
+newline()
+
+display("=== Query 9: Who are the cousins of sarah? ===\n")
+var sarahCousins = findCousinsOf(`'sarah)
+displayList(sarahCousins, "Cousins of sarah")
+newline()
+
+display("=== Query 10: Using Unification to Find Ancestor-Descendant Pairs ===\n")
+display("Finding all descendants of charles:\n")
+var charlesDescendants = findDescendantsOf(`'charles)
+displayList(charlesDescendants, "Descendants of charles")
+newline()
+
+display("=== Demo Complete ===\n")
+display("This demo demonstrates how unification enables logic programming queries!\n")
+display("The unification algorithm allows us to match patterns and bind variables\n")
+display("to find relationships in the family tree knowledge base.\n")
