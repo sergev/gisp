@@ -288,3 +288,157 @@ All matches for /[^aeiou]+/ in "queue rhythm":
   #1: " rhythm" @ [5, 12) captures=[" rhythm"]`,
 	)
 }
+
+// loadUnify loads the unify.gisp file and returns an evaluator with it loaded
+func loadUnify(t *testing.T) *lang.Evaluator {
+	t.Helper()
+	ev := NewEvaluator()
+	SetArgv(ev.Global, []string{})
+	scriptPath := filepath.Join("..", "examples", "unify.gisp")
+	_, err := EvaluateFile(ev, scriptPath)
+	if err != nil {
+		t.Fatalf("failed to load unify.gisp: %v", err)
+	}
+	return ev
+}
+
+// testUnify calls the unify function with two arguments and returns the result
+// u and v should be Gisp expressions (can use backticks for s-expressions)
+func testUnify(t *testing.T, ev *lang.Evaluator, u, v string) lang.Value {
+	t.Helper()
+	src := "unify(" + u + ", " + v + ")"
+	val, err := EvaluateGispString(ev, src)
+	if err != nil {
+		t.Fatalf("unify(%s, %s) evaluation error: %v", u, v, err)
+	}
+	return val
+}
+
+func TestUnifyBasic(t *testing.T) {
+	ev := loadUnify(t)
+
+	// Variable to variable - should succeed
+	val := testUnify(t, ev, "`'x", "`'y")
+	// Result should be a term (not a string error)
+	if val.Type == lang.TypeString && (val.Str() == "cycle" || val.Str() == "clash") {
+		t.Fatalf("unify('x, 'y) should succeed, got error: %s", val.String())
+	}
+
+	// Variable to term - should succeed
+	val = testUnify(t, ev, "`'x", "`'(f a)")
+	if val.Type == lang.TypeString && (val.Str() == "cycle" || val.Str() == "clash") {
+		t.Fatalf("unify('x, (f a)) should succeed, got error: %s", val.String())
+	}
+
+	// Term to variable - should succeed
+	val = testUnify(t, ev, "`'(f a)", "`'x")
+	if val.Type == lang.TypeString && (val.Str() == "cycle" || val.Str() == "clash") {
+		t.Fatalf("unify((f a), 'x) should succeed, got error: %s", val.String())
+	}
+
+	// Same variable - should succeed
+	val = testUnify(t, ev, "`'x", "`'x")
+	if val.Type == lang.TypeString && (val.Str() == "cycle" || val.Str() == "clash") {
+		t.Fatalf("unify('x, 'x) should succeed, got error: %s", val.String())
+	}
+}
+
+func TestUnifyTermsSuccess(t *testing.T) {
+	ev := loadUnify(t)
+
+	// Same structure - should succeed
+	val := testUnify(t, ev, "`'(f a)", "`'(f a)")
+	if val.Type == lang.TypeString && (val.Str() == "cycle" || val.Str() == "clash") {
+		t.Fatalf("unify((f a), (f a)) should succeed, got error: %s", val.String())
+	}
+
+	// Different variables - should succeed
+	val = testUnify(t, ev, "`'(f x)", "`'(f y)")
+	if val.Type == lang.TypeString && (val.Str() == "cycle" || val.Str() == "clash") {
+		t.Fatalf("unify((f x), (f y)) should succeed, got error: %s", val.String())
+	}
+
+	// Nested structures - should succeed
+	val = testUnify(t, ev, "`'(f (g x))", "`'(f (g a))")
+	if val.Type == lang.TypeString && (val.Str() == "cycle" || val.Str() == "clash") {
+		t.Fatalf("unify((f (g x)), (f (g a))) should succeed, got error: %s", val.String())
+	}
+
+	// Multiple arguments - should succeed
+	val = testUnify(t, ev, "`'(f x y)", "`'(f a b)")
+	if val.Type == lang.TypeString && (val.Str() == "cycle" || val.Str() == "clash") {
+		t.Fatalf("unify((f x y), (f a b)) should succeed, got error: %s", val.String())
+	}
+}
+
+func TestUnifyTermsClash(t *testing.T) {
+	ev := loadUnify(t)
+
+	// Different heads - should return "clash"
+	val := testUnify(t, ev, "`'(f a)", "`'(g a)")
+	if val.Type != lang.TypeString || val.Str() != "clash" {
+		t.Fatalf("unify((f a), (g a)) should return \"clash\", got: %s", val.String())
+	}
+
+	// Different lengths - should return "clash"
+	val = testUnify(t, ev, "`'(f a)", "`'(f a b)")
+	if val.Type != lang.TypeString || val.Str() != "clash" {
+		t.Fatalf("unify((f a), (f a b)) should return \"clash\", got: %s", val.String())
+	}
+
+	// Different structure - should return "clash"
+	val = testUnify(t, ev, "`'(f a b)", "`'(f a)")
+	if val.Type != lang.TypeString || val.Str() != "clash" {
+		t.Fatalf("unify((f a b), (f a)) should return \"clash\", got: %s", val.String())
+	}
+}
+
+func TestUnifyCycle(t *testing.T) {
+	ev := loadUnify(t)
+
+	// Direct cycle - should return "cycle"
+	val := testUnify(t, ev, "`'x", "`'(f x)")
+	if val.Type != lang.TypeString || val.Str() != "cycle" {
+		t.Fatalf("unify('x, (f x)) should return \"cycle\", got: %s", val.String())
+	}
+
+	// Indirect cycle - should return "cycle"
+	val = testUnify(t, ev, "`'x", "`'(f (g x))")
+	if val.Type != lang.TypeString || val.Str() != "cycle" {
+		t.Fatalf("unify('x, (f (g x))) should return \"cycle\", got: %s", val.String())
+	}
+
+	// More complex cycle
+	val = testUnify(t, ev, "`'x", "`'(f y x)")
+	if val.Type != lang.TypeString || val.Str() != "cycle" {
+		t.Fatalf("unify('x, (f y x)) should return \"cycle\", got: %s", val.String())
+	}
+}
+
+func TestUnifyComplex(t *testing.T) {
+	ev := loadUnify(t)
+
+	// Complex nested structure with multiple variables
+	val := testUnify(t, ev, "`'(f x (g y))", "`'(f a (g b))")
+	if val.Type == lang.TypeString && (val.Str() == "cycle" || val.Str() == "clash") {
+		t.Fatalf("unify((f x (g y)), (f a (g b))) should succeed, got error: %s", val.String())
+	}
+
+	// Deeply nested structure
+	val = testUnify(t, ev, "`'(f (g (h x)))", "`'(f (g (h a)))")
+	if val.Type == lang.TypeString && (val.Str() == "cycle" || val.Str() == "clash") {
+		t.Fatalf("unify((f (g (h x))), (f (g (h a)))) should succeed, got error: %s", val.String())
+	}
+
+	// Multiple variables in different positions
+	val = testUnify(t, ev, "`'(f x y z)", "`'(f a b c)")
+	if val.Type == lang.TypeString && (val.Str() == "cycle" || val.Str() == "clash") {
+		t.Fatalf("unify((f x y z), (f a b c)) should succeed, got error: %s", val.String())
+	}
+
+	// Variable appears multiple times - should succeed if consistent
+	val = testUnify(t, ev, "`'(f x x)", "`'(f a a)")
+	if val.Type == lang.TypeString && (val.Str() == "cycle" || val.Str() == "clash") {
+		t.Fatalf("unify((f x x), (f a a)) should succeed, got error: %s", val.String())
+	}
+}
